@@ -1,17 +1,11 @@
 import os
 import requests
 import json
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# [중요] 대표님, 서울 열린데이터 광장에서 발급받은 '인증키'를 .env의 SEOUL_API_KEY에 넣어주세요.
 SEOUL_API_KEY = os.getenv("SEOUL_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("models/gemini-pro-latest")
 
 def get_seoul_cultural_events():
     """서울시 문화행사 API 호출 및 성동구 필터링"""

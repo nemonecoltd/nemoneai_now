@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -18,14 +19,10 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
-    const res = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    });
+    const { error } = await signInWithEmail(email, password);
 
-    if (res?.error) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+    if (error) {
+      setError(error.message || '이메일 또는 비밀번호가 올바르지 않습니다.');
       setIsLoading(false);
     } else {
       router.push('/');
@@ -99,7 +96,7 @@ export default function LoginPage() {
 
         <div className="mt-8">
           <button
-            onClick={() => signIn('google', { callbackUrl: '/' })}
+            onClick={() => signInWithGoogle()}
             className="w-full bg-white border-2 border-zinc-100 text-zinc-700 rounded-2xl py-4 font-bold flex items-center justify-center gap-3 hover:bg-zinc-50 transition-all"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

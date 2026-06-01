@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, MapPin, Route, Heart, ChevronRight, LogOut, Loader2, 
@@ -20,7 +20,7 @@ function cn(...inputs: ClassValue[]) {
 type Tab = 'theme' | 'course' | 'place';
 
 export default function MyPage() {
-  const { data: session, status } = useSession();
+  const { user, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('theme');
   const [likedPlaces, setLikedPlaces] = useState([]);
@@ -40,18 +40,19 @@ export default function MyPage() {
   const [editPlaces, setEditPlaces] = useState<any[]>([]);
 
   useEffect(() => {
-    if (session?.user?.email) {
+    if (user?.id) {
       fetchUserData();
     }
-  }, [session]);
+  }, [user]);
 
   const fetchUserData = async () => {
+    if (!user?.id) return;
     setIsLoading(true);
     try {
       const [likesRes, coursesRes, themesRes] = await Promise.all([
-        fetch(`/api-now/users/${session?.user?.email}/likes`),
-        fetch(`/api-now/users/${session?.user?.email}/courses`),
-        fetch(`/api-now/users/${session?.user?.email}/themes`)
+        fetch(`/api-now/users/${user.id}/likes`),
+        fetch(`/api-now/users/${user.id}/courses`),
+        fetch(`/api-now/users/${user.id}/themes`)
       ]);
       if (likesRes.ok) setLikedPlaces(await likesRes.json());
       if (coursesRes.ok) setSavedCourses(await coursesRes.json());
@@ -64,7 +65,7 @@ export default function MyPage() {
   const handleDeleteTheme = async (themeId: number) => {
     if (!confirm('테마를 정말 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api-now/themes/${themeId}?user_email=${session?.user?.email}`, { method: 'DELETE' });
+      const res = await fetch(`/api-now/themes/${themeId}?user_id=${user?.id}`, { method: 'DELETE' });
       if (res.ok) {
         alert('삭제되었습니다.');
         fetchUserData();
@@ -89,7 +90,7 @@ export default function MyPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session?.user?.email,
+          user_id: user?.id,
           title: editTitle,
           description: editDesc,
           places: editPlaces
@@ -111,16 +112,16 @@ export default function MyPage() {
   };
 
 
-  if (status === "loading") return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>;
+  if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>;
   
-  if (!session) return (
+  if (!user) return (
     <div className="h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 max-w-md mx-auto bg-white shadow-2xl">
       <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-500 mb-4">
         <User size={40} />
       </div>
       <h2 className="text-2xl font-bold font-display">로그인이 필요합니다</h2>
       <p className="text-zinc-500 text-sm">마이페이지를 확인하시려면 로그인해 주세요.</p>
-      <button onClick={() => signIn()} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">로그인하기</button>
+      <button onClick={() => router.push('/login')} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">로그인하기</button>
       <button onClick={() => router.push('/')} className="text-zinc-400 text-sm font-bold">홈으로 돌아가기</button>
     </div>
   );
@@ -133,7 +134,7 @@ export default function MyPage() {
         </button>
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">MY PAGE</h1>
         <div className="ml-auto flex items-center gap-2">
-          {session.user?.email === 'nemonecoltd@gmail.com' && (
+          {user.email === 'nemonecoltd@gmail.com' && (
             <Link href="/admin" className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all">
               ADMIN
             </Link>
@@ -146,12 +147,16 @@ export default function MyPage() {
 
       <div className="bg-white px-8 pt-24 pb-10 rounded-b-[40px] shadow-sm">
         <div className="flex items-center gap-6 mb-8">
-          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg flex-shrink-0">
-            <img src={session.user?.image || "https://picsum.photos/200"} alt={session.user?.name || ""} className="w-full h-full object-cover" />
+          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg flex-shrink-0 bg-zinc-100">
+            <img 
+              src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`} 
+              alt={user.user_metadata?.full_name || ""} 
+              className="w-full h-full object-cover" 
+            />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-2xl font-black tracking-tight truncate">{session.user?.name}</h2>
-            <p className="text-zinc-400 text-xs font-medium truncate">{session.user?.email}</p>
+            <h2 className="text-2xl font-black tracking-tight truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</h2>
+            <p className="text-zinc-400 text-xs font-medium truncate">{user.email}</p>
           </div>
           <Link href="/my/edit" className="p-3 bg-zinc-100 text-zinc-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-500 transition-all shadow-sm">
             <Settings size={20} />
@@ -182,10 +187,10 @@ export default function MyPage() {
                 return (
                   <div key={theme.id} onClick={() => setSelectedTheme(theme)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-4 relative group cursor-pointer hover:border-blue-200 transition-all">
                     <div className="flex gap-4">
-                      <img 
-                        src={firstImage} 
-                        className="w-16 h-16 rounded-2xl object-cover border border-zinc-50 bg-zinc-50" 
-                        alt="" 
+                      <img
+                        src={firstImage}
+                        className="w-16 h-16 rounded-2xl object-cover border border-zinc-50 bg-zinc-50"
+                        alt={theme.title}
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = `https://picsum.photos/seed/theme-error-${theme.id}/400/300`;
                         }}
@@ -241,10 +246,10 @@ export default function MyPage() {
             <motion.div key="place" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {likedPlaces.length > 0 ? likedPlaces.map((place: any) => (
                 <Link href={`/posts/${place.id}`} key={place.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative no-underline group">
-                  <img 
-                    src={place.image_url || `https://picsum.photos/seed/place-${place.id}/400/300`} 
-                    className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white" 
-                    alt="" 
+                  <img
+                    src={place.image_url || `https://picsum.photos/seed/place-${place.id}/400/300`}
+                    className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white"
+                    alt={place.title}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = `https://picsum.photos/seed/place-error-${place.id}/400/300`;
                     }}
@@ -365,10 +370,10 @@ export default function MyPage() {
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={session?.user?.image || "https://picsum.photos/200"} className="w-10 h-10 rounded-full border border-zinc-100 object-cover" alt="" />
+                  <img src={user?.user_metadata?.avatar_url || "https://picsum.photos/200"} className="w-10 h-10 rounded-full border border-zinc-100 object-cover" alt="" />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedCourse.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{session?.user?.name}의 코스</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{user?.user_metadata?.full_name || 'User'}의 코스</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedCourse(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>

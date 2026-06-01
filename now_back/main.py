@@ -35,12 +35,12 @@ app.add_middleware(
 
 # --- Pydantic 모델 ---
 class FeedbackCreate(BaseModel):
-    user_email: str
+    user_id: str
     user_name: str
     content: str
 
 class FeedbackReply(BaseModel):
-    admin_email: str
+    admin_email: str # 관리자 인증용 유지
     reply: str
 
 class PlaceCollect(BaseModel):
@@ -67,245 +67,94 @@ class Question(BaseModel):
 
 class TourRequest(BaseModel):
     companion: str
-    user_email: Optional[str] = None
+    user_id: Optional[str] = None
 
 class LikeToggle(BaseModel):
-    user_email: str
+    user_id: str
     place_id: int
 
-class UserSync(BaseModel):
-    email: str
-    name: Optional[str] = None
-    image_url: Optional[str] = None
-    auth_provider: Optional[str] = 'google'
-
-class UserSignUp(BaseModel):
-    email: str
-    name: str
-    password: str
-    gender: Optional[str] = None
-    age: Optional[str] = None
-    nationality: Optional[str] = None
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
-
-class UserUpdate(BaseModel):
-    name: Optional[str] = None
-    gender: Optional[str] = None
-    age: Optional[str] = None
-    nationality: Optional[str] = None
-    image_url: Optional[str] = None
-
 class CourseSave(BaseModel):
-    user_email: str
+    user_id: str
+    user_name: Optional[str] = "User"
+    user_image: Optional[str] = None
     title: str
     description: str
     steps: List[dict]
     region: Optional[str] = "성수"
 
 class CourseLikeToggle(BaseModel):
-    user_email: str
+    user_id: str
     course_id: int
 
 class ThemeSave(BaseModel):
-    user_email: str
+    user_id: str
+    user_name: Optional[str] = "User"
+    user_image: Optional[str] = None
     title: str
     description: str
     places: List[dict]
     region: Optional[str] = "성수"
 
 class ThemeLikeToggle(BaseModel):
-    user_email: str
+    user_id: str
     theme_id: int
 
-# --- 비밀번호 해싱 설정 ---
-import bcrypt
+# --- DB 스키마 자동 업데이트 로직 ---
+def update_db_schema():
+    """데이터 보존을 위해 user_id 컬럼 추가 및 기존 user_email의 NOT NULL 제약 해제"""
+    tables = ['likes', 'saved_courses', 'themes', 'course_likes', 'theme_likes', 'feedbacks', 'user_ai_usages']
+    with engine.connect() as conn:
+        # 1. 기본 user_id 및 제약 해제
+        for table in tables:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_id TEXT;"))
+                conn.execute(text(f"ALTER TABLE {table} ALTER COLUMN user_email DROP NOT NULL;"))
+            except Exception: pass
+        
+        # 2. 랭킹용 작성자 정보 컬럼 추가 (themes, saved_courses)
+        for table in ['themes', 'saved_courses']:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_name TEXT;"))
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS user_image TEXT;"))
+            except Exception: pass
+            
+        conn.commit()
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-    except ValueError:
-        return False
-
-def get_password_hash(password: str) -> str:
-    # bcrypt requires bytes, and the generated salt is also bytes
-    pwd_bytes = password.encode('utf-8')
-    salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(pwd_bytes, salt)
-    return hashed_password.decode('utf-8')
+# 앱 실행 시 스키마 업데이트 수행
+update_db_schema()
 
 # --- API 엔드포인트 ---
-
-@app.post("/auth/signup")
-async def auth_signup(user: UserSignUp):
-    """자체 회원가입"""
-    with engine.connect() as conn:
-        existing = conn.execute(text("SELECT email FROM users WHERE email = :email"), {"email": user.email}).fetchone()
-        if existing:
-            raise HTTPException(status_code=400, detail="Email already registered")
-        
-        hashed_password = get_password_hash(user.password)
-        default_image = f"https://ui-avatars.com/api/?name={user.name}&background=random"
-        query = text("""
-            INSERT INTO users (email, name, password_hash, auth_provider, image_url, gender, age, nationality)
-            VALUES (:email, :name, :password_hash, 'local', :image_url, :gender, :age, :nationality)
-        """)
-        conn.execute(query, {
-            "email": user.email,
-            "name": user.name,
-            "password_hash": hashed_password,
-            "image_url": default_image,
-            "gender": user.gender,
-            "age": user.age,
-            "nationality": user.nationality
-        })
-        conn.commit()
-    return {"status": "success", "email": user.email}
-
-@app.post("/auth/login")
-async def auth_login(user: UserLogin):
-    """자체 로그인"""
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT email, name, image_url, password_hash, auth_provider FROM users WHERE email = :email"), {"email": user.email}).fetchone()
-        if not result:
-            raise HTTPException(status_code=400, detail="Invalid credentials")
-        
-        user_data = dict(result._mapping)
-        if user_data['auth_provider'] != 'local':
-            raise HTTPException(status_code=400, detail="Please login with Google")
-            
-        if not verify_password(user.password, user_data['password_hash']):
-            raise HTTPException(status_code=400, detail="Invalid credentials")
-            
-        return {
-            "email": user_data['email'],
-            "name": user_data['name'],
-            "image_url": user_data['image_url']
-        }
-
-@app.post("/users/sync")
-async def sync_user(user: UserSync):
-    """구글 로그인 시 사용자 정보 동기화"""
-    query = text("""
-        INSERT INTO users (email, name, image_url)
-        VALUES (:email, :name, :image_url)
-        ON CONFLICT (email) DO UPDATE SET
-            name = EXCLUDED.name,
-            image_url = EXCLUDED.image_url
-    """)
-    with engine.connect() as conn:
-        conn.execute(query, {"email": user.email, "name": user.name, "image_url": user.image_url})
-        conn.commit()
-    return {"status": "success", "user": user.email}
-
-@app.get("/users/{email}/profile")
-async def get_user_profile(email: str):
-    with engine.connect() as conn:
-        result = conn.execute(
-            text("SELECT name, email, image_url, gender, age, nationality FROM users WHERE email = :email"),
-            {"email": email}
-        ).fetchone()
-        if not result:
-            raise HTTPException(status_code=404, detail="User not found")
-        return dict(result._mapping)
-
-@app.delete("/users/{email}")
-async def delete_user_account(email: str):
-    """유저 계정 탈퇴"""
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT email FROM users WHERE email = :email"), {"email": email}).fetchone()
-        if not result:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # 삭제 시 관련된 모든 데이터 (likes, saved_courses, themes, feedbacks 등)
-        # FOREIGN KEY 제약조건에 ON DELETE CASCADE 가 걸려있다면 자동으로 지워짐.
-        # 없다면 수동으로 지워줘야 함. 여기서는 users 테이블만 지움 (CASCADE 의존)
-        conn.execute(text("DELETE FROM users WHERE email = :email"), {"email": email})
-        conn.commit()
-        return {"status": "success"}
-
-@app.put("/users/{email}/profile")
-async def update_user_profile(email: str, update_data: UserUpdate):
-    updates = []
-    params = {"email": email}
-    if update_data.name is not None:
-        updates.append("name = :name")
-        params["name"] = update_data.name
-    if update_data.gender is not None:
-        updates.append("gender = :gender")
-        params["gender"] = update_data.gender
-    if update_data.age is not None:
-        updates.append("age = :age")
-        params["age"] = update_data.age
-    if update_data.nationality is not None:
-        updates.append("nationality = :nationality")
-        params["nationality"] = update_data.nationality
-    if update_data.image_url is not None:
-        updates.append("image_url = :image_url")
-        params["image_url"] = update_data.image_url
-
-    if not updates:
-        return {"status": "success", "message": "No updates provided"}
-
-    query = text(f"UPDATE users SET {', '.join(updates)} WHERE email = :email")
-    with engine.connect() as conn:
-        conn.execute(query, params)
-        conn.commit()
-    return {"status": "success"}
-
-@app.post("/upload/profile")
-async def upload_profile_image(file: UploadFile = File(...)):
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    file_extension = file.filename.split(".")[-1]
-    new_filename = f"{uuid.uuid4().hex}.{file_extension}"
-    file_path = f"static/profiles/{new_filename}"
-    
-    with open(file_path, "wb") as buffer:
-        content = await file.read()
-        buffer.write(content)
-        
-    # Return the full URL
-    # Replace the host with actual backend domain if necessary
-    return {"url": f"/static/profiles/{new_filename}"}
 
 @app.post("/likes/toggle")
 async def toggle_like(req: LikeToggle):
     """장소 좋아요 토글"""
     with engine.connect() as conn:
-        conn.execute(
-            text("INSERT INTO users (email) VALUES (:email) ON CONFLICT (email) DO NOTHING"),
-            {"email": req.user_email}
-        )
         existing = conn.execute(
-            text("SELECT id FROM likes WHERE user_email = :email AND place_id = :place_id"),
-            {"email": req.user_email, "place_id": req.place_id}
+            text("SELECT id FROM likes WHERE user_id = :user_id AND place_id = :place_id"),
+            {"user_id": req.user_id, "place_id": req.place_id}
         ).fetchone()
         if existing:
             conn.execute(text("DELETE FROM likes WHERE id = :id"), {"id": existing[0]})
             liked = False
         else:
             conn.execute(
-                text("INSERT INTO likes (user_email, place_id) VALUES (:email, :place_id)"),
-                {"email": req.user_email, "place_id": req.place_id}
+                text("INSERT INTO likes (user_id, place_id) VALUES (:user_id, :place_id)"),
+                {"user_id": req.user_id, "place_id": req.place_id}
             )
             liked = True
         conn.commit()
         return {"liked": liked}
 
-@app.get("/users/{email}/likes")
-async def get_user_likes(email: str):
+@app.get("/users/{user_id}/likes")
+async def get_user_likes(user_id: str):
     query = text("""
         SELECT p.* FROM seongsu_places p
         JOIN likes l ON p.id = l.place_id
-        WHERE l.user_email = :email
+        WHERE l.user_id = :user_id
         ORDER BY l.created_at DESC
     """)
     with engine.connect() as conn:
-        result = conn.execute(query, {"email": email})
+        result = conn.execute(query, {"user_id": user_id})
         return [dict(row._mapping) for row in result]
 
 @app.post("/courses/save")
@@ -313,16 +162,15 @@ async def save_course(course: CourseSave):
     import json
     try:
         with engine.connect() as conn:
-            conn.execute(
-                text("INSERT INTO users (email) VALUES (:email) ON CONFLICT (email) DO NOTHING"),
-                {"email": course.user_email}
-            )
             query = text("""
-                INSERT INTO saved_courses (user_email, title, description, steps, region)
-                VALUES (:email, :title, :description, :steps, :region)
+                INSERT INTO saved_courses (user_id, user_name, user_image, title, description, steps, region)
+                VALUES (:user_id, :user_name, :user_image, :title, :description, :steps, :region)
             """)
             conn.execute(query, {
-                "email": course.user_email, "title": course.title,
+                "user_id": course.user_id, 
+                "user_name": course.user_name,
+                "user_image": course.user_image,
+                "title": course.title,
                 "description": course.description, "steps": json.dumps(course.steps),
                 "region": course.region or "성수"
             })
@@ -331,23 +179,22 @@ async def save_course(course: CourseSave):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/users/{email}/courses")
-async def get_user_courses(email: str):
-    query = text("SELECT * FROM saved_courses WHERE user_email = :email ORDER BY created_at DESC LIMIT 10")
+@app.get("/users/{user_id}/courses")
+async def get_user_courses(user_id: str):
+    query = text("SELECT * FROM saved_courses WHERE user_id = :user_id ORDER BY created_at DESC LIMIT 10")
     with engine.connect() as conn:
-        result = conn.execute(query, {"email": email})
+        result = conn.execute(query, {"user_id": user_id})
         return [dict(row._mapping) for row in result]
 
 @app.get("/courses")
 async def get_all_courses():
-    """[랭킹] 모든 코스 조회 (좋아요 높은 순 -> 최신순, 퍼간 코스 제외)"""
+    """[랭킹] 모든 코스 조회 (자체 보관된 유저 정보 사용)"""
     query = text("""
-        SELECT c.*, u.name as user_name, u.image_url as user_image, COUNT(cl.id) as like_count
+        SELECT c.*, COUNT(cl.id) as like_count
         FROM saved_courses c
-        JOIN users u ON c.user_email = u.email
         LEFT JOIN course_likes cl ON c.id = cl.course_id
         WHERE c.title NOT LIKE '[퍼감]%'
-        GROUP BY c.id, u.name, u.image_url
+        GROUP BY c.id
         ORDER BY like_count DESC, c.created_at DESC
     """)
     with engine.connect() as conn:
@@ -358,21 +205,17 @@ async def get_all_courses():
 async def toggle_course_like(req: CourseLikeToggle):
     """코스 좋아요 토글"""
     with engine.connect() as conn:
-        conn.execute(
-            text("INSERT INTO users (email) VALUES (:email) ON CONFLICT (email) DO NOTHING"),
-            {"email": req.user_email}
-        )
         existing = conn.execute(
-            text("SELECT id FROM course_likes WHERE user_email = :email AND course_id = :course_id"),
-            {"email": req.user_email, "course_id": req.course_id}
+            text("SELECT id FROM course_likes WHERE user_id = :user_id AND course_id = :course_id"),
+            {"user_id": req.user_id, "course_id": req.course_id}
         ).fetchone()
         if existing:
             conn.execute(text("DELETE FROM course_likes WHERE id = :id"), {"id": existing[0]})
             liked = False
         else:
             conn.execute(
-                text("INSERT INTO course_likes (user_email, course_id) VALUES (:email, :course_id)"),
-                {"email": req.user_email, "course_id": req.course_id}
+                text("INSERT INTO course_likes (user_id, course_id) VALUES (:user_id, :course_id)"),
+                {"user_id": req.user_id, "course_id": req.course_id}
             )
             liked = True
         conn.commit()
@@ -383,17 +226,18 @@ async def save_theme(theme: ThemeSave):
     import json
     try:
         with engine.connect() as conn:
-            conn.execute(
-                text("INSERT INTO users (email) VALUES (:email) ON CONFLICT (email) DO NOTHING"),
-                {"email": theme.user_email}
-            )
             query = text("""
-                INSERT INTO themes (user_email, title, description, places)
-                VALUES (:email, :title, :description, :places)
+                INSERT INTO themes (user_id, user_name, user_image, title, description, places, region)
+                VALUES (:user_id, :user_name, :user_image, :title, :description, :places, :region)
             """)
             conn.execute(query, {
-                "email": theme.user_email, "title": theme.title,
-                "description": theme.description, "places": json.dumps(theme.places)
+                "user_id": theme.user_id, 
+                "user_name": theme.user_name,
+                "user_image": theme.user_image,
+                "title": theme.title,
+                "description": theme.description, 
+                "places": json.dumps(theme.places),
+                "region": theme.region or "성수"
             })
             conn.commit()
         return {"status": "success"}
@@ -402,19 +246,17 @@ async def save_theme(theme: ThemeSave):
 
 @app.get("/themes")
 async def get_all_themes():
-    """테마 랭킹 (최신순 또는 좋아요순)"""
+    """테마 랭킹 (자체 보관된 유저 정보 사용)"""
     query = text("""
-        SELECT t.*, u.name as user_name, u.image_url as user_image, COUNT(tl.id) as computed_like_count
+        SELECT t.*, COUNT(tl.id) as computed_like_count
         FROM themes t
-        JOIN users u ON t.user_email = u.email
         LEFT JOIN theme_likes tl ON t.id = tl.theme_id
         WHERE t.title NOT LIKE '[퍼감]%'
-        GROUP BY t.id, u.name, u.image_url
+        GROUP BY t.id
         ORDER BY computed_like_count DESC, t.created_at DESC
     """)
     with engine.connect() as conn:
         result = conn.execute(query)
-        # Rename computed_like_count to like_count for frontend
         themes = []
         for row in result:
             theme_dict = dict(row._mapping)
@@ -422,11 +264,11 @@ async def get_all_themes():
             themes.append(theme_dict)
         return themes
 
-@app.get("/users/{email}/themes")
-async def get_user_themes(email: str):
-    query = text("SELECT * FROM themes WHERE user_email = :email ORDER BY created_at DESC")
+@app.get("/users/{user_id}/themes")
+async def get_user_themes(user_id: str):
+    query = text("SELECT * FROM themes WHERE user_id = :user_id ORDER BY created_at DESC")
     with engine.connect() as conn:
-        result = conn.execute(query, {"email": email})
+        result = conn.execute(query, {"user_id": user_id})
         return [dict(row._mapping) for row in result]
 
 @app.put("/themes/{theme_id}")
@@ -434,11 +276,10 @@ async def update_theme(theme_id: int, theme: ThemeSave):
     import json
     try:
         with engine.connect() as conn:
-            # Check authority
-            existing = conn.execute(text("SELECT user_email FROM themes WHERE id = :id"), {"id": theme_id}).fetchone()
+            existing = conn.execute(text("SELECT user_id FROM themes WHERE id = :id"), {"id": theme_id}).fetchone()
             if not existing:
                 raise HTTPException(status_code=404, detail="Theme not found")
-            if theme.user_email != 'nemonecoltd@gmail.com' and existing[0] != theme.user_email:
+            if existing[0] != theme.user_id:
                 raise HTTPException(status_code=403, detail="Not authorized")
 
             query = text("""
@@ -457,15 +298,14 @@ async def update_theme(theme_id: int, theme: ThemeSave):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/themes/{theme_id}")
-async def delete_theme(theme_id: int, user_email: str):
-    """테마 삭제 (작성자 또는 관리자)"""
+async def delete_theme(theme_id: int, user_id: str):
+    """테마 삭제 (작성자)"""
     with engine.connect() as conn:
-        theme = conn.execute(text("SELECT user_email FROM themes WHERE id = :id"), {"id": theme_id}).fetchone()
+        theme = conn.execute(text("SELECT user_id FROM themes WHERE id = :id"), {"id": theme_id}).fetchone()
         if not theme:
             raise HTTPException(status_code=404, detail="Theme not found")
         
-        # 관리자 이메일 확인 또는 작성자 본인
-        if user_email != 'nemonecoltd@gmail.com' and theme[0] != user_email:
+        if theme[0] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
             
         conn.execute(text("DELETE FROM themes WHERE id = :id"), {"id": theme_id})
@@ -476,21 +316,17 @@ async def delete_theme(theme_id: int, user_email: str):
 async def toggle_theme_like(req: ThemeLikeToggle):
     """테마 좋아요 토글"""
     with engine.connect() as conn:
-        conn.execute(
-            text("INSERT INTO users (email) VALUES (:email) ON CONFLICT (email) DO NOTHING"),
-            {"email": req.user_email}
-        )
         existing = conn.execute(
-            text("SELECT id FROM theme_likes WHERE user_email = :email AND theme_id = :theme_id"),
-            {"email": req.user_email, "theme_id": req.theme_id}
+            text("SELECT id FROM theme_likes WHERE user_id = :user_id AND theme_id = :theme_id"),
+            {"user_id": req.user_id, "theme_id": req.theme_id}
         ).fetchone()
         if existing:
             conn.execute(text("DELETE FROM theme_likes WHERE id = :id"), {"id": existing[0]})
             liked = False
         else:
             conn.execute(
-                text("INSERT INTO theme_likes (user_email, theme_id) VALUES (:email, :theme_id)"),
-                {"email": req.user_email, "theme_id": req.theme_id}
+                text("INSERT INTO theme_likes (user_id, theme_id) VALUES (:user_id, :theme_id)"),
+                {"user_id": req.user_id, "theme_id": req.theme_id}
             )
             liked = True
         conn.commit()
@@ -586,6 +422,34 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
     from datetime import date
     try:
         today = date.today()
+        
+        # [NEW LOGIC] Rate Limiting (하루 2회 제한)
+        if req.user_id:
+            with engine.connect() as conn:
+                # 테이블이 없다면 자동 생성
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS user_ai_usages (
+                        id SERIAL PRIMARY KEY,
+                        user_id VARCHAR(255) NOT NULL,
+                        action_type VARCHAR(50) NOT NULL,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
+                conn.commit()
+
+                # 오늘 사용 횟수 조회
+                usage_query = text("""
+                    SELECT COUNT(*) FROM user_ai_usages 
+                    WHERE user_id = :user_id AND action_type = 'itinerary_generate' 
+                    AND DATE(created_at) = CURRENT_DATE
+                """)
+                usage_count = conn.execute(usage_query, {"user_id": req.user_id}).scalar()
+
+                # 2회 이상 사용 시 차단
+                if usage_count and usage_count >= 2:
+                    logger.warning(f"🚫 [Rate Limit] {req.user_id} exceeded daily itinerary generation limit.")
+                    raise HTTPException(status_code=403, detail="오늘 제공된 AI 코스 생성 기회(2회)를 모두 사용하셨습니다. 내일 다시 이용해주세요!")
+
         # 1. 캐시 확인 (지역 및 언어 정보 포함)
         with engine.connect() as conn:
             # 캐시 키에 언어 추가 (현재는 단순 companion/date 기반이나 확장이 필요할 수 있음)
@@ -627,8 +491,23 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         except Exception as cache_err:
             logger.error(f"❌ Cache save failed: {cache_err}")
 
+        # [NEW LOGIC] 성공 시 사용 이력 저장
+        if req.user_id:
+            try:
+                with engine.connect() as conn:
+                    insert_usage = text("""
+                        INSERT INTO user_ai_usages (user_id, action_type) 
+                        VALUES (:user_id, 'itinerary_generate')
+                    """)
+                    conn.execute(insert_usage, {"user_id": req.user_id})
+                    conn.commit()
+            except Exception as usage_err:
+                logger.error(f"❌ Usage logging failed: {usage_err}")
+
         return itinerary
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         logger.error(f"❌ Itinerary creation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -640,6 +519,30 @@ async def list_places(region: Optional[str] = None):
         params = {"region": region} if region else {}
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
+
+@app.post("/places")
+async def create_place(place: PlaceUpdate):
+    try:
+        data = place.dict(exclude_unset=True)
+        # 필수값 기본 설정 (DB 스키마 오류 방지)
+        if "title" not in data:
+            raise HTTPException(status_code=400, detail="title is required")
+        if "content" not in data:
+            data["content"] = ""
+        
+        # 임베딩 생성
+        data["embedding"] = f"[{','.join(map(str, get_embedding(data['content'])))}]"
+        
+        columns = ", ".join(data.keys())
+        placeholders = ", ".join([f":{k}" for k in data.keys()])
+        
+        query = text(f"INSERT INTO seongsu_places ({columns}) VALUES ({placeholders})")
+        with engine.connect() as conn:
+            conn.execute(query, data)
+            conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/places/{place_id}")
 async def update_place(place_id: int, place: PlaceUpdate):
@@ -663,6 +566,33 @@ async def delete_place(place_id: int):
         conn.commit()
     return {"status": "success"}
 
+@app.get("/users/{user_id}/usage/itinerary")
+async def get_user_itinerary_usage(user_id: str):
+    """오늘 남은 AI 코스 생성 횟수 조회"""
+    try:
+        with engine.connect() as conn:
+            # 테이블 존재 확인 (없으면 생성)
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS user_ai_usages (
+                    id SERIAL PRIMARY KEY,
+                    user_id VARCHAR(255) NOT NULL,
+                    action_type VARCHAR(50) NOT NULL,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            conn.commit()
+
+            query = text("""
+                SELECT COUNT(*) FROM user_ai_usages 
+                WHERE user_id = :user_id AND action_type = 'itinerary_generate' 
+                AND DATE(created_at) = CURRENT_DATE
+            """)
+            count = conn.execute(query, {"user_id": user_id}).scalar()
+            return {"usage_count": count or 0, "limit": 2}
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch usage: {e}")
+        return {"usage_count": 0, "limit": 2}
+
 @app.get("/feedbacks")
 async def get_feedbacks():
     query = text("SELECT * FROM feedbacks ORDER BY created_at DESC")
@@ -672,19 +602,19 @@ async def get_feedbacks():
 
 @app.post("/feedbacks")
 async def create_feedback(req: FeedbackCreate):
-    query = text("INSERT INTO feedbacks (user_email, user_name, content) VALUES (:email, :name, :content)")
+    query = text("INSERT INTO feedbacks (user_id, user_name, content) VALUES (:user_id, :name, :content)")
     with engine.connect() as conn:
-        conn.execute(query, {"email": req.user_email, "name": req.user_name, "content": req.content})
+        conn.execute(query, {"user_id": req.user_id, "name": req.user_name, "content": req.content})
         conn.commit()
     return {"status": "success"}
 
 @app.delete("/feedbacks/{feedback_id}")
-async def delete_feedback(feedback_id: int, user_email: str):
+async def delete_feedback(feedback_id: int, user_id: str):
     with engine.connect() as conn:
-        feedback = conn.execute(text("SELECT user_email FROM feedbacks WHERE id = :id"), {"id": feedback_id}).fetchone()
+        feedback = conn.execute(text("SELECT user_id FROM feedbacks WHERE id = :id"), {"id": feedback_id}).fetchone()
         if not feedback:
             raise HTTPException(status_code=404, detail="Not Found")
-        if feedback[0] != user_email and user_email != 'nemonecoltd@gmail.com':
+        if feedback[0] != user_id and user_id != 'admin_uuid_placeholder':
             raise HTTPException(status_code=403, detail="Unauthorized")
         
         conn.execute(text("DELETE FROM feedbacks WHERE id = :id"), {"id": feedback_id})
@@ -702,35 +632,15 @@ async def reply_feedback(feedback_id: int, req: FeedbackReply):
 
 @app.get("/admin/stats")
 async def get_admin_stats():
-    """관리자용 통계 (총 유저수, 총 코스수, 총 스팟수)"""
+    """관리자용 통계 (총 코스수, 총 스팟수)"""
     with engine.connect() as conn:
-        user_count = conn.execute(text("SELECT COUNT(*) FROM users")).scalar()
         course_count = conn.execute(text("SELECT COUNT(*) FROM saved_courses")).scalar()
         place_count = conn.execute(text("SELECT COUNT(*) FROM seongsu_places")).scalar()
         return {
-            "total_users": user_count or 0,
+            "total_users": 0, # Supabase 연동 전까지 0으로 유지
             "total_courses": course_count or 0,
             "total_places": place_count or 0
         }
-
-@app.get("/admin/users")
-async def get_admin_users(page: int = 1, limit: int = 25):
-    """관리자용 유저 리스트 (페이지네이션)"""
-    offset = (page - 1) * limit
-    with engine.connect() as conn:
-        users = conn.execute(
-            text("SELECT email, name, image_url, gender, age, nationality, created_at FROM users ORDER BY created_at DESC LIMIT :limit OFFSET :offset"),
-            {"limit": limit, "offset": offset}
-        )
-        return [dict(row._mapping) for row in users]
-
-@app.delete("/admin/users/{email}")
-async def delete_admin_user(email: str):
-    """관리자용 유저 삭제"""
-    with engine.connect() as conn:
-        conn.execute(text("DELETE FROM users WHERE email = :email"), {"email": email})
-        conn.commit()
-    return {"status": "success"}
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { 
   Map as MapIcon, 
@@ -30,7 +30,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 type Tab = 'rec' | 'map' | 'list' | 'theme' | 'tour' | 'chat';
-type Region = '성수' | '홍대' | '보넥도';
+type Region = '성수' | '홍대' | '공연';
 type Lang = 'ko' | 'en';
 
 const dict = {
@@ -65,7 +65,7 @@ const dict = {
 };
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { user, signInWithGoogle } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('rec');
   const [region, setRegion] = useState<Region>('성수');
   const [lang, setLang] = useState<Lang>('ko');
@@ -80,8 +80,8 @@ export default function Home() {
   }, [region, lang]);
 
   useEffect(() => {
-    // '보넥도' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
-    if (region === '보넥도' && (activeTab === 'map' || activeTab === 'tour')) {
+    // '공연' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
+    if (region === '공연' && (activeTab === 'map' || activeTab === 'tour')) {
       setActiveTab('list');
     }
   }, [region, activeTab]);
@@ -100,7 +100,7 @@ export default function Home() {
 
   const fetchAllPlaces = async () => {
     try {
-      const res = await fetch(`/api-now/places?lang=${lang}&t=${Date.now()}`); 
+      const res = await fetch(`/api-now/places/popular?t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setAllPlaces(data);
@@ -148,15 +148,19 @@ export default function Home() {
               ))}
             </div>
 
-            {session ? (
+            {user ? (
               <Link href="/my" className="flex items-center gap-2 bg-zinc-100 pl-1 pr-3 py-1 rounded-full border border-zinc-200 hover:bg-white transition-all">
-                <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white shadow-sm">
-                  <img src={session.user?.image || ""} className="w-full h-full object-cover" alt="profile" />
+                <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white shadow-sm bg-zinc-200">
+                  <img 
+                    src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`} 
+                    className="w-full h-full object-cover" 
+                    alt="profile" 
+                  />
                 </div>
                 <span className="text-[10px] font-black tracking-tight text-zinc-900 uppercase">{t.my}</span>
               </Link>
             ) : (
-              <button onClick={() => signIn()} className="p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors">
+              <button onClick={() => signInWithGoogle()} className="p-2 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors">
                 <Users size={20} />
               </button>
             )}
@@ -172,21 +176,22 @@ export default function Home() {
               exit={{ height: 0, opacity: 0 }}
               className="flex items-center gap-4 mb-1 overflow-hidden"
             >
-              {['성수', '홍대', '보넥도']
-                .filter(r => r !== '보넥도' || (activeTab !== 'map' && activeTab !== 'tour'))
+              {(['성수', '홍대', '공연'] as Region[])
+                .filter(r => r !== '공연' || (activeTab !== 'map' && activeTab !== 'tour'))
                 .map((r) => (
                 <button
                   key={r}
                   onClick={() => setRegion(r as Region)}
                   className={cn(
                     "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
-                    region === r 
-                      ? "text-emerald-600 border-emerald-500" 
+                    region === r
+                      ? "text-emerald-600 border-emerald-500"
                       : "text-zinc-300 border-transparent hover:text-zinc-500"
                   )}
                 >
-                  {r === '보넥도' && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse mb-0.5" />}
-                  {r === '보넥도' ? '보넥도' : (lang === 'en' ? (r === '성수' ? 'SEONGSU' : 'HONGDAE') : r)}
+                  {lang === 'en'
+                    ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : 'CONCERT')
+                    : r}
                 </button>
               ))}
             </motion.div>
@@ -203,7 +208,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {activeTab === 'map' && region !== '보넥도' && (
+          {activeTab === 'map' && region !== '공연' && (
             <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
               <MapView places={places} region={region} lang={lang} />
             </motion.div>
@@ -221,7 +226,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {activeTab === 'tour' && region !== '보넥도' && (
+          {activeTab === 'tour' && region !== '공연' && (
             <motion.div key="tour" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
               <AITour region={region} lang={lang} />
             </motion.div>
@@ -265,15 +270,15 @@ export default function Home() {
           icon={<TrendingUp size={22} />} 
           label={t.navRec} 
         />
-        <NavButton 
-          active={activeTab === 'map'} 
+        <NavButton
+          active={activeTab === 'map'}
           onClick={() => {
-            if (region === '보넥도') setRegion('성수');
+            if (region === '공연') setRegion('성수');
             setActiveTab('map');
-          }} 
-          icon={<MapIcon size={22} />} 
-          label={t.navMap} 
-          disabled={region === '보넥도' && activeTab === 'list'} 
+          }}
+          icon={<MapIcon size={22} />}
+          label={t.navMap}
+          disabled={region === '공연' && activeTab === 'list'}
         />
         <NavButton 
           active={activeTab === 'list'} 
@@ -287,15 +292,15 @@ export default function Home() {
           icon={<Library size={22} />} 
           label={t.navTheme} 
         />
-        <NavButton 
-          active={activeTab === 'tour'} 
+        <NavButton
+          active={activeTab === 'tour'}
           onClick={() => {
-            if (region === '보넥도') setRegion('성수');
+            if (region === '공연') setRegion('성수');
             setActiveTab('tour');
-          }} 
-          icon={<RouteIcon size={22} />} 
-          label={t.navTour} 
-          disabled={region === '보넥도' && activeTab === 'list'} 
+          }}
+          icon={<RouteIcon size={22} />}
+          label={t.navTour}
+          disabled={region === '공연' && activeTab === 'list'}
         />
       </nav>
     </div>

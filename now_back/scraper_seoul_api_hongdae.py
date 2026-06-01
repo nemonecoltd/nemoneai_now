@@ -1,15 +1,11 @@
 import os
 import requests
 import json
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
 
 SEOUL_API_KEY = os.getenv("SEOUL_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-genai.configure(api_key=GEMINI_API_KEY)
 
 def get_seoul_cultural_events_hongdae():
     """서울시 문화행사 API 호출 및 마포구(홍대) 필터링"""

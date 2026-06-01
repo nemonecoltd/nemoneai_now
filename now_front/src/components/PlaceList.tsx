@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { MapPin, Clock, ChevronRight, Filter, Heart } from 'lucide-react';
 import Link from 'next/link';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useState, useEffect } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -25,7 +25,7 @@ interface Place {
 }
 
 export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }: { places: Place[], region: string, lang?: string }) {
-  const { data: session } = useSession();
+  const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,23 +57,23 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
   };
 
   useEffect(() => {
-    if (session?.user?.email) {
-      fetch(`/api-now/users/${session.user.email}/likes`)
+    if (user?.id) {
+      fetch(`/api-now/users/${user.id}/likes`)
         .then(res => res.json())
         .then(data => setUserLikes(data.map((p: any) => p.id)))
         .catch(err => console.error("Failed to fetch likes", err));
     }
-  }, [session]);
+  }, [user]);
 
   const toggleLike = async (e: React.MouseEvent, placeId: number) => {
     e.preventDefault();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
 
     try {
       const res = await fetch('/api-now/likes/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_email: session.user?.email, place_id: placeId }),
+        body: JSON.stringify({ user_id: user?.id, place_id: placeId }),
       });
       if (res.ok) {
         const { liked } = await res.json();
@@ -84,14 +84,18 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
     }
   };
 
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : 'Hongdae') : region;
+  const displayRegion = lang === 'en'
+    ? (region === '성수' ? 'Seongsu' : region === '홍대' ? 'Hongdae' : 'Concert')
+    : region;
 
   return (
     <div className="p-6 space-y-6 pb-24">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold font-display">
-            {lang === 'en' ? `${displayRegion} Hotplaces` : `${region} 핫플레이스`}
+            {lang === 'en'
+              ? (region === '공연' ? 'Seoul Concerts' : `${displayRegion} Hotplaces`)
+              : (region === '공연' ? '서울 공연' : `${region} 핫플레이스`)}
           </h2>
           <button className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
             <Filter size={14} /> {lang === 'en' ? 'Filter' : '필터'}
@@ -105,7 +109,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onBlur={() => handleSearch()}
-            placeholder={lang === 'en' ? "Search for pop-ups..." : "팝업스토어 검색..."}
+            placeholder={lang === 'en'
+              ? (region === '공연' ? 'Search for concerts...' : 'Search for pop-ups...')
+              : (region === '공연' ? '공연 검색...' : '팝업스토어 검색...')}
             className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">

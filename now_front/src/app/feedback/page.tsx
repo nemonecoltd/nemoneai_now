@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { ChevronLeft, MessageSquare, Trash2, Send, ShieldCheck, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
@@ -14,14 +14,14 @@ function cn(...inputs: ClassValue[]) {
 const ADMIN_EMAIL = 'nemonecoltd@gmail.com';
 
 export default function FeedbackPage() {
-  const { data: session, status } = useSession();
+  const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [feedbacks, setFeedbacks] = useState([]);
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [replyInputs, setReplyInputs] = useState<{[key: number]: string}>({});
 
-  const isAdmin = session?.user?.email === ADMIN_EMAIL;
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     fetchFeedbacks();
@@ -39,7 +39,7 @@ export default function FeedbackPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     if (!content.trim()) return;
 
     try {
@@ -47,8 +47,8 @@ export default function FeedbackPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session.user?.email,
-          user_name: session.user?.name || 'User',
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           content: content.trim()
         })
       });
@@ -61,10 +61,10 @@ export default function FeedbackPage() {
     }
   };
 
-  const handleDelete = async (id: number, authorEmail: string) => {
+  const handleDelete = async (id: number) => {
     if (!confirm('정말로 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api-now/feedbacks/${id}?user_email=${encodeURIComponent(session?.user?.email || '')}`, {
+      const res = await fetch(`/api-now/feedbacks/${id}?user_id=${user?.id}`, {
         method: 'DELETE'
       });
       if (res.ok) fetchFeedbacks();
@@ -82,7 +82,7 @@ export default function FeedbackPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          admin_email: session.user?.email,
+          admin_email: user?.email,
           reply: replyText.trim()
         })
       });
@@ -112,7 +112,7 @@ export default function FeedbackPage() {
             <MessageSquare className="text-emerald-500 fill-emerald-100" size={24} /> 소중한 의견을 들려주세요.
           </h2>
           <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-            '지금여기'를 사용하며 느낀 불편함이나 바라는 점을 편하게 남겨주세요. 관리자가 모든 글을 꼼꼼히 읽고 답변해 드립니다!
+            네모네 서비스를 사용하며 느낀 불편함이나 바라는 점을 편하게 남겨주세요. 관리자가 모든 글을 꼼꼼히 읽고 답변해 드립니다!
           </p>
         </div>
 
@@ -121,17 +121,17 @@ export default function FeedbackPage() {
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder={session ? "여기에 의견을 작성해주세요..." : "로그인 후 의견을 남길 수 있습니다."}
-            disabled={!session}
+            placeholder={user ? "여기에 의견을 작성해주세요..." : "로그인 후 의견을 남길 수 있습니다."}
+            disabled={!user}
             className="w-full h-24 bg-zinc-50/50 border-none rounded-2xl p-4 text-sm resize-none focus:outline-none focus:bg-white disabled:opacity-50 text-zinc-800 placeholder:text-zinc-400 font-medium"
           />
           <div className="flex justify-end">
-            {session ? (
+            {user ? (
               <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
                 <Send size={14} /> 의견 남기기
               </button>
             ) : (
-              <button type="button" onClick={() => signIn()} className="px-6 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[11px] font-bold rounded-xl hover:bg-emerald-100 transition-all shadow-sm">
+              <button type="button" onClick={() => signInWithGoogle()} className="px-6 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[11px] font-bold rounded-xl hover:bg-emerald-100 transition-all shadow-sm">
                 로그인하기
               </button>
             )}
@@ -158,8 +158,8 @@ export default function FeedbackPage() {
                         <p className="text-[10px] font-medium text-zinc-400 mt-0.5">{new Date(fb.created_at).toLocaleString()}</p>
                       </div>
                     </div>
-                    {(isAdmin || session?.user?.email === fb.user_email) && (
-                      <button onClick={() => handleDelete(fb.id, fb.user_email)} className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                    {(isAdmin || user?.id === fb.user_id) && (
+                      <button onClick={() => handleDelete(fb.id)} className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
                         <Trash2 size={16} />
                       </button>
                     )}

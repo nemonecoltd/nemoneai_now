@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video } from 'lucide-react';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,7 +16,7 @@ function cn(...inputs: ClassValue[]) {
 type Tab = 'course' | 'theme' | 'place';
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
-  const { data: session } = useSession();
+  const { user, signInWithGoogle } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('course');
   const [courses, setCourses] = useState([]);
   const [themes, setThemes] = useState([]);
@@ -65,13 +65,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
   const toggleCourseLike = async (e: React.MouseEvent, courseId: number) => {
     e.stopPropagation();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
 
     try {
       const res = await fetch('/api-now/courses/like/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_email: session.user?.email, course_id: courseId }),
+        body: JSON.stringify({ user_id: user.id, course_id: courseId }),
       });
       if (res.ok) {
         fetchData();
@@ -83,13 +83,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
   const toggleThemeLike = async (e: React.MouseEvent, themeId: number) => {
     e.stopPropagation();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
 
     try {
       const res = await fetch('/api-now/themes/like/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_email: session.user?.email, theme_id: themeId }),
+        body: JSON.stringify({ user_id: user.id, theme_id: themeId }),
       });
       if (res.ok) {
         fetchData();
@@ -100,14 +100,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   };
 
   const handleForkCourse = async (course: any) => {
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     
     try {
       const res = await fetch('/api-now/courses/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session.user?.email,
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
           title: `[퍼감] ${course.title}`,
           description: course.description,
           steps: Array.isArray(course.steps) ? course.steps : JSON.parse(course.steps),
@@ -124,14 +126,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   };
 
   const handleForkTheme = async (theme: any) => {
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     
     try {
       const res = await fetch('/api-now/themes/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session.user?.email,
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
           title: `[퍼감] ${theme.title}`,
           description: theme.description,
           places: Array.isArray(theme.places) ? theme.places : JSON.parse(theme.places)
@@ -186,11 +190,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <p className="text-[10px] font-bold text-zinc-900 truncate">{course.user_name}</p>
                           <span className={cn(
                             "text-[7px] font-black px-1.5 py-0.5 rounded uppercase border",
-                            (course.region && course.region.includes('홍대'))
-                              ? "bg-orange-50 text-orange-600 border-orange-100" 
-                              : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            course.region === '홍대' ? "bg-orange-50 text-orange-600 border-orange-100"
+                            : course.region === '공연' ? "bg-purple-50 text-purple-600 border-purple-100"
+                            : "bg-emerald-50 text-emerald-600 border-emerald-100"
                           )}>
-                            {lang === 'en' ? (course.region && course.region.includes('홍대') ? 'Hongdae' : 'Seongsu') : (course.region || '성수')}
+                            {lang === 'en'
+                              ? (course.region === '홍대' ? 'Hongdae' : course.region === '공연' ? 'Concert' : 'Seongsu')
+                              : (course.region || '성수')}
                           </span>
                         </div>
                         <p className="text-[8px] text-zinc-400 font-medium">Verified Local Guide</p>
@@ -211,7 +217,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   </div>
 
-                  {/* AD SLOT: Between 3rd and 4th items */}
                   {idx === 2 && (
                     <AdUnit slotId="8058413094" />
                   )}
@@ -229,7 +234,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-100 flex-shrink-0">
-                        <img src={theme.user_image || ""} className="w-full h-full object-cover" alt="" />
+                        <img src={theme.user_image || `https://picsum.photos/seed/u${theme.id}/200`} className="w-full h-full object-cover" alt={theme.title} onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${theme.id}/200`; }} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
@@ -255,7 +260,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   </div>
 
-                  {/* AD SLOT: Between 3rd and 4th items */}
                   {idx === 2 && (
                     <AdUnit slotId="8058413094" />
                   )}
@@ -271,15 +275,17 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       {idx + 1}
                     </div>
                     <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt="" />
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt="" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
                       <div className="absolute -bottom-1 -right-1 shadow-lg">
                         <span className={cn(
                           "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
-                          (place.region && place.region.includes('홍대'))
-                            ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]" 
-                            : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                          : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
-                          {lang === 'en' ? (place.region && place.region.includes('홍대') ? 'HONGDAE' : 'SEONGSU') : (place.region && place.region.includes('홍대') ? '홍대' : '성수')}
+                          {lang === 'en'
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '공연' ? 'CONCERT' : 'SEONGSU')
+                            : (place.region || '성수')}
                         </span>
                       </div>
                     </div>
@@ -292,7 +298,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <Heart size={10} fill="currentColor" /> {place.like_count}
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {lang === 'en' ? `Near ${place.region === '성수' ? 'Seongsu' : 'Hongdae'}` : `${place.location?.split(' ')[2] || place.region} 근처`}
+                          {lang === 'en'
+                            ? (place.region === '공연' ? 'Seoul Concert' : `Near ${place.region === '홍대' ? 'Hongdae' : 'Seongsu'}`)
+                            : (place.region === '공연' ? '서울 공연' : `${place.location?.split(' ')[2] || place.region} 근처`)}
                         </span>
                       </div>
                     </div>
@@ -301,7 +309,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </Link>
                   </div>
 
-                  {/* AD SLOT: Between 3rd and 4th items */}
                   {idx === 2 && (
                     <AdUnit slotId="8058413094" />
                   )}
@@ -455,7 +462,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     <iframe
                       width="100%"
                       height="100%"
-                      frameBorder="0"
                       style={{ border: 0 }}
                       src={`https://maps.google.com/maps?q=${encodeURIComponent(selectedPlace.location)}&z=16&output=embed`}
                       allowFullScreen

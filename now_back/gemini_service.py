@@ -12,7 +12,7 @@ def generate_answer(user_query: str, context: str, region: str = "성수", lang:
     lang_name = "영어" if lang == "en" else "한국어"
     prompt = f"당신은 {region} 지역 최고의 로컬 가이드입니다. 다음 정보를 바탕으로 {lang_name}로 답하세요: {context}\n\n질문: {user_query}"
     response = client.models.generate_content(
-        model="gemini-1.5-pro",
+        model="gemini-2.5-pro",
         contents=prompt
     )
     return response.text
@@ -50,7 +50,7 @@ def generate_walking_tour(companion: str, context: str, region: str = "성수", 
     """
     
     response = client.models.generate_content(
-        model="gemini-1.5-pro",
+        model="gemini-2.5-pro",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json"

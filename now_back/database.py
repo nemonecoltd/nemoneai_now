@@ -1,6 +1,5 @@
 import os
 from sqlalchemy import create_engine, text
-from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # .env 파일 로드
@@ -14,13 +13,13 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASSWORD", "postgres")
 
 DB_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DB_URL)
+engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=1800)
 
 def cleanup_expired_data():
-    """[지침] 30일 경과 데이터 자동 삭제 로직"""
+    """end_date가 지난 이벤트성 플레이스 삭제. end_date=NULL(테마 스크래핑)은 보호."""
     with engine.connect() as conn:
-        # 현재 날짜 기준 30일 이전 데이터 삭제
-        limit_date = datetime.now() - timedelta(days=30)
-        query = text("DELETE FROM seongsu_places WHERE created_at < :limit_date")
-        conn.execute(query, {"limit_date": limit_date})
+        query = text(
+            "DELETE FROM seongsu_places WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE"
+        )
+        conn.execute(query)
         conn.commit()

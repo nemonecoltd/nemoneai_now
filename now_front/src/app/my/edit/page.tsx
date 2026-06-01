@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Camera, Loader2, Save, User, Globe } from 'lucide-react';
+import { ChevronLeft, Camera, Loader2, Save, User, Globe, Trash2 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
 
 export default function EditProfilePage() {
-  const { data: session, status, update } = useSession();
+  const { user, isLoading: authLoading, signOut } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,32 +25,18 @@ export default function EditProfilePage() {
   const [previewUrl, setPreviewUrl] = useState('');
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (!authLoading && !user) {
       router.push('/login');
-    } else if (session?.user?.email) {
-      fetchProfile();
-    }
-  }, [session, status]);
-
-  const fetchProfile = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api-now/users/${session?.user?.email}/profile`);
-      if (res.ok) {
-        const data = await res.json();
-        setName(data.name || '');
-        setGender(data.gender || '');
-        setAge(data.age || '');
-        setNationality(data.nationality || '');
-        setImageUrl(data.image_url || session?.user?.image || '');
-        setPreviewUrl(data.image_url || session?.user?.image || '');
-      }
-    } catch (e) {
-      console.error('Failed to fetch profile', e);
-    } finally {
+    } else if (user) {
+      setName(user.user_metadata?.full_name || '');
+      setGender(user.user_metadata?.gender || '');
+      setAge(user.user_metadata?.age || '');
+      setNationality(user.user_metadata?.nationality || '');
+      setImageUrl(user.user_metadata?.avatar_url || '');
+      setPreviewUrl(user.user_metadata?.avatar_url || '');
       setIsLoading(false);
     }
-  };
+  }, [user, authLoading, router]);
 
   const compressImage = (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -82,7 +70,7 @@ export default function EditProfilePage() {
           canvas.toBlob((blob) => {
             if (blob) resolve(blob);
             else reject(new Error('Canvas to Blob failed'));
-          }, 'image/jpeg', 0.8);
+          }, 'image/webp', 0.8);
         };
       };
       reader.onerror = error => reject(error);
@@ -103,45 +91,39 @@ export default function EditProfilePage() {
     let finalImageUrl = imageUrl;
 
     try {
-      // 1. Upload new image if selected
-      if (selectedFile) {
+      // 1. Upload new image if selected using Supabase Storage
+      if (selectedFile && user) {
         const compressedBlob = await compressImage(selectedFile);
-        const formData = new FormData();
-        formData.append('file', compressedBlob, selectedFile.name);
+        const fileName = `${user.id}-${Date.now()}.webp`;
+        
+        const { data, error: uploadError } = await supabase.storage
+          .from('profiles')
+          .upload(fileName, compressedBlob, {
+            contentType: 'image/webp',
+            upsert: true
+          });
 
-        const uploadRes = await fetch('/api-now/upload/profile', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json();
-          // Use /api-now prefix to leverage Next.js rewrites for image display
-          finalImageUrl = `/api-now${uploadData.url}`;
-        } else {
-          throw new Error('Failed to upload image');
+        if (uploadError) {
+          console.error("Storage upload error:", uploadError);
+          throw new Error('이미지 업로드에 실패했습니다. Supabase Storage에 profiles 버킷이 생성되어 있는지 확인해주세요.');
         }
+
+        const { data: publicUrlData } = supabase.storage.from('profiles').getPublicUrl(fileName);
+        finalImageUrl = publicUrlData.publicUrl;
       }
 
-      // 2. Update user profile
-      const updateRes = await fetch(`/api-now/users/${session?.user?.email}/profile`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
+      // 2. Update Supabase User Metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name: name,
           gender: gender || null,
           age: age || null,
           nationality: nationality || null,
-          image_url: finalImageUrl
-        }),
+          avatar_url: finalImageUrl
+        }
       });
 
-      if (!updateRes.ok) throw new Error('Failed to update profile');
-
-      // 3. Update NextAuth session if needed
-      if (update) {
-        await update({ name, image: finalImageUrl });
-      }
+      if (updateError) throw new Error(updateError.message);
       
       router.push('/my');
       router.refresh();
@@ -153,7 +135,29 @@ export default function EditProfilePage() {
     }
   };
 
-  if (isLoading || status === 'loading') {
+  const handleDeleteAccount = async () => {
+    if (!confirm('정말 계정을 탈퇴하시겠습니까?\n작성하신 코스와 저장된 장소 등 모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
+    
+    setIsSaving(true);
+    try {
+      // 자체 백엔드(GCP DB)에서 연관 데이터 삭제 (테마, 코스, 좋아요 등)
+      // Supabase Edge Function이나 백엔드 API를 통해 Supabase auth.users 테이블에서도 삭제가 필요하지만
+      // 클라이언트 SDK로는 자신 계정 삭제가 기본적으로 불가능하므로 백엔드 API를 호출해야 합니다.
+      // 임시 방편으로 FastAPI 쪽 유저 데이터만 날리고 signOut 시킵니다.
+      const res = await fetch(`/api-now/users/${user?.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        console.error('Failed to delete user data from backend');
+      }
+
+      await signOut();
+      router.push('/');
+    } catch (e: any) {
+      setError(e.message || '탈퇴 처리 중 오류가 발생했습니다.');
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading || authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500 w-8 h-8" /></div>;
   }
 
@@ -176,8 +180,12 @@ export default function EditProfilePage() {
         {/* Profile Image */}
         <div className="flex flex-col items-center">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg bg-zinc-100">
-              <img src={previewUrl || "https://picsum.photos/200"} alt="Profile" className="w-full h-full object-cover" />
+            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg bg-zinc-100 flex items-center justify-center">
+              {previewUrl ? (
+                <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <User size={40} className="text-zinc-300" />
+              )}
             </div>
             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera className="text-white w-8 h-8" />
@@ -199,41 +207,23 @@ export default function EditProfilePage() {
         {/* Form Fields */}
         <div className="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm space-y-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">이름</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                placeholder="홍길동"
-              />
-            </div>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Name</label>
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500" placeholder="이름을 입력하세요" />
           </div>
-
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">성별</label>
-              <select
-                value={gender}
-                onChange={e => setGender(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-              >
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Gender</label>
+              <select value={gender} onChange={e => setGender(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500">
                 <option value="">선택 안함</option>
                 <option value="male">남성</option>
                 <option value="female">여성</option>
                 <option value="other">기타</option>
               </select>
             </div>
-
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">연령대</label>
-              <select
-                value={age}
-                onChange={e => setAge(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-              >
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Age</label>
+              <select value={age} onChange={e => setAge(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500">
                 <option value="">선택 안함</option>
                 <option value="10s">10대</option>
                 <option value="20s">20대</option>
@@ -244,54 +234,31 @@ export default function EditProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">국적</label>
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Nationality</label>
             <div className="relative">
-              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-              <input
-                type="text"
-                value={nationality}
-                onChange={e => setNationality(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
-                placeholder="예: Korea, USA..."
-              />
+              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input value={nationality} onChange={e => setNationality(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-10 pr-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500" placeholder="예: 한국, USA, Japan..." />
             </div>
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
+        <button 
+          onClick={handleSave} 
           disabled={isSaving}
-          className="w-full bg-zinc-900 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50 disabled:hover:bg-zinc-900 mt-8"
+          className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
         >
-          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-            <>저장하기 <Save size={18} /></>
-          )}
+          {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> 변경사항 저장</>}
         </button>
 
-        <div className="mt-12 text-center">
+        <div className="pt-8 border-t border-zinc-200">
           <button 
-            onClick={async () => {
-              if (confirm("정말 탈퇴하시겠습니까? 찜한 장소 및 코스 데이터가 모두 삭제되며 복구할 수 없습니다.")) {
-                try {
-                  const res = await fetch(`/api-now/users/${session?.user?.email}`, { method: 'DELETE' });
-                  if (res.ok) {
-                    alert("그동안 이용해주셔서 감사합니다.");
-                    // next-auth session kill and redirect
-                    const { signOut } = await import('next-auth/react');
-                    signOut({ callbackUrl: '/' });
-                  } else {
-                    alert("탈퇴 처리 중 오류가 발생했습니다.");
-                  }
-                } catch (e) {
-                  alert("오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-                }
-              }
-            }}
-            className="text-xs font-bold text-zinc-400 hover:text-rose-500 hover:underline transition-colors"
+            onClick={handleDeleteAccount}
+            className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-rose-100 transition-all"
           >
-            회원 탈퇴하기
+            <Trash2 size={20} /> 회원 탈퇴
           </button>
         </div>
+
       </main>
     </div>
   );

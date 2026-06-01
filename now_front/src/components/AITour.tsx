@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Users, Ticket, MapPin, Clock, RefreshCcw, Save, Check } from 'lucide-react';
-import { useSession, signIn } from 'next-auth/react';
+import { Sparkles, Users, Ticket, MapPin, Clock, RefreshCcw, Save, Check, Info } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -43,7 +43,8 @@ const dict = {
     remake: '다시 만들기',
     save: '코스 저장하기',
     saved: '저장됨',
-    saveAlert: '코스가 마이페이지에 저장되었습니다!'
+    saveAlert: '코스가 마이페이지에 저장되었습니다!',
+    remaining: '오늘 남은 생성 횟수'
   },
   en: {
     title: 'AI Customized Walking Tour',
@@ -61,22 +62,42 @@ const dict = {
     remake: 'Recreate',
     save: 'Save Course',
     saved: 'Saved',
-    saveAlert: 'Course has been saved to your My Page!'
+    saveAlert: 'Course has been saved to your My Page!',
+    remaining: 'Remaining today'
   }
 };
 
 export default function AITour({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
-  const { data: session } = useSession();
+  const { user, signInWithGoogle } = useAuth();
   const [selectedCompanion, setSelectedCompanion] = useState<Companion>('Solo');
   const [tour, setTour] = useState<Tour | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [usage, setUsage] = useState({ usage_count: 0, limit: 2 });
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
   const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : 'Hongdae') : region;
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchUsage();
+    }
+  }, [user]);
+
+  const fetchUsage = async () => {
+    try {
+      const res = await fetch(`/api-now/users/${user?.id}/usage/itinerary`);
+      if (res.ok) {
+        const data = await res.json();
+        setUsage(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch usage:', e);
+    }
+  };
+
   const generateTour = async () => {
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     setIsGenerating(true);
     setIsSaved(false);
     try {
@@ -85,12 +106,19 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           companion: selectedCompanion,
-          user_email: session.user?.email 
+          user_id: user?.id 
         }),
       });
       if (res.ok) {
         const data = await res.json();
         setTour(data);
+        fetchUsage(); // 성공 시 횟수 업데이트
+      } else if (res.status === 403) {
+        const errorData = await res.json();
+        alert(errorData.detail || (lang === 'en' ? 'You have reached your daily limit for generating AI tours (2 times). Please try again tomorrow!' : '오늘 제공된 AI 코스 생성 기회(2회)를 모두 사용하셨습니다. 내일 다시 이용해주세요!'));
+        fetchUsage(); // 혹시 모르니 동기화
+      } else {
+        alert(lang === 'en' ? 'An error occurred while generating the tour. Please try again later.' : '코스를 생성하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (e) {
       console.error(e);
@@ -100,14 +128,16 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
   };
 
   const handleSaveCourse = async () => {
-    if (!tour || !session?.user?.email || isSaved) return;
+    if (!tour || !user?.id || isSaved) return;
     
     try {
       const res = await fetch('/api-now/courses/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session.user.email,
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
           title: tour.title,
           description: tour.description,
           steps: tour.steps,
@@ -158,23 +188,32 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
               </div>
             </div>
 
-            <button
-              onClick={generateTour}
-              disabled={isGenerating}
-              className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl"
-            >
-              {isGenerating ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {t.generating}
+            <div className="space-y-3">
+              <button
+                onClick={generateTour}
+                disabled={isGenerating}
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl"
+              >
+                {isGenerating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t.generating}
+                  </div>
+                ) : (
+                  <>
+                    <Sparkles size={18} />
+                    {t.generate}
+                  </>
+                )}
+              </button>
+              
+              {user && (
+                <div className="flex items-center justify-center gap-1.5 text-zinc-400 text-[10px] font-bold tracking-tight">
+                  <Info size={12} />
+                  <span>{t.remaining}: {usage.limit - usage.usage_count}/{usage.limit}</span>
                 </div>
-              ) : (
-                <>
-                  <Sparkles size={18} />
-                  {t.generate}
-                </>
               )}
-            </button>
+            </div>
           </div>
         </div>
       ) : (

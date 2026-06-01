@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Plus, X, Search, ChevronRight, Trash2, MapPin, Calendar, Clock, Video, Globe } from 'lucide-react';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import AdUnit from './AdUnit';
 
 export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
-  const { data: session } = useSession();
+  const { user, signInWithGoogle } = useAuth();
   const searchParams = useSearchParams();
   const [themes, setThemes] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
@@ -18,10 +18,10 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('action') === 'create' && session) {
+    if (searchParams.get('action') === 'create' && user) {
       setIsCreating(true);
     }
-  }, [searchParams, session]);
+  }, [searchParams, user]);
 
   // Create form state
   const [title, setTitle] = useState('');
@@ -44,12 +44,12 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
 
   const toggleThemeLike = async (e: React.MouseEvent, themeId: number) => {
     e.stopPropagation();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     try {
       const res = await fetch('/api-now/themes/like/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_email: session.user?.email, theme_id: themeId }),
+        body: JSON.stringify({ user_id: user.id, theme_id: themeId }),
       });
       if (res.ok) fetchThemes();
     } catch (e) {
@@ -57,15 +57,15 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
     }
   };
 
-  const handleDeleteTheme = async (e: React.MouseEvent, themeId: number, authorEmail: string) => {
+  const handleDeleteTheme = async (e: React.MouseEvent, themeId: number, authorId: string) => {
     e.stopPropagation();
-    if (!session || (session.user?.email !== authorEmail && session.user?.email !== 'nemonecoltd@gmail.com')) {
+    if (!user || (user.id !== authorId && user.email !== 'nemonecoltd@gmail.com')) {
       alert('권한이 없습니다.');
       return;
     }
     if (!confirm('테마를 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api-now/themes/${themeId}?user_email=${session.user?.email}`, { method: 'DELETE' });
+      const res = await fetch(`/api-now/themes/${themeId}?user_id=${user.id}`, { method: 'DELETE' });
       if (res.ok) {
         alert('삭제되었습니다.');
         setSelectedTheme(null);
@@ -91,7 +91,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!session) return signIn();
+    if (!user) return signInWithGoogle();
     if (!title || !description || places.length === 0) return alert('제목, 설명, 그리고 최소 1개의 플레이스를 등록해주세요.');
     
     setIsLoading(true);
@@ -100,7 +100,9 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: session.user?.email,
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
           title,
           description,
           places
@@ -227,9 +229,9 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
         )}
 
         {/* 인피드 광고 */}
-        <div className="mb-10 border-y border-zinc-100 py-2">
+        {/* <div className="mb-10 border-y border-zinc-100 py-2">
           <AdUnit slotId="8058413094" />
-        </div>
+        </div> */}
 
         {/* 최신 테마 */}
         {latest.length > 0 && (
@@ -260,7 +262,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
       </div>
 
       {/* Floating Create Button */}
-      <button onClick={() => { if(!session) return signIn(); setIsCreating(true); }} className="fixed bottom-28 left-6 w-12 h-12 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-600 transition-all z-40">
+      <button onClick={() => { if(!user) return signInWithGoogle(); setIsCreating(true); }} className="fixed bottom-28 left-6 w-12 h-12 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-600 transition-all z-40">
         <Plus size={24} />
       </button>
 
@@ -271,16 +273,16 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={selectedTheme.user_image} className="w-10 h-10 rounded-full border border-zinc-100" alt="" />
+                  <img src={selectedTheme.user_image || "https://ui-avatars.com/api/?name=U&background=random"} className="w-10 h-10 rounded-full border border-zinc-100 bg-zinc-50 object-cover" alt="" />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
                     <p className="text-xs text-zinc-400 font-bold uppercase">{selectedTheme.user_name}의 테마</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {(session?.user?.email === selectedTheme.user_email || session?.user?.email === 'nemonecoltd@gmail.com') && (
+                  {(user?.id === selectedTheme.user_id || user?.email === 'nemonecoltd@gmail.com') && (
                     <button 
-                      onClick={(e) => handleDeleteTheme(e, selectedTheme.id, selectedTheme.user_email)} 
+                      onClick={(e) => handleDeleteTheme(e, selectedTheme.id, selectedTheme.user_id)} 
                       className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
                       title="테마 삭제"
                     >

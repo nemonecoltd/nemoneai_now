@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, ArrowRight, Loader2, Globe } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
+  const { signUpWithEmail } = useAuth();
   const [lang, setLang] = useState<'ko' | 'en'>('ko');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,18 +44,19 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const res = await fetch('/api-now/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, password, gender, age, nationality }),
+      const { error } = await signUpWithEmail(email, password, {
+        full_name: name,
+        gender,
+        age,
+        nationality
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        setError(errorData.detail || t.failError);
+      if (error) {
+        setError(error.message || t.failError);
         setIsLoading(false);
       } else {
-        router.push('/login?registered=true');
+        alert(lang === 'ko' ? '회원가입 신청이 완료되었습니다. 이메일을 확인해 주세요!' : 'Sign up request completed. Please check your email!');
+        router.push('/login');
       }
     } catch (err) {
       setError(t.serverError);

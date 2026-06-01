@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy import text
 from database import engine
-from scraper_naver_map_hongdae import scrape_naver_map_popups_hongdae
+from scraper_naver_map_v2 import scrape_naver_map_popups
 from scraper_seoul_api_hongdae import scrape_seoul_api_hongdae
 from gemini_service import get_embedding
 from datetime import date, timedelta
@@ -10,10 +10,16 @@ async def run_hongdae_collection():
     print("🚀 [HONGDAE] 홍대 하이브리드 수집 가동")
     
     # 홍대 데이터 수집
-    tasks = [scrape_naver_map_popups_hongdae(), scrape_seoul_api_hongdae()]
-    results = await asyncio.gather(*tasks)
-    
-    combined_data = results[0] + results[1]
+    tasks = [scrape_naver_map_popups("홍대 팝업스토어"), scrape_seoul_api_hongdae()]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    combined_data = []
+    names = ["네이버지도", "서울시API"]
+    for name, result in zip(names, results):
+        if isinstance(result, Exception):
+            print(f"⚠️ [{name}] 수집 실패 (건너뜀): {result}")
+        else:
+            combined_data += result
     
     if not combined_data:
         print("⚠️ 홍대 수집 데이터가 없습니다.")
@@ -31,20 +37,21 @@ async def run_hongdae_collection():
                 
                 # upsert 로직 (title 기준)
                 upsert_query = text("""
-                    INSERT INTO seongsu_places 
-                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, embedding, end_date, region)
-                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :embedding, :end_date, :region)
-                    ON CONFLICT (title) 
-                    DO UPDATE SET 
+                    INSERT INTO seongsu_places
+                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, region)
+                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :region)
+                    ON CONFLICT (title)
+                    DO UPDATE SET
                         title_en = EXCLUDED.title_en,
                         content_en = EXCLUDED.content_en,
                         location = EXCLUDED.location,
                         latitude = COALESCE(EXCLUDED.latitude, seongsu_places.latitude),
                         longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
                         content = EXCLUDED.content,
+                        image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
                         region = EXCLUDED.region
                 """)
-                
+
                 conn.execute(upsert_query, {
                     "title": title,
                     "title_en": item.get('title_en', title),
@@ -55,6 +62,7 @@ async def run_hongdae_collection():
                     "longitude": item['longitude'],
                     "naver_place_id": item.get('naver_place_id'),
                     "video_url": item.get('video_url', ""),
+                    "image_url": item.get('image_url', ""),
                     "embedding": f"[{','.join(map(str, embedding))}]",
                     "end_date": date.today() + timedelta(days=30),
                     "region": "홍대"

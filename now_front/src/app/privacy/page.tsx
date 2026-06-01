@@ -18,7 +18,7 @@ export default function PrivacyPolicy() {
 
       <main className="px-6 pt-24 pb-10">
         <div className="bg-white p-8 rounded-[32px] border border-zinc-100 shadow-sm prose prose-sm prose-zinc max-w-none text-zinc-600">
-          <h2 className="text-xl font-black text-zinc-900 mb-6">개인정보처리방침 (지금여기)</h2>
+          <h2 className="text-xl font-black text-zinc-900 mb-6">개인정보처리방침</h2>
           
           <p className="mb-6 leading-relaxed">
             <strong>네모네 주식회사</strong>(이하 '회사')는 「개인정보 보호법」 제30조에 따라 정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이 개인정보 처리방침을 수립·공개합니다.

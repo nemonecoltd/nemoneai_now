@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, BarChart3, Map, MapPinned, Route, MapPin as MapPinIcon } from 'lucide-react';
@@ -33,11 +33,11 @@ interface AdminStats {
   total_places: number;
 }
 
-type Region = '성수' | '홍대' | '보넥도';
+type Region = '성수' | '홍대' | '공연';
 type ViewMode = 'spots' | 'users';
 
 export default function AdminPage() {
-  const { data: session, status } = useSession();
+  const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
   const [viewMode, setViewMode] = useState<ViewMode>('spots');
@@ -47,20 +47,21 @@ export default function AdminPage() {
   const [userPage, setUserPage] = useState(1);
   const [region, setRegion] = useState<Region>('성수');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Place>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      signIn();
-    } else if (status === 'authenticated' && session?.user?.email !== 'nemonecoltd@gmail.com') {
+    if (!authLoading && !user) {
+      signInWithGoogle();
+    } else if (user && user.email !== 'nemonecoltd@gmail.com') {
       alert('관리자 권한이 없습니다.');
       router.push('/');
     }
-  }, [status, session, router]);
+  }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (session?.user?.email === 'nemonecoltd@gmail.com') {
+    if (user?.email === 'nemonecoltd@gmail.com') {
       fetchAdminStats();
       if (viewMode === 'spots') {
         fetchPlaces();
@@ -68,7 +69,7 @@ export default function AdminPage() {
         fetchUsers();
       }
     }
-  }, [session, region, viewMode, userPage]);
+  }, [user, region, viewMode, userPage]);
 
   const fetchAdminStats = async () => {
     const res = await fetch('/api-now/admin/stats');
@@ -117,6 +118,29 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreate = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...editForm, region }),
+      });
+      if (res.ok) {
+        setIsCreating(false);
+        setEditForm({});
+        fetchPlaces();
+      } else {
+        alert('등록에 실패했습니다.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('오류가 발생했습니다.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     const res = await fetch(`/api-now/places/${id}`, {
@@ -143,8 +167,8 @@ export default function AdminPage() {
     }
   };
 
-  if (status === "loading") return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
-  if (session?.user?.email !== 'nemonecoltd@gmail.com') return null;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
+  if (user?.email !== 'nemonecoltd@gmail.com') return null;
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 font-sans">
@@ -160,18 +184,18 @@ export default function AdminPage() {
             <div className="flex items-center gap-6 mt-6 border-b border-zinc-200">
               <div className="flex items-center gap-4">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">스팟 데이터</span>
-                {['성수', '홍대', '보넥도'].map((r) => (
+                {(['성수', '홍대', '공연'] as Region[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => {
                       setViewMode('spots');
-                      setRegion(r as Region);
+                      setRegion(r);
                     }}
                     className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
                       viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : (r === '홍대' ? 'HONGDAE' : '보넥도')}
+                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : 'CONCERT'}
                   </button>
                 ))}
               </div>
@@ -195,7 +219,14 @@ export default function AdminPage() {
               서비스 홈
             </Link>
             {viewMode === 'spots' && (
-              <button className="bg-zinc-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-lg">
+              <button 
+                onClick={() => {
+                  setIsCreating(true);
+                  setEditingId(null);
+                  setEditForm({});
+                }}
+                className="bg-zinc-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-lg"
+              >
                 <Plus size={20} /> 새 장소 등록
               </button>
             )}
@@ -210,7 +241,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">총 유저수</div>
-                <div className="text-2xl font-black text-zinc-900">{stats.total_users.toLocaleString()}명</div>
+                <div className="text-2xl font-black text-zinc-900">{(stats?.total_users ?? 0).toLocaleString()}명</div>
               </div>
             </div>
             <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
@@ -219,7 +250,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">생성된 코스</div>
-                <div className="text-2xl font-black text-zinc-900">{stats.total_courses.toLocaleString()}개</div>
+                <div className="text-2xl font-black text-zinc-900">{(stats?.total_courses ?? 0).toLocaleString()}개</div>
               </div>
             </div>
             <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
@@ -228,7 +259,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">등록된 장소</div>
-                <div className="text-2xl font-black text-zinc-900">{stats.total_places.toLocaleString()}곳</div>
+                <div className="text-2xl font-black text-zinc-900">{(stats?.total_places ?? 0).toLocaleString()}곳</div>
               </div>
             </div>
           </div>
@@ -236,6 +267,80 @@ export default function AdminPage() {
 
         {viewMode === 'spots' ? (
           <div className="grid gap-6">
+            {isCreating && (
+              <div className="bg-white border border-emerald-500 rounded-3xl p-6 shadow-md flex gap-6 items-start">
+                <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">
+                  {editForm.image_url ? (
+                    <img src={editForm.image_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-300"><ImageIcon size={32} /></div>
+                  )}
+                </div>
+                <div className="flex-grow space-y-2">
+                    <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-emerald-100">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">장소명</label>
+                          <input 
+                            type="text" 
+                            value={editForm.title || ''} 
+                            onChange={e => setEditForm({...editForm, title: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 (Geocoding 대상)</label>
+                          <input 
+                            type="text" 
+                            value={editForm.location || ''} 
+                            onChange={e => setEditForm({...editForm, location: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">상세 내용 (RAG 리소스)</label>
+                        <textarea 
+                          rows={3}
+                          value={editForm.content || ''} 
+                          onChange={e => setEditForm({...editForm, content: e.target.value})}
+                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
+                          <input 
+                            type="text" 
+                            value={editForm.image_url || ''} 
+                            onChange={e => setEditForm({...editForm, image_url: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
+                          <input 
+                            type="text" 
+                            value={editForm.date_range || ''} 
+                            onChange={e => setEditForm({...editForm, date_range: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-zinc-400 font-bold text-sm">취소</button>
+                        <button 
+                          onClick={handleCreate} 
+                          disabled={isLoading}
+                          className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
+                        >
+                          <Plus size={16} /> {isLoading ? '저장 중...' : '신규 장소 등록'}
+                        </button>
+                      </div>
+                    </div>
+                </div>
+              </div>
+            )}
             {places.map((place) => (
               <div key={place.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-emerald-200">
                 <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">

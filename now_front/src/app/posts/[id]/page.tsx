@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, MapPin, Calendar, Clock, Share2, Globe, Video } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -19,7 +19,7 @@ interface Place {
   longitude?: number;
 }
 
-export default function PostDetail() {
+function PostDetail() {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'ko';
@@ -73,10 +73,10 @@ export default function PostDetail() {
       
       {/* Hero Image */}
       <div className="relative h-[45vh] overflow-hidden bg-zinc-200">
-        <img 
-          src={place.image_url || `https://picsum.photos/seed/seongsu-${place.id}/800/1200`} 
-          className="w-full h-full object-cover" 
-          alt="" 
+        <img
+          src={place.image_url || `https://picsum.photos/seed/seongsu-${place.id}/800/1200`}
+          className="w-full h-full object-cover"
+          alt={displayTitle}
           referrerPolicy="no-referrer"
           onError={(e) => {
             (e.target as HTMLImageElement).src = `https://picsum.photos/seed/seongsu-detail-${place.id}/800/1200`;
@@ -188,5 +188,13 @@ export default function PostDetail() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PostDetailPage() {
+  return (
+    <Suspense>
+      <PostDetail />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@ import asyncio
 import os
 import requests
 import json
+from datetime import datetime, timedelta
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
@@ -31,15 +32,27 @@ async def scrape_naver_map_popups():
         )
         page = await context.new_page()
 
-        # 타겟 URL: 성수동 팝업, 공연, 전시 통합 검색
-        search_url = "https://search.naver.com/search.naver?query=성수동+팝업스토어+공연+전시+일정&where=news"
-        print(f"🌐 성수동 복합 데이터 발굴 중: {search_url}")
-        
-        await page.goto(search_url)
-        await page.wait_for_timeout(3000)
+        today = datetime.now()
+        past_date = today - timedelta(days=90)
+        ds = past_date.strftime("%Y.%m.%d")
+        de = today.strftime("%Y.%m.%d")
 
-        # 핵심: 특정 클래스가 아닌 body 전체의 텍스트를 가져옴
-        raw_text = await page.inner_text("body")
+        # 1. 네이버 뉴스 검색 (최근 3개월 제한)
+        naver_url = f"https://search.naver.com/search.naver?query=성수동+팝업스토어+공연+전시+일정&where=news&pd=3&ds={ds}&de={de}"
+        print(f"🌐 네이버 데이터 발굴 중 (최근 3개월): {naver_url}")
+        await page.goto(naver_url)
+        await page.wait_for_timeout(2000)
+        raw_text = "[Naver News Search Result]\n" + await page.inner_text("body")
+
+        # 2. 구글 뉴스 검색 추가 (최근 3개월 제한)
+        google_news_url = "https://news.google.com/search?q=성수동+팝업스토어+공연+전시+일정+when:3m&hl=ko&gl=KR&ceid=KR%3Ako"
+        print(f"🌐 구글 뉴스 데이터 발굴 중 (최근 3개월): {google_news_url}")
+        try:
+            await page.goto(google_news_url, timeout=30000)
+            await page.wait_for_timeout(2000)
+            raw_text += "\n\n[Google News Search Result]\n" + await page.inner_text("body")
+        except Exception as e:
+            print(f"⚠️ 구글 뉴스 검색 실패: {e}")
         
         await browser.close()
         
@@ -47,18 +60,17 @@ async def scrape_naver_map_popups():
             print("⚠️ 텍스트 확보 실패")
             return []
 
-        # Gemini 1 Pro를 사용하여 데이터 정제
-        import google.generativeai as genai
-        genai.configure(api_key=GOOGLE_API_KEY)
-        model = genai.GenerativeModel("models/gemini-pro-latest")
-        
+        # Gemini로 데이터 정제
+        from google import genai as _genai
+        _client = _genai.Client(api_key=GOOGLE_API_KEY)
+
         prompt = f"""
         아래 지저분한 텍스트 뭉치에서 '성수동' 지역의 [팝업스토어, 공연, 콘서트, 전시회] 정보만 찾아내줘.
         
         필드명: title, title_en, location, content, content_en
         
         [데이터 뭉치]
-        {raw_text[:5000]}
+        {raw_text[:8000]}
         
         *명령:
         1. 행사(팝업/공연/전시)의 정확한 이름(title)을 찾으세요.
@@ -67,10 +79,11 @@ async def scrape_naver_map_popups():
         4. content에는 행사의 특징과 일정을 한글로 요약하세요.
         5. content_en에는 행사의 특징과 일정을 영어로 요약하세요.
         6. 최대 20개를 JSON 리스트로 응답하세요. 오직 JSON만 응답하세요.
+        7. [중요] 현재 날짜 기준으로 3개월 이상 지난 과거의 데이터나 이미 종료된 행사는 철저히 제외하세요.
         """
         
         print("🧠 Gemini가 지저분한 텍스트에서 장소 정보를 정제 중입니다...")
-        response = model.generate_content(prompt)
+        response = _client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         
         try:
             content = response.text
