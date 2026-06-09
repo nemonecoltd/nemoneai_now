@@ -520,6 +520,16 @@ async def list_places(region: Optional[str] = None):
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
+@app.get("/places/{place_id}")
+async def get_place(place_id: int):
+    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region FROM seongsu_places WHERE id = :id")
+    with engine.connect() as conn:
+        result = conn.execute(query, {"id": place_id})
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Place not found")
+        return dict(row._mapping)
+
 @app.post("/places")
 async def create_place(place: PlaceUpdate):
     try:

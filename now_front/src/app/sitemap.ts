@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let places: any[] = []
   try {
     // 빌드 시점 및 런타임에 호출할 백엔드 API (Rewrites를 통해 8081로 전달됨)
-    const res = await fetch('http://127.0.0.1:8081/places')
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:8081'}/places`)
     if (res.ok) {
       const data = await res.json()
       places = Array.isArray(data) ? data : []
