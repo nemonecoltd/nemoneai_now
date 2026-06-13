@@ -36,8 +36,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   } catch {}
 
   return {
-    title: `장소 #${params.id} | NOW HERE`,
-    description: '지금 바로 이 시간 성수와 홍대 팝업 및 공연을 확인해보세요.',
+    title: `장소 #${params.id}`,
+    description: '지금 바로 이 시간 성수·홍대 팝업, 서울 공연·전시, 제주 문화행사를 확인해보세요.',
     alternates: {
       canonical: `https://now.nemoneai.com/posts/${params.id}`,
     },

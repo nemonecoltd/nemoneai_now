@@ -17,6 +17,7 @@ interface Place {
   date_range?: string;
   latitude?: number;
   longitude?: number;
+  region?: string;
 }
 
 function PostDetail() {
@@ -43,24 +44,33 @@ function PostDetail() {
   const displayTitle = (lang === 'en' && place.title_en) ? place.title_en : place.title;
   const displayContent = (lang === 'en' && place.content_en) ? place.content_en : place.content;
 
+  // date_range 형식: "2025-06-01 ~ 2025-06-30"
+  const [startDate, endDate] = (() => {
+    const parts = (place.date_range || '').split('~').map(s => s.trim());
+    return [parts[0] || new Date().toISOString().split('T')[0], parts[1] || undefined];
+  })();
+
   // SEO: JSON-LD Structured Data
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
     "name": displayTitle,
-    "description": displayContent,
-    "image": place.image_url,
+    "description": displayContent.replace(/<[^>]*>/g, '').substring(0, 160),
+    "url": `https://now.nemoneai.com/posts/${place.id}`,
+    "image": place.image_url || 'https://now.nemoneai.com/og-image.png',
     "location": {
       "@type": "Place",
-      "name": place.location,
+      "name": place.location || (place.region === '제주' ? '제주아트센터' : '서울'),
       "address": {
         "@type": "PostalAddress",
-        "streetAddress": place.location,
-        "addressLocality": "Seoul",
+        "streetAddress": place.location || undefined,
+        "addressLocality": place.region === '제주' ? "Jeju" : "Seoul",
+        "addressRegion": place.region === '제주' ? "Jeju-do" : undefined,
         "addressCountry": "KR"
       }
     },
-    "startDate": new Date().toISOString().split('T')[0], // 실제 시작일 데이터가 있다면 교체 권장
+    "startDate": startDate,
+    ...(endDate ? { "endDate": endDate } : {}),
   };
 
   return (
@@ -86,7 +96,7 @@ function PostDetail() {
         
         {/* Top Buttons */}
         <div className="absolute top-8 left-6 right-6 flex justify-between">
-          <button onClick={() => router.back()} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
+          <button onClick={() => window.history.length > 1 ? router.back() : router.push('/')} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
             <ChevronLeft size={24} />
           </button>
           <button className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
