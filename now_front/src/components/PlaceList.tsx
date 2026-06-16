@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 import { MapPin, Clock, ChevronRight, Filter, Heart } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import AdUnit from './AdUnit';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -121,9 +122,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
       </div>
 
       <div className="space-y-4">
-        {places.map((place) => (
+        {places.map((place, idx) => (
+          <React.Fragment key={place.id}>
           <motion.div
-            key={place.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-3xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group relative"
@@ -177,6 +178,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
               </div>
             </div>
           </motion.div>
+          {idx === 0 && <AdUnit slotId="8058413094" />}
+          </React.Fragment>
         ))}
         {places.length === 0 && (
           <div className="text-center py-20 text-zinc-400 italic">
