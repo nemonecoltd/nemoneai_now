@@ -75,18 +75,34 @@ def _active_range(period: str) -> tuple[tuple[int, int], tuple[int, int]] | None
     return (None, start_month), (None, end_month)
 
 
+def _window_months(today: date) -> list[tuple[int, int]]:
+    """월말(25일 이후)에는 다음 달도 미리 포함시켜 미리보기 제공."""
+    months = [(today.year, today.month)]
+    if today.day >= 25:
+        if today.month == 12:
+            months.append((today.year + 1, 1))
+        else:
+            months.append((today.year, today.month + 1))
+    return months
+
+
 def _is_active(period: str, today: date) -> bool:
     rng = _active_range(period)
     if rng is None:
         return False
     (start_year, start_month), (end_year, end_month) = rng
 
-    if start_year is None:  # 매년 반복 행사 — 연도 무시, 월만 비교
-        if start_month <= end_month:
-            return start_month <= today.month <= end_month
-        return today.month >= start_month or today.month <= end_month  # 연말~연초 걸치는 경우
+    for year, month in _window_months(today):
+        if start_year is None:  # 매년 반복 행사 — 연도 무시, 월만 비교
+            if start_month <= end_month:
+                if start_month <= month <= end_month:
+                    return True
+            elif month >= start_month or month <= end_month:  # 연말~연초 걸치는 경우
+                return True
+        elif (start_year, start_month) <= (year, month) <= (end_year, end_month):
+            return True
 
-    return (start_year, start_month) <= (today.year, today.month) <= (end_year, end_month)
+    return False
 
 
 def _end_date_actual(period: str) -> date | None:

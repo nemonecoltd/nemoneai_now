@@ -17,7 +17,7 @@ type Tab = 'course' | 'theme' | 'place';
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
   const { user, signInWithGoogle } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('course');
+  const [activeTab, setActiveTab] = useState<Tab>('place');
   const [courses, setCourses] = useState([]);
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);

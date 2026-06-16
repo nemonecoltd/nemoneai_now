@@ -71,7 +71,8 @@ function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialRegion = (searchParams.get('region') as Region) || '성수';
-  const [activeTab, setActiveTab] = useState<Tab>('list');
+  const initialTab = (searchParams.get('tab') as Tab) || 'list';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [region, setRegion] = useState<Region>(initialRegion);
   const [lang, setLang] = useState<Lang>('ko');
   const [places, setPlaces] = useState([]); // 지역별 데이터

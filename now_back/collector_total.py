@@ -153,6 +153,16 @@ async def run_festival():
     print("✅ [축제] 완료")
 
 
+def cleanup_expired():
+    """end_date가 지난 플레이스를 DB에서 삭제하여 데이터 부담 방지."""
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("DELETE FROM seongsu_places WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE")
+        )
+        conn.commit()
+        print(f"\n🧹 만료 플레이스 {result.rowcount}개 삭제 완료")
+
+
 async def run_all():
     print("=" * 50)
     print("🌐 지금 여기 전체 수집 시작")
@@ -163,6 +173,7 @@ async def run_all():
     await run_jeju()
     await run_culture_concert()
     await run_festival()
+    cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 전체 수집 완료")
     print("=" * 50)

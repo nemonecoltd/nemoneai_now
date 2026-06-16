@@ -6,8 +6,8 @@ import Script from "next/script";
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
   title: {
-    default: "지금 여기 | NOW HERE",
-    template: "%s | NOW HERE"
+    default: "당신의 3시간을 책임지는 지금 여기 | 성수·홍대 팝업·공연·축제",
+    template: "%s | 지금 여기"
   },
   description: "지금 바로 이 시간 성수·홍대 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.",
   alternates: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: 'NOW HERE: Seoul & Jeju Live',
+    title: '지금 여기 | 당신의 3시간을 책임지는 AI 로컬 가이드',
     description: 'Stop wasting time searching. AI-powered guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
     url: 'https://now.nemoneai.com',
     images: ['/og-image.png'],
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NOW HERE: Seoul & Jeju Live',
+    title: '지금 여기 | 당신의 3시간을 책임지는 AI 로컬 가이드',
     description: 'Stop wasting time searching. AI-powered guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
     images: ['/og-image.png'],
   },

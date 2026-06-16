@@ -194,6 +194,7 @@ async def get_all_courses():
         FROM saved_courses c
         LEFT JOIN course_likes cl ON c.id = cl.course_id
         WHERE c.title NOT LIKE '[퍼감]%'
+          AND c.created_at >= NOW() - INTERVAL '45 days'
         GROUP BY c.id
         ORDER BY like_count DESC, c.created_at DESC
     """)
@@ -403,7 +404,7 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
 @app.get("/places/popular")
 async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — page.tsx의 fetchAllPlaces가 region 없이 전체를 사용함
-    where_clause = "WHERE region = :region" if region else ""
+    where_clause = "WHERE region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(f"""
         SELECT p.id, p.title, p.title_en, p.content, p.content_en, p.image_url, p.location, p.region, COUNT(l.id) as like_count
@@ -521,7 +522,7 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
 @app.get("/places")
 async def list_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
-    where_clause = "WHERE region = :region" if region else ""
+    where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
         f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region "
