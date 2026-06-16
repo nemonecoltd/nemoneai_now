@@ -401,18 +401,25 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places/popular")
-async def get_popular_places(region: Optional[str] = None):
+async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+    # limit 미지정 시 기존 동작(전체 반환) 유지 — page.tsx의 fetchAllPlaces가 region 없이 전체를 사용함
     where_clause = "WHERE region = :region" if region else ""
+    limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(f"""
-        SELECT p.id, p.title, p.title_en, p.content, p.content_en, p.image_url, p.location, p.region, COUNT(l.id) as like_count 
+        SELECT p.id, p.title, p.title_en, p.content, p.content_en, p.image_url, p.location, p.region, COUNT(l.id) as like_count
         FROM seongsu_places p
         LEFT JOIN likes l ON p.id = l.place_id
         {where_clause}
         GROUP BY p.id
         ORDER BY like_count DESC, p.created_at DESC
+        {limit_clause}
     """)
     with engine.connect() as conn:
-        params = {"region": region} if region else {}
+        params = {"offset": offset}
+        if limit is not None:
+            params["limit"] = min(limit, 500)
+        if region:
+            params["region"] = region
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
@@ -512,11 +519,20 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places")
-async def list_places(region: Optional[str] = None):
+async def list_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+    # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE region = :region" if region else ""
-    query = text(f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region FROM seongsu_places {where_clause} ORDER BY created_at DESC")
+    limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
+    query = text(
+        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region "
+        f"FROM seongsu_places {where_clause} ORDER BY created_at DESC {limit_clause}"
+    )
     with engine.connect() as conn:
-        params = {"region": region} if region else {}
+        params = {"offset": offset}
+        if limit is not None:
+            params["limit"] = min(limit, 500)
+        if region:
+            params["region"] = region
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 

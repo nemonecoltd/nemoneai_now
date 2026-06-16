@@ -33,7 +33,7 @@ interface AdminStats {
   total_places: number;
 }
 
-type Region = '성수' | '홍대' | '공연';
+type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
 type ViewMode = 'spots' | 'users';
 
 export default function AdminPage() {
@@ -184,7 +184,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-6 mt-6 border-b border-zinc-200">
               <div className="flex items-center gap-4">
                 <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">스팟 데이터</span>
-                {(['성수', '홍대', '공연'] as Region[]).map((r) => (
+                {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => {
@@ -195,7 +195,7 @@ export default function AdminPage() {
                       viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : 'CONCERT'}
+                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
                   </button>
                 ))}
               </div>

@@ -98,7 +98,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
 
         // 마커 클릭 시 상세 페이지로 이동
         marker.addListener('click', () => {
-          router.push(`/posts/${place.id}`);
+          router.push(`/posts/${place.id}?region=${encodeURIComponent(region)}`);
         });
       });
     }

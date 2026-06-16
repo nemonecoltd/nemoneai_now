@@ -96,7 +96,7 @@ function PostDetail() {
         
         {/* Top Buttons */}
         <div className="absolute top-8 left-6 right-6 flex justify-between">
-          <button onClick={() => window.history.length > 1 ? router.back() : router.push('/')} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
+          <button onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}`)} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
             <ChevronLeft size={24} />
           </button>
           <button className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
@@ -167,7 +167,7 @@ function PostDetail() {
                 allowFullScreen
               ></iframe>
             </div>
-          ) : place.location && place.location !== '확인 필요' ? (
+          ) : place.location && place.location !== '확인 필요' && place.location !== '전국' ? (
             <div className="w-full h-48 bg-zinc-200 rounded-3xl overflow-hidden border-4 border-white shadow-lg">
               <iframe
                 width="100%"

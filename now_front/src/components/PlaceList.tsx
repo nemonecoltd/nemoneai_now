@@ -85,8 +85,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
   };
 
   const displayRegion = lang === 'en'
-    ? (region === '성수' ? 'Seongsu' : region === '홍대' ? 'Hongdae' : 'Concert')
-    : region;
+    ? (region === '성수' ? 'Seongsu' : region === '홍대' ? 'Hongdae' : region === '공연' ? 'Concert' : region === '축제' ? 'Festival' : 'Jeju Culture')
+    : (region === '제주' ? '제주 문화' : region);
 
   return (
     <div className="p-6 space-y-6 pb-24">
@@ -94,8 +94,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold font-display">
             {lang === 'en'
-              ? (region === '공연' ? 'Seoul Concerts' : `${displayRegion} Hotplaces`)
-              : (region === '공연' ? '서울 공연' : `${region} 핫플레이스`)}
+              ? (region === '공연' ? 'Seoul Concerts' : region === '제주' ? 'Jeju Culture & Arts' : region === '축제' ? 'Festivals Nationwide' : `${displayRegion} Hotplaces`)
+              : (region === '공연' ? '서울 공연' : region === '제주' ? '제주 공연·전시' : region === '축제' ? '전국 축제' : `${region} 핫플레이스`)}
           </h2>
           <button className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
             <Filter size={14} /> {lang === 'en' ? 'Filter' : '필터'}
@@ -110,8 +110,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
             onChange={(e) => setSearchTerm(e.target.value)}
             onBlur={() => handleSearch()}
             placeholder={lang === 'en'
-              ? (region === '공연' ? 'Search for concerts...' : 'Search for pop-ups...')
-              : (region === '공연' ? '공연 검색...' : '팝업스토어 검색...')}
+              ? (region === '공연' ? 'Search for concerts...' : region === '축제' ? 'Search for festivals...' : 'Search for pop-ups...')
+              : (region === '공연' ? '공연 검색...' : region === '축제' ? '축제 검색...' : '팝업스토어 검색...')}
             className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
@@ -162,7 +162,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
                   </h3>
                   <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{place.location}</p>
                 </div>
-                <Link href={`/posts/${place.id}`} className="p-2 rounded-full bg-zinc-50 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
+                <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}`} className="p-2 rounded-full bg-zinc-50 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
                   <ChevronRight size={20} />
                 </Link>
               </div>
