@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Provider from "./Provider";
 import Script from "next/script";
+import NaverAnalytics from "@/components/NaverAnalytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
@@ -97,16 +98,7 @@ export default function RootLayout({
         </Provider>
 
         {/* Naver Analytics */}
-        <Script src="//wcs.pstatic.net/wcslog.js" strategy="afterInteractive" />
-        <Script id="naver-analytics" strategy="afterInteractive">
-          {`
-            if(!wcs_add) var wcs_add = {};
-            wcs_add["wa"] = "1944a0c151404f0";
-            if(window.wcs) {
-              wcs_do();
-            }
-          `}
-        </Script>
+        <NaverAnalytics />
       </body>
     </html>
   );
