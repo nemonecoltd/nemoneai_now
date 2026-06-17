@@ -70,8 +70,8 @@ function Home() {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialRegion = (searchParams.get('region') as Region) || '성수';
-  const initialTab = (searchParams.get('tab') as Tab) || 'list';
+  const initialRegion = (searchParams?.get('region') as Region) || '성수';
+  const initialTab = (searchParams?.get('tab') as Tab) || 'list';
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [region, setRegion] = useState<Region>(initialRegion);
   const [lang, setLang] = useState<Lang>('ko');
@@ -366,7 +366,7 @@ function Home() {
 
 export default function HomePage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
       <Home />
     </Suspense>
   );
