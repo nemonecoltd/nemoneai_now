@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, MapPin, Calendar, Clock, Share2, Globe, Video } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -22,10 +22,14 @@ interface Place {
 
 function PostDetail() {
   const { id } = useParams();
-  const searchParams = useSearchParams();
-  const lang = searchParams.get('lang') || 'ko';
   const router = useRouter();
   const [place, setPlace] = useState<Place | null>(null);
+  const [lang, setLang] = useState('ko');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setLang(params.get('lang') || 'ko');
+  }, []);
 
   useEffect(() => {
     const fetchPlace = async () => {
@@ -202,9 +206,5 @@ function PostDetail() {
 }
 
 export default function PostDetailPage() {
-  return (
-    <Suspense>
-      <PostDetail />
-    </Suspense>
-  );
+  return <PostDetail />;
 }

@@ -5,12 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Plus, X, Search, ChevronRight, Trash2, MapPin, Calendar, Clock, Video, Globe } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import AdUnit from './AdUnit';
 
 export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   const { user, signInWithGoogle } = useAuth();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const [themes, setThemes] = useState([]);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
@@ -19,11 +18,12 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get('action') === 'create' && user) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'create' && user) {
       setIsCreating(true);
       router.replace('/?tab=theme');
     }
-  }, [searchParams, user]);
+  }, [user]);
 
   // Create form state
   const [title, setTitle] = useState('');

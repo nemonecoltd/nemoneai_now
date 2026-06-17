@@ -4,7 +4,7 @@ const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   try {
-    const res = await fetch(`${BACKEND}/places/${params.id}`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BACKEND}/places/${params.id}`, { cache: 'no-store' });
     if (res.ok) {
       const place = await res.json();
       if (place) {
