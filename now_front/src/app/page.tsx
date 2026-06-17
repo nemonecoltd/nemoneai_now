@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   Map as MapIcon,
   List as ListIcon,
@@ -69,11 +69,16 @@ const dict = {
 function Home() {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialRegion = (searchParams?.get('region') as Region) || '성수';
-  const initialTab = (searchParams?.get('tab') as Tab) || 'list';
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  const [region, setRegion] = useState<Region>(initialRegion);
+  const [activeTab, setActiveTab] = useState<Tab>('list');
+  const [region, setRegion] = useState<Region>('성수');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get('region') as Region;
+    const t = params.get('tab') as Tab;
+    if (r) setRegion(r);
+    if (t) setActiveTab(t);
+  }, []);
   const [lang, setLang] = useState<Lang>('ko');
   const [places, setPlaces] = useState([]); // 지역별 데이터
   const [allPlaces, setAllPlaces] = useState([]); // 통합 데이터 (랭킹용)
@@ -365,11 +370,7 @@ function Home() {
 }
 
 export default function HomePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
-      <Home />
-    </Suspense>
-  );
+  return <Home />;
 }
 
 function NavButton({ active, onClick, icon, label, disabled }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, disabled?: boolean }) {
