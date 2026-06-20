@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { MapPin, Clock, ChevronRight, Filter, Heart } from 'lucide-react';
+import { MapPin, Clock, ChevronRight, Heart } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import React, { useState, useEffect } from 'react';
@@ -92,17 +92,6 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
   return (
     <div className="p-6 space-y-6 pb-24">
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold font-display">
-            {lang === 'en'
-              ? (region === '공연' ? 'Seoul Concerts' : region === '제주' ? 'Jeju Culture & Arts' : region === '축제' ? 'Festivals Nationwide' : `${displayRegion} Hotplaces`)
-              : (region === '공연' ? '서울 공연' : region === '제주' ? '제주 공연·전시' : region === '축제' ? '전국 축제' : `${region} 핫플레이스`)}
-          </h2>
-          <button className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
-            <Filter size={14} /> {lang === 'en' ? 'Filter' : '필터'}
-          </button>
-        </div>
-
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="relative">
           <input

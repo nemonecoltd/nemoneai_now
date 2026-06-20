@@ -1,0 +1,157 @@
+"""
+collector_naver.py — 네이버 지도 팝업스토어 수집 (주 1회 권장)
+대상: 성수, 홍대
+AI 소개 자동 생성 후 DB upsert
+"""
+import asyncio
+import os
+from datetime import date, timedelta
+from sqlalchemy import text
+from dotenv import load_dotenv
+from database import engine
+from gemini_service import get_embedding
+from scraper_naver_map_v2 import scrape_naver_map_popups
+from collector_base import cleanup_expired
+
+load_dotenv()
+
+
+def ai_generate_intro(title: str, location: str) -> str:
+    try:
+        from google import genai
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=(
+                f"다음 팝업스토어의 소개 문구를 정확히 2~3문장으로 작성해줘.\n"
+                f"장소명: {title}\n위치: {location}\n"
+                f"조건: 방문자 시각, 이모지 없이, 선택지/옵션 없이 소개 문구만 출력."
+            ),
+        )
+        text_result = (response.text or "").strip()
+        return text_result[:400] if text_result else ""
+    except Exception as e:
+        print(f"    ⚠️ AI 생성 실패: {e}")
+        return ""
+
+
+def build_content(item: dict, intro: str) -> str:
+    naver_url = f"https://map.naver.com/p/entry/place/{item.get('naver_place_id', '')}"
+    link_line = f"네이버 지도 바로가기: {naver_url}"
+    if intro:
+        return "\n\n".join([intro, link_line])
+    return link_line
+
+
+def _existing_content(naver_place_id: str) -> str:
+    """DB에 이미 저장된 content 반환. 없으면 빈 문자열."""
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT content FROM seongsu_places WHERE naver_place_id = :id"),
+                {"id": naver_place_id}
+            ).fetchone()
+            return (row.content or "") if row else ""
+    except Exception:
+        return ""
+
+
+def upsert_naver_items(items: list[dict], region: str):
+    """naver_place_id 기준 upsert. 기존 content 있으면 AI 생성 건너뜀."""
+    print(f"📋 [{region}] {len(items)}개 DB 반영 시작")
+    for item in reversed(items):
+        title = item["title"].strip()
+        naver_place_id = item.get("naver_place_id", "")
+        print(f"  ✨ [{region}] '{title}' 처리 중...")
+
+        existing = _existing_content(naver_place_id)
+        if existing and "카테고리:" not in existing and "주소:" not in existing:
+            print(f"    ⏭️ 기존 content 있음, AI 생성 건너뜀")
+            intro = ""
+            content = existing
+        else:
+            intro = ai_generate_intro(title, item.get("location", ""))
+            content = build_content(item, intro)
+        if intro:
+            print(f"    소개: {intro[:60]}...")
+
+        try:
+            embedding = get_embedding(content)
+            end_date = date.today() + timedelta(days=30)
+
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    INSERT INTO seongsu_places
+                    (title, title_en, content, content_en, location, latitude, longitude,
+                     naver_place_id, video_url, image_url, embedding, end_date, region)
+                    VALUES
+                    (:title, :title_en, :content, :content_en, :location, :latitude, :longitude,
+                     :naver_place_id, :video_url, :image_url, :embedding, :end_date, :region)
+                    ON CONFLICT (naver_place_id)
+                    DO UPDATE SET
+                        title     = EXCLUDED.title,
+                        title_en  = EXCLUDED.title_en,
+                        content   = EXCLUDED.content,
+                        location  = EXCLUDED.location,
+                        latitude  = COALESCE(EXCLUDED.latitude,  seongsu_places.latitude),
+                        longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
+                        image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
+                        region    = EXCLUDED.region,
+                        created_at = CURRENT_TIMESTAMP
+                """), {
+                    "title":          title,
+                    "title_en":       item.get("title_en", title),
+                    "content":        content,
+                    "content_en":     "",
+                    "location":       item.get("location", ""),
+                    "latitude":       item.get("latitude"),
+                    "longitude":      item.get("longitude"),
+                    "naver_place_id": item.get("naver_place_id"),
+                    "video_url":      item.get("video_url", ""),
+                    "image_url":      item.get("image_url", ""),
+                    "embedding":      f"[{','.join(map(str, embedding))}]",
+                    "end_date":       end_date,
+                    "region":         region,
+                })
+                conn.commit()
+                print(f"    ✅ 저장 완료")
+        except Exception as e:
+            print(f"    ❌ 저장 실패: {e}")
+
+
+async def run_seongsu():
+    print("\n🚀 [성수] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("성수 팝업스토어")
+        if result:
+            upsert_naver_items(result, "성수")
+    except Exception as e:
+        print(f"  ⚠️ [성수] 실패: {e}")
+    print("✅ [성수] 완료")
+
+
+async def run_hongdae():
+    print("\n🚀 [홍대] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("홍대 팝업스토어")
+        if result:
+            upsert_naver_items(result, "홍대")
+    except Exception as e:
+        print(f"  ⚠️ [홍대] 실패: {e}")
+    print("✅ [홍대] 완료")
+
+
+async def run_all():
+    print("=" * 50)
+    print("🗺️  네이버 팝업스토어 수집 시작")
+    print("=" * 50)
+    await run_seongsu()
+    await run_hongdae()
+    cleanup_expired()
+    print("\n" + "=" * 50)
+    print("🏁 네이버 수집 완료")
+    print("=" * 50)
+
+
+if __name__ == "__main__":
+    asyncio.run(run_all())

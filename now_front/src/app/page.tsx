@@ -134,7 +134,7 @@ function Home() {
               >
                 <ChevronLeft size={20} strokeWidth={2.5} />
               </button>
-              <h1 className="text-2xl font-black font-display tracking-tight text-zinc-900 leading-none">
+              <h1 className="text-2xl font-black font-display tracking-tight text-zinc-900 leading-none whitespace-nowrap">
                 {t.title} <span className="text-emerald-500">.</span>
               </h1>
               <a 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, BarChart3, Map, MapPinned, Route, MapPin as MapPinIcon } from 'lucide-react';
+import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin } from 'lucide-react';
 
 interface Place {
   id: number;
@@ -15,15 +15,20 @@ interface Place {
   latitude?: number;
   longitude?: number;
   date_range?: string;
+  region?: string;
+  pinned_at?: string | null;
 }
 
-interface User {
-  email: string;
-  name: string;
-  image_url: string;
-  gender?: string;
-  age?: string;
-  nationality?: string;
+interface Theme {
+  id: number;
+  title: string;
+  description: string;
+  places: any[];
+  region: string;
+  user_id: string;
+  user_name: string;
+  user_image?: string;
+  like_count: number;
   created_at: string;
 }
 
@@ -34,7 +39,7 @@ interface AdminStats {
 }
 
 type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
-type ViewMode = 'spots' | 'users';
+type ViewMode = 'spots' | 'themes';
 
 export default function AdminPage() {
   const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
@@ -42,14 +47,20 @@ export default function AdminPage() {
   
   const [viewMode, setViewMode] = useState<ViewMode>('spots');
   const [places, setPlaces] = useState<Place[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [themes, setThemes] = useState<Theme[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [userPage, setUserPage] = useState(1);
   const [region, setRegion] = useState<Region>('성수');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<Place>>({});
+  const [editForm, setEditForm] = useState<Partial<Place> & { region?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
+  const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
+  const [themeEditForm, setThemeEditForm] = useState<{ title: string; description: string }>({ title: '', description: '' });
+  const [addingPlaceThemeId, setAddingPlaceThemeId] = useState<number | null>(null);
+  const [placeSearchTerm, setPlaceSearchTerm] = useState('');
+  const [placeSearchResults, setPlaceSearchResults] = useState<any[]>([]);
+  const [allPlacesCache, setAllPlacesCache] = useState<any[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -65,11 +76,11 @@ export default function AdminPage() {
       fetchAdminStats();
       if (viewMode === 'spots') {
         fetchPlaces();
-      } else if (viewMode === 'users') {
-        fetchUsers();
+      } else if (viewMode === 'themes') {
+        fetchThemes();
       }
     }
-  }, [user, region, viewMode, userPage]);
+  }, [user, region, viewMode]);
 
   const fetchAdminStats = async () => {
     const res = await fetch('/api-now/admin/stats');
@@ -79,12 +90,49 @@ export default function AdminPage() {
     }
   };
 
-  const fetchUsers = async () => {
-    const res = await fetch(`/api-now/admin/users?page=${userPage}&limit=25`);
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(data);
+  const fetchThemes = async () => {
+    const res = await fetch('/api-now/admin/themes');
+    if (res.ok) setThemes(await res.json());
+  };
+
+  const openAddPlace = async (themeId: number) => {
+    setAddingPlaceThemeId(themeId);
+    setPlaceSearchTerm('');
+    setPlaceSearchResults([]);
+    if (allPlacesCache.length === 0) {
+      const res = await fetch('/api-now/places');
+      if (res.ok) setAllPlacesCache(await res.json());
     }
+  };
+
+  const handlePlaceSearch = (term: string) => {
+    setPlaceSearchTerm(term);
+    if (!term.trim()) { setPlaceSearchResults([]); return; }
+    setPlaceSearchResults(
+      allPlacesCache.filter(p => p.title?.includes(term) || p.location?.includes(term)).slice(0, 8)
+    );
+  };
+
+  const addPlaceToTheme = async (theme: Theme, place: any) => {
+    const newPlace: any = {
+      title: place.title,
+      location: place.location || '',
+      content: place.content || '',
+    };
+    if (place.image_url) newPlace.image_url = place.image_url;
+    if (place.video_url) newPlace.video_url = place.video_url;
+    if (place.date_range) newPlace.date_range = place.date_range;
+
+    const updatedPlaces = [...(Array.isArray(theme.places) ? theme.places : []), newPlace];
+    await fetch(`/api-now/admin/themes/${theme.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ places: updatedPlaces }),
+    });
+    setAddingPlaceThemeId(null);
+    setPlaceSearchTerm('');
+    setPlaceSearchResults([]);
+    fetchThemes();
   };
 
   const fetchPlaces = async () => {
@@ -97,7 +145,7 @@ export default function AdminPage() {
 
   const handleEdit = (place: Place) => {
     setEditingId(place.id);
-    setEditForm(place);
+    setEditForm({ ...place, pinned: !!place.pinned_at } as any);
   };
 
   const handleUpdate = async () => {
@@ -124,7 +172,7 @@ export default function AdminPage() {
       const res = await fetch(`/api-now/places`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editForm, region }),
+        body: JSON.stringify({ ...editForm, region: editForm.region || region }),
       });
       if (res.ok) {
         setIsCreating(false);
@@ -149,23 +197,6 @@ export default function AdminPage() {
     if (res.ok) fetchPlaces();
   };
 
-  const handleDeleteUser = async (email: string) => {
-    if (!confirm('해당 사용자를 정말 삭제하시겠습니까? 관련 데이터는 유지되거나 고아가 될 수 있습니다.')) return;
-    try {
-      const res = await fetch(`/api-now/admin/users/${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        alert('사용자가 삭제되었습니다.');
-        fetchUsers();
-      } else {
-        alert('사용자 삭제에 실패했습니다.');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('오류가 발생했습니다.');
-    }
-  };
 
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
   if (user?.email !== 'nemonecoltd@gmail.com') return null;
@@ -204,12 +235,12 @@ export default function AdminPage() {
 
               <div className="flex items-center">
                 <button
-                  onClick={() => setViewMode('users')}
+                  onClick={() => setViewMode('themes')}
                   className={`flex items-center gap-1.5 text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
-                    viewMode === 'users' ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
+                    viewMode === 'themes' ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                   }`}
                 >
-                  <Users size={16} /> 사용자
+                  <Palette size={16} /> 테마
                 </button>
               </div>
             </div>
@@ -307,21 +338,33 @@ export default function AdminPage() {
                           className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">카테고리 (Region)</label>
+                          <select
+                            value={editForm.region || region}
+                            onChange={e => setEditForm({...editForm, region: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          >
+                            {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map(r => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
-                          <input 
-                            type="text" 
-                            value={editForm.image_url || ''} 
+                          <input
+                            type="text"
+                            value={editForm.image_url || ''}
                             onChange={e => setEditForm({...editForm, image_url: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
-                          <input 
-                            type="text" 
-                            value={editForm.date_range || ''} 
+                          <input
+                            type="text"
+                            value={editForm.date_range || ''}
                             onChange={e => setEditForm({...editForm, date_range: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
@@ -329,8 +372,8 @@ export default function AdminPage() {
                       </div>
                       <div className="flex justify-end gap-2 pt-2">
                         <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-zinc-400 font-bold text-sm">취소</button>
-                        <button 
-                          onClick={handleCreate} 
+                        <button
+                          onClick={handleCreate}
                           disabled={isLoading}
                           className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
                         >
@@ -383,35 +426,60 @@ export default function AdminPage() {
                           className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">카테고리 (Region)</label>
+                          <select
+                            value={editForm.region || region}
+                            onChange={e => setEditForm({...editForm, region: e.target.value})}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          >
+                            {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map(r => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
-                          <input 
-                            type="text" 
-                            value={editForm.image_url || ''} 
+                          <input
+                            type="text"
+                            value={editForm.image_url || ''}
                             onChange={e => setEditForm({...editForm, image_url: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
-                          <input 
-                            type="text" 
-                            value={editForm.date_range || ''} 
+                          <input
+                            type="text"
+                            value={editForm.date_range || ''}
                             onChange={e => setEditForm({...editForm, date_range: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                       </div>
-                      <div className="flex justify-end gap-2 pt-2">
-                        <button onClick={() => setEditingId(null)} className="px-4 py-2 text-zinc-400 font-bold text-sm">취소</button>
-                        <button 
-                          onClick={handleUpdate} 
-                          disabled={isLoading}
-                          className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
-                        >
-                          <Save size={16} /> {isLoading ? '저장 중...' : '보정 내용 저장'}
-                        </button>
+                      <div className="flex items-center justify-between pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!(editForm as any).pinned}
+                            onChange={e => setEditForm({...editForm, pinned: e.target.checked} as any)}
+                            className="w-4 h-4 accent-emerald-500"
+                          />
+                          <span className="text-xs font-bold text-zinc-600 flex items-center gap-1">
+                            <Pin size={12} /> 최상단 고정
+                          </span>
+                        </label>
+                        <div className="flex gap-2">
+                          <button onClick={() => setEditingId(null)} className="px-4 py-2 text-zinc-400 font-bold text-sm">취소</button>
+                          <button
+                            onClick={handleUpdate}
+                            disabled={isLoading}
+                            className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
+                          >
+                            <Save size={16} /> {isLoading ? '저장 중...' : '보정 내용 저장'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -419,6 +487,11 @@ export default function AdminPage() {
                       <div className="flex items-center gap-3">
                         <h3 className="text-lg font-bold text-zinc-900">{place.title}</h3>
                         <span className="text-[10px] font-medium text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {place.id}</span>
+                        {place.pinned_at && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                            <Pin size={10} /> 고정
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-emerald-600 font-bold">
                         <MapPin size={12} /> {place.location || '위치 정보 없음'}
@@ -442,79 +515,190 @@ export default function AdminPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-zinc-900 mb-6 flex items-center gap-2">
-              <Users size={20} className="text-emerald-500" /> 회원가입 유저 리스트
-            </h3>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-[10px] text-zinc-400 uppercase tracking-widest bg-zinc-50">
-                  <tr>
-                    <th className="px-4 py-3 rounded-l-xl font-bold">유저명</th>
-                    <th className="px-4 py-3 font-bold">이메일</th>
-                    <th className="px-4 py-3 font-bold">성별</th>
-                    <th className="px-4 py-3 font-bold">연령대</th>
-                    <th className="px-4 py-3 font-bold">국적</th>
-                    <th className="px-4 py-3 rounded-r-xl font-bold text-center">관리</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {users.map((user) => (
-                    <tr key={user.email} className="hover:bg-zinc-50 transition-colors">
-                      <td className="px-4 py-4 font-bold text-zinc-900 flex items-center gap-3">
-                        {user.image_url ? (
-                          <img src={user.image_url} alt="" className="w-8 h-8 rounded-full bg-zinc-100 object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold">
-                            {user.name?.[0] || 'U'}
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
+                <Palette size={20} className="text-emerald-500" /> 전체 테마 ({themes.length}개)
+              </h3>
+            </div>
+            {themes.length === 0 && (
+              <div className="bg-white border border-zinc-200 rounded-3xl p-12 text-center text-zinc-400 font-medium">
+                등록된 테마가 없습니다.
+              </div>
+            )}
+            {themes.map((theme) => {
+              const places = Array.isArray(theme.places) ? theme.places : [];
+              const isExpanded = expandedThemeId === theme.id;
+              const isEditing = editingThemeId === theme.id;
+              return (
+                <div key={theme.id} className="bg-white border border-zinc-200 rounded-3xl shadow-sm overflow-hidden">
+                  <div className="p-5 flex items-start gap-4">
+                    {theme.user_image ? (
+                      <img src={theme.user_image} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold flex-shrink-0">
+                        {theme.user_name?.[0] || 'U'}
+                      </div>
+                    )}
+                    <div className="flex-grow min-w-0">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={themeEditForm.title}
+                            onChange={e => setThemeEditForm(f => ({ ...f, title: e.target.value }))}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none focus:border-emerald-500"
+                          />
+                          <textarea
+                            rows={2}
+                            value={themeEditForm.description}
+                            onChange={e => setThemeEditForm(f => ({ ...f, description: e.target.value }))}
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                setIsLoading(true);
+                                const res = await fetch(`/api-now/admin/themes/${theme.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify(themeEditForm),
+                                });
+                                if (res.ok) { setEditingThemeId(null); fetchThemes(); }
+                                setIsLoading(false);
+                              }}
+                              disabled={isLoading}
+                              className="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50"
+                            >
+                              <Save size={12} /> 저장
+                            </button>
+                            <button onClick={() => setEditingThemeId(null)} className="px-4 py-1.5 text-zinc-400 font-bold text-xs">취소</button>
                           </div>
-                        )}
-                        {user.name || '이름 없음'}
-                      </td>
-                      <td className="px-4 py-4 text-zinc-500">{user.email}</td>
-                      <td className="px-4 py-4 text-zinc-500">{user.gender === 'male' ? '남성' : user.gender === 'female' ? '여성' : user.gender === 'other' ? '기타' : '-'}</td>
-                      <td className="px-4 py-4 text-zinc-500">{user.age === '10s' ? '10대' : user.age === '20s' ? '20대' : user.age === '30s' ? '30대' : user.age === '40s' ? '40대 이상' : '-'}</td>
-                      <td className="px-4 py-4 text-zinc-500">{user.nationality || '-'}</td>
-                      <td className="px-4 py-4 text-center">
-                        <button 
-                          onClick={() => handleDeleteUser(user.email)} 
-                          className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-block"
-                          title="사용자 삭제"
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-zinc-900 text-sm">{theme.title}</h4>
+                            <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {theme.id}</span>
+                            <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">{theme.region}</span>
+                            <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">❤️ {theme.like_count}</span>
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-0.5">{theme.description}</p>
+                          <p className="text-[10px] text-zinc-400 mt-1">작성자: {theme.user_name} · {places.length}개 장소 · {new Date(theme.created_at).toLocaleDateString('ko-KR')}</p>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {!isEditing && (
+                        <button
+                          onClick={() => { setEditingThemeId(theme.id); setThemeEditForm({ title: theme.title, description: theme.description }); }}
+                          className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="수정"
                         >
-                          <Trash2 size={16} />
+                          <Edit size={15} />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {users.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-zinc-400 font-medium">유저 데이터가 없습니다.</td>
-                    </tr>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`"${theme.title}" 테마를 삭제하시겠습니까?`)) return;
+                          await fetch(`/api-now/admin/themes/${theme.id}`, { method: 'DELETE' });
+                          fetchThemes();
+                        }}
+                        className="p-2 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="삭제"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => setExpandedThemeId(isExpanded ? null : theme.id)}
+                        className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50 rounded-lg transition-colors"
+                        title="장소 목록 보기"
+                      >
+                        {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                      </button>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="border-t border-zinc-100 px-5 py-4 bg-zinc-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">포함 장소 ({places.length}개)</p>
+                        <button
+                          onClick={() => addingPlaceThemeId === theme.id ? setAddingPlaceThemeId(null) : openAddPlace(theme.id)}
+                          className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg hover:bg-emerald-100 transition-colors"
+                        >
+                          <Plus size={12} /> 장소 추가
+                        </button>
+                      </div>
+
+                      {addingPlaceThemeId === theme.id && (
+                        <div className="mb-3 bg-white rounded-xl border border-zinc-200 p-3 space-y-2">
+                          <input
+                            type="text"
+                            value={placeSearchTerm}
+                            onChange={e => handlePlaceSearch(e.target.value)}
+                            placeholder="장소명 또는 주소 검색..."
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            autoFocus
+                          />
+                          {placeSearchResults.length > 0 && (
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              {placeSearchResults.map((p: any) => (
+                                <button
+                                  key={p.id}
+                                  onClick={() => addPlaceToTheme(theme, p)}
+                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-emerald-50 transition-colors text-left"
+                                >
+                                  {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-zinc-800 truncate">{p.title}</p>
+                                    {p.location && <p className="text-xs text-zinc-400 truncate">{p.location}</p>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {placeSearchTerm && placeSearchResults.length === 0 && (
+                            <p className="text-xs text-zinc-400 text-center py-2">검색 결과 없음</p>
+                          )}
+                        </div>
+                      )}
+
+                      {places.length === 0 ? (
+                        <p className="text-xs text-zinc-400 text-center py-2">장소 없음</p>
+                      ) : (
+                        <div className="grid gap-2">
+                          {places.map((p: any, i: number) => (
+                            <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-zinc-100">
+                              {p.image_url && <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
+                              <div className="flex-grow min-w-0">
+                                <p className="text-sm font-bold text-zinc-800">{p.title}</p>
+                                {p.location && <p className="text-xs text-zinc-400">{p.location}</p>}
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`"${p.title}" 장소를 이 테마에서 삭제하시겠습니까?`)) return;
+                                  const newPlaces = places.filter((_: any, idx: number) => idx !== i);
+                                  await fetch(`/api-now/admin/themes/${theme.id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ places: newPlaces }),
+                                  });
+                                  fetchThemes();
+                                }}
+                                className="p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                                title="이 장소 삭제"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="flex justify-center items-center gap-4 mt-8">
-              <button 
-                onClick={() => setUserPage(p => Math.max(1, p - 1))}
-                disabled={userPage === 1}
-                className="px-4 py-2 text-sm font-bold text-zinc-600 bg-zinc-100 rounded-xl hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-zinc-100 transition-colors"
-              >
-                이전 페이지
-              </button>
-              <span className="text-sm font-bold text-zinc-900">
-                {userPage} 페이지
-              </span>
-              <button 
-                onClick={() => setUserPage(p => p + 1)}
-                disabled={users.length < 25}
-                className="px-4 py-2 text-sm font-bold text-zinc-600 bg-zinc-100 rounded-xl hover:bg-zinc-200 disabled:opacity-50 disabled:hover:bg-zinc-100 transition-colors"
-              >
-                다음 페이지
-              </button>
-            </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

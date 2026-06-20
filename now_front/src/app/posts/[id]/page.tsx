@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft, MapPin, Calendar, Clock, Share2, Globe, Video } from 'lucide-react';
+import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
 
 interface Place {
@@ -15,6 +16,7 @@ interface Place {
   image_url: string;
   video_url?: string;
   date_range?: string;
+  end_date?: string;
   latitude?: number;
   longitude?: number;
   region?: string;
@@ -48,9 +50,16 @@ function PostDetail() {
   const displayTitle = (lang === 'en' && place.title_en) ? place.title_en : place.title;
   const displayContent = (lang === 'en' && place.content_en) ? place.content_en : place.content;
 
-  // date_range 형식: "2025-06-01 ~ 2025-06-30"
+  // date_range 우선, 없으면 start_date/end_date로 조합
+  const displayDateRange = (() => {
+    if (place.date_range) return place.date_range;
+    if (place.end_date) return `~ ${place.end_date}`;
+    return null;
+  })();
+
   const [startDate, endDate] = (() => {
-    const parts = (place.date_range || '').split('~').map(s => s.trim());
+    const src = displayDateRange || '';
+    const parts = src.split('~').map(s => s.trim());
     return [parts[0] || new Date().toISOString().split('T')[0], parts[1] || undefined];
   })();
 
@@ -129,7 +138,7 @@ function PostDetail() {
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
               {lang === 'en' ? 'Duration' : '운영 기간'}
             </p>
-            <p className="text-xs font-bold text-zinc-900">{place.date_range || (lang === 'en' ? 'Open Daily' : '상시 운영')}</p>
+            <p className="text-xs font-bold text-zinc-900">{displayDateRange || (lang === 'en' ? 'Open Daily' : '상시 운영')}</p>
           </div>
           <div className="flex-1 bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm">
             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
@@ -146,10 +155,23 @@ function PostDetail() {
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
             {lang === 'en' ? 'Details' : '상세 정보'}
           </h2>
-          <p className="text-zinc-600 leading-relaxed text-sm font-medium">
-            {displayContent}
-          </p>
+          <div className="text-zinc-600 leading-relaxed text-sm font-medium space-y-2">
+            {displayContent.split('\n').map((line, i) =>
+              line.match(/https?:\/\/\S+/) ? (
+                <p key={i}>
+                  <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">
+                    바로가기: 링크 열기
+                  </a>
+                </p>
+              ) : (
+                <p key={i}>{line || ' '}</p>
+              )
+            )}
+          </div>
         </div>
+
+        {/* 인아티클 광고 — 상세정보와 위치안내 사이 */}
+        <InArticleAd />
 
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">

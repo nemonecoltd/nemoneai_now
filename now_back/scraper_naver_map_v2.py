@@ -1,15 +1,17 @@
 """
 네이버 지도 팝업스토어 검색 스크래퍼 v2.
 DOM 파싱 대신 브라우저가 호출하는 allSearch API 응답을 직접 가로채서 사용.
-1페이지(최대 20개) 수집.
 """
 import asyncio
 from playwright.async_api import async_playwright
+
+_DETAIL_CONCURRENCY = 1  # 순차 방문 — 차단 방지
 
 
 async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list[dict]:
     print(f"🗺️ [네이버지도] '{query}' 검색 시작")
     raw_items: list[dict] = []
+    seen_ids: set[str] = set()
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -28,10 +30,13 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
                 try:
                     data = await response.json()
                     places = (data.get("result", {}).get("place") or {}).get("list", [])
-                    if places:
-                        raw_items.extend(places)
+                    new_items = [p for p in places if str(p.get("id", "")) not in seen_ids]
+                    for item in new_items:
+                        seen_ids.add(str(item.get("id", "")))
+                        raw_items.append(item)
+                    if new_items:
                         total = (data["result"]["place"] or {}).get("totalCount", "?")
-                        print(f"  ✅ {len(places)}개 수집 (서버 전체: {total}개)")
+                        print(f"  ✅ +{len(new_items)}개 수집 (누적 {len(raw_items)}개 / 전체 {total}개)")
                 except Exception as e:
                     print(f"  ⚠️ 응답 파싱 실패: {e}")
 
@@ -44,6 +49,20 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
             timeout=30000,
         )
         await page.wait_for_timeout(4000)
+
+        # 마우스 휠로 결과 패널 스크롤 (최대 20회 — 20개씩 × 20 = 400개)
+        for scroll_attempt in range(20):
+            prev_count = len(raw_items)
+            # 좌측 결과 패널 위치(x=300)에서 마우스 휠 스크롤
+            await page.mouse.move(300, 400)
+            await page.mouse.wheel(0, 3000)
+            await page.wait_for_timeout(2500)
+            if len(raw_items) == prev_count:
+                print(f"  ℹ️ 스크롤 {scroll_attempt + 1}회 후 추가 결과 없음, 완료")
+                break
+            print(f"  🔄 스크롤 {scroll_attempt + 1}회: 누적 {len(raw_items)}개")
+
+        await page.close()
         await browser.close()
 
     if not raw_items:
@@ -55,14 +74,16 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
         name = item.get("name", "").strip()
         if not name:
             continue
+        place_id = str(item.get("id", f"nmap_{hash(name) % 100000}"))
+        intro = ""
         results.append({
-            "naver_place_id": item.get("id", f"nmap_{hash(name) % 100000}"),
+            "naver_place_id": place_id,
             "title": name,
             "title_en": item.get("nameEn") or name,
             "location": item.get("roadAddress") or item.get("address") or "성수동",
             "latitude": _safe_float(item.get("y")),
             "longitude": _safe_float(item.get("x")),
-            "content": _build_content(item),
+            "content": _build_content(item, intro),
             "content_en": "",
             "video_url": "",
             "image_url": item.get("thumUrl") or "",
@@ -79,22 +100,13 @@ def _safe_float(val):
         return None
 
 
-def _build_content(item: dict) -> str:
-    parts = []
-    if item.get("category"):
-        parts.append(f"카테고리: {item['category']}")
-    if item.get("roadAddress") or item.get("address"):
-        parts.append(f"주소: {item.get('roadAddress') or item.get('address')}")
-    if item.get("businessStatus"):
-        status = item["businessStatus"].get("status", {})
-        if status.get("text"):
-            parts.append(f"영업: {status['text']}")
-    if item.get("tel"):
-        parts.append(f"전화: {item['tel']}")
-    return " | ".join(parts) if parts else name if (name := item.get("name", "")) else ""
+def _build_content(item: dict, intro: str = "") -> str:
+    return intro or ""
 
 
 if __name__ == "__main__":
     results = asyncio.run(scrape_naver_map_popups())
     for r in results:
         print(f"  - {r['title']} / {r['location']}")
+        if r["content"]:
+            print(f"    {r['content'][:120]}")

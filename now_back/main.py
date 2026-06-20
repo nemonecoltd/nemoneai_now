@@ -61,6 +61,8 @@ class PlaceUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     date_range: Optional[str] = None
+    region: Optional[str] = None
+    pinned: Optional[bool] = None
 
 class Question(BaseModel):
     user_query: str
@@ -313,6 +315,49 @@ async def delete_theme(theme_id: int, user_id: str):
         conn.commit()
         return {"status": "success"}
 
+@app.get("/admin/themes")
+async def admin_get_all_themes():
+    """어드민 전용 — 전체 테마 조회 ([퍼감] 제외)"""
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT t.*, COUNT(tl.id) as like_count
+            FROM themes t
+            LEFT JOIN theme_likes tl ON t.id = tl.theme_id
+            WHERE t.title NOT LIKE '[퍼감]%'
+            GROUP BY t.id
+            ORDER BY t.created_at DESC
+        """)).fetchall()
+        return [dict(row._mapping) for row in rows]
+
+@app.put("/admin/themes/{theme_id}")
+async def admin_update_theme(theme_id: int, body: dict):
+    """어드민 전용 — 소유자 체크 없이 테마 수정 (title/description/places)"""
+    allowed = {}
+    for k in ("title", "description"):
+        if k in body:
+            allowed[k] = body[k]
+    if "places" in body:
+        allowed["places"] = json.dumps(body["places"], ensure_ascii=False)
+    if not allowed:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    set_clause = ", ".join([
+        f"{k} = cast(:{k} as jsonb)" if k == "places" else f"{k} = :{k}"
+        for k in allowed
+    ])
+    with engine.connect() as conn:
+        conn.execute(text(f"UPDATE themes SET {set_clause} WHERE id = :id"), {**allowed, "id": theme_id})
+        conn.commit()
+    return {"status": "success"}
+
+@app.delete("/admin/themes/{theme_id}")
+async def admin_delete_theme(theme_id: int):
+    """어드민 전용 — 소유자 체크 없이 테마 삭제"""
+    with engine.connect() as conn:
+        conn.execute(text("DELETE FROM theme_likes WHERE theme_id = :id"), {"id": theme_id})
+        conn.execute(text("DELETE FROM themes WHERE id = :id"), {"id": theme_id})
+        conn.commit()
+    return {"status": "success"}
+
 @app.post("/themes/like/toggle")
 async def toggle_theme_like(req: ThemeLikeToggle):
     """테마 좋아요 토글"""
@@ -525,8 +570,9 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
     where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
-        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region "
-        f"FROM seongsu_places {where_clause} ORDER BY created_at DESC {limit_clause}"
+        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at "
+        f"FROM seongsu_places {where_clause} "
+        f"ORDER BY pinned_at DESC NULLS LAST, CASE WHEN image_url IS NULL OR image_url = '' THEN 1 ELSE 0 END, created_at DESC {limit_clause}"
     )
     with engine.connect() as conn:
         params = {"offset": offset}
@@ -539,7 +585,7 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, latitude, longitude, region FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
@@ -577,7 +623,18 @@ async def update_place(place_id: int, place: PlaceUpdate):
         update_data = place.dict(exclude_unset=True)
         if "content" in update_data:
             update_data["embedding"] = f"[{','.join(map(str, get_embedding(update_data['content'])))}]"
-        set_clause = ", ".join([f"{k} = :{k}" for k in update_data.keys()])
+        # pinned bool → pinned_at timestamp
+        if "pinned" in update_data:
+            update_data["pinned_at"] = "NOW()" if update_data.pop("pinned") else None
+        set_parts = []
+        for k in update_data.keys():
+            if k == "pinned_at" and update_data[k] == "NOW()":
+                set_parts.append("pinned_at = NOW()")
+            else:
+                set_parts.append(f"{k} = :{k}")
+        if update_data.get("pinned_at") == "NOW()":
+            del update_data["pinned_at"]
+        set_clause = ", ".join(set_parts)
         query = text(f"UPDATE seongsu_places SET {set_clause} WHERE id = :place_id")
         with engine.connect() as conn:
             conn.execute(query, {**update_data, "place_id": place_id})
@@ -659,15 +716,32 @@ async def reply_feedback(feedback_id: int, req: FeedbackReply):
 
 @app.get("/admin/stats")
 async def get_admin_stats():
-    """관리자용 통계 (총 코스수, 총 스팟수)"""
+    """관리자용 통계 (총 유저수/코스수/스팟수)"""
     with engine.connect() as conn:
         course_count = conn.execute(text("SELECT COUNT(*) FROM saved_courses")).scalar()
         place_count = conn.execute(text("SELECT COUNT(*) FROM seongsu_places")).scalar()
-        return {
-            "total_users": 0, # Supabase 연동 전까지 0으로 유지
-            "total_courses": course_count or 0,
-            "total_places": place_count or 0
-        }
+
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    total_users = 0
+    if supabase_url and service_key:
+        try:
+            import httpx
+            res = httpx.get(
+                f"{supabase_url}/auth/v1/admin/users?page=1&per_page=1000",
+                headers={"Authorization": f"Bearer {service_key}", "apikey": service_key},
+                timeout=5,
+            )
+            if res.status_code == 200:
+                total_users = len(res.json().get("users", []))
+        except Exception:
+            pass
+
+    return {
+        "total_users": total_users,
+        "total_courses": course_count or 0,
+        "total_places": place_count or 0,
+    }
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
