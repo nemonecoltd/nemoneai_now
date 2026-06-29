@@ -30,13 +30,14 @@ async def run_concert_collection():
 
                 upsert_query = text("""
                     INSERT INTO seongsu_places
-                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, region)
-                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :region)
+                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, region, link_url)
+                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :region, :link_url)
                     ON CONFLICT (title)
                     DO UPDATE SET
                         content = EXCLUDED.content,
                         location = EXCLUDED.location,
                         image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
+                        link_url = COALESCE(EXCLUDED.link_url, seongsu_places.link_url),
                         region = EXCLUDED.region
                 """)
 
@@ -54,6 +55,7 @@ async def run_concert_collection():
                     "embedding": f"[{','.join(map(str, embedding))}]",
                     "end_date": date.today() + timedelta(days=30),
                     "region": "공연",
+                    "link_url": item.get("detail_url") or None,
                 })
                 conn.commit()
             except Exception as e:

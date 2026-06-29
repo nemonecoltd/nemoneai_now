@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -52,7 +52,7 @@ const dict = {
   },
   en: {
     title: 'NOW HERE',
-    desc: 'AI-powered local guide for your perfect Seoul experience',
+    desc: 'Your local guide for the perfect 3 hours, right here right now',
     totalRec: 'Live Integrated Ranking',
     regionGuide: 'Live {region} Guide',
     navRec: 'Ranking',
@@ -69,14 +69,18 @@ const dict = {
 function Home() {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>('list');
-  const [region, setRegion] = useState<Region>('성수');
+  const mainRef = useRef<HTMLElement>(null);
+  const [activeTab, setActiveTabState] = useState<Tab>('list');
+  const [region, setRegionState] = useState<Region>('성수');
+  const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
+  const setRegion = (r: Region) => { setRegionState(r); scrollToTop(); };
+  const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const r = params.get('region') as Region;
     const t = params.get('tab') as Tab;
-    if (r) setRegion(r);
+    if (r) setRegionState(r);
     if (t) setActiveTab(t);
   }, []);
   const [lang, setLang] = useState<Lang>('ko');
@@ -196,7 +200,7 @@ function Home() {
               {/* 메인 지역 탭 */}
               <div className="flex items-center gap-4 mb-1">
                 {(['성수', '홍대', '공연', '축제'] as const)
-                  .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour'))
+                  .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
                   .map((r) => {
                     const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
                     const isFestivalActive = r === '축제' && region === '축제';
@@ -262,7 +266,7 @@ function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
+      <main ref={mainRef} className="flex-1 overflow-y-auto">
         <AnimatePresence mode="wait">
           {activeTab === 'rec' && (
             <motion.div key="rec" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
@@ -302,11 +306,33 @@ function Home() {
         </AnimatePresence>
 
         {/* Global Footer */}
-        <footer className="mt-10 mb-20 px-6 flex items-center justify-between border-t border-zinc-100 pt-6">
-          <span className="text-[10px] font-bold text-zinc-400 tracking-tight">{t.footer}</span>
-          <Link href="/feedback" className="flex items-center gap-1.5 text-[11px] font-black text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition-colors shadow-sm">
-            {t.feedback} <MessageSquare size={14} className="fill-emerald-100" />
-          </Link>
+        <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
+              {lang === 'en' ? 'NOW HERE' : '지금여기'}
+            </span>
+            <span className="text-[9px] font-bold text-zinc-300 tracking-widest uppercase">
+              © NEMONE INC. ALL RIGHTS RESERVED.
+            </span>
+          </div>
+          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+            {[
+              { name: 'ABOUT', href: 'https://home.nemoneai.com' },
+              { name: 'YOUTUBE', href: 'https://www.youtube.com/@MatMatch' },
+              { name: '네모네AIM', href: 'https://nemoneai.com' },
+              { name: 'FEEDBACK', href: '/feedback' },
+            ].map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                target={item.href.startsWith('http') ? '_blank' : undefined}
+                rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                className="text-[9px] font-black text-zinc-400 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </nav>
         </footer>
       </main>
 

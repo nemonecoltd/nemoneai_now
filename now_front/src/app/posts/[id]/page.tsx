@@ -6,6 +6,11 @@ import { ChevronLeft, MapPin, Calendar, Clock, Share2, Globe, Video } from 'luci
 import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
 
+interface BlogReview {
+  title: string;
+  url: string;
+}
+
 interface Place {
   id: number;
   title: string;
@@ -20,12 +25,17 @@ interface Place {
   latitude?: number;
   longitude?: number;
   region?: string;
+  naver_place_id?: string;
+  blog_reviews?: BlogReview[] | string | null;
+  link_url?: string | null;
 }
 
 function PostDetail() {
   const { id } = useParams();
   const router = useRouter();
   const [place, setPlace] = useState<Place | null>(null);
+  const [suggestions, setSuggestions] = useState<Place[]>([]);
+  const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState('ko');
 
   useEffect(() => {
@@ -35,17 +45,77 @@ function PostDetail() {
 
   useEffect(() => {
     const fetchPlace = async () => {
-      const res = await fetch(`/api-now/places?t=${Date.now()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const found = data.find((p: Place) => p.id === Number(id));
-        setPlace(found);
+      try {
+        const res = await fetch(`/api-now/places/${id}?t=${Date.now()}`);
+        if (res.ok) {
+          const found: Place = await res.json();
+          setPlace(found || null);
+        }
+        const allRes = await fetch(`/api-now/places?t=${Date.now()}`);
+        if (allRes.ok) {
+          const allData: Place[] = await allRes.json();
+          const pool = allData.filter((p) => p.id !== Number(id) && p.image_url && (p.region === '성수' || p.region === '홍대'));
+          setSuggestions(pool.sort(() => Math.random() - 0.5).slice(0, 3));
+        }
+      } finally {
+        setLoading(false);
       }
     };
     fetchPlace();
   }, [id]);
 
-  if (!place) return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center text-zinc-400 text-sm">Loading...</div>;
+
+  if (!place) return (
+    <div className="min-h-screen bg-zinc-50 max-w-md mx-auto px-6 py-12 flex flex-col gap-8">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center text-3xl">🏁</div>
+        <div className="space-y-1">
+          <p className="text-lg font-bold text-zinc-800">운영이 종료됐습니다</p>
+          <p className="text-sm text-zinc-400">해당 팝업·행사는 운영 기간이 지났어요.</p>
+        </div>
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="space-y-4">
+          <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">지금 가볼 만한 핫플</p>
+          <div className="flex flex-col gap-3">
+            {suggestions.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => router.push(`/posts/${s.id}${s.region ? `?region=${encodeURIComponent(s.region)}` : ''}`)}
+                className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm text-left hover:shadow-md transition-shadow"
+              >
+                <img
+                  src={s.image_url}
+                  alt={s.title}
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/sug-${s.id}/200/200`; }}
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-zinc-900 truncate">{s.title}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5 truncate">{s.location}</p>
+                  {(s.date_range || s.end_date) && (
+                    <p className="text-xs text-emerald-600 font-bold mt-1">
+                      {s.date_range || `~ ${s.end_date}`}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => router.push('/')}
+        className="w-full py-3 bg-zinc-900 text-white text-sm font-bold rounded-2xl"
+      >
+        전체 핫플레이스 보기
+      </button>
+    </div>
+  );
 
   const displayTitle = (lang === 'en' && place.title_en) ? place.title_en : place.title;
   const displayContent = (lang === 'en' && place.content_en) ? place.content_en : place.content;
@@ -57,11 +127,30 @@ function PostDetail() {
     return null;
   })();
 
+  const toISO = (s: string): string => {
+    const clean = s.replace(/\s/g, '').replace(/\.+$/, '');
+    // YYYY.MM.DD 또는 YYYY-MM-DD
+    const full = clean.match(/^(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})\.?$/);
+    if (full) return `${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`;
+    // MM.DD (연도 없음 → 현재 연도)
+    const short = clean.match(/^(\d{1,2})[.\-](\d{1,2})\.?$/);
+    if (short) return `${new Date().getFullYear()}-${short[1].padStart(2,'0')}-${short[2].padStart(2,'0')}`;
+    return new Date().toISOString().split('T')[0];
+  };
+
   const [startDate, endDate] = (() => {
     const src = displayDateRange || '';
     const parts = src.split('~').map(s => s.trim());
-    return [parts[0] || new Date().toISOString().split('T')[0], parts[1] || undefined];
+    const start = parts[0] ? toISO(parts[0]) : new Date().toISOString().split('T')[0];
+    const end = parts[1] ? toISO(parts[1]) : undefined;
+    return [start, end];
   })();
+
+  const isPerformanceRegion = place.region === '공연' || place.region === '축제' || place.region === '제주';
+  const hasValidNaverId = place.naver_place_id &&
+    !place.naver_place_id.startsWith('raw_') &&
+    !place.naver_place_id.startsWith('seoul_') &&
+    !isPerformanceRegion;
 
   // SEO: JSON-LD Structured Data
   const jsonLd = {
@@ -93,7 +182,7 @@ function PostDetail() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      
+
       {/* Hero Image */}
       <div className="relative h-[45vh] overflow-hidden bg-zinc-200">
         <img
@@ -106,7 +195,7 @@ function PostDetail() {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
-        
+
         {/* Top Buttons */}
         <div className="absolute top-8 left-6 right-6 flex justify-between">
           <button onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}`)} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/30">
@@ -156,7 +245,8 @@ function PostDetail() {
             {lang === 'en' ? 'Details' : '상세 정보'}
           </h2>
           <div className="text-zinc-600 leading-relaxed text-sm font-medium space-y-2">
-            {displayContent.split('\n').map((line, i) =>
+            {displayContent.replace(/\|/g, '\n').split('\n').map(l => l.trim()).filter(l => l.length > 0).map((line, i) =>
+              line.match(/map\.naver\.com/) ? null :
               line.match(/https?:\/\/\S+/) ? (
                 <p key={i}>
                   <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">
@@ -168,6 +258,69 @@ function PostDetail() {
               )
             )}
           </div>
+
+          {/* 블로그 후기 리스트 */}
+          {Array.isArray(place.blog_reviews) && place.blog_reviews.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">블로그 후기</p>
+              <div className="flex flex-col gap-2">
+                {(place.blog_reviews as BlogReview[]).map((r, i) => (
+                  <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 shadow-sm hover:border-emerald-200 transition-all no-underline group">
+                    <span className="text-xs font-black text-zinc-300 w-4 flex-shrink-0">{i + 1}</span>
+                    <span className="text-xs font-bold text-zinc-700 group-hover:text-emerald-600 flex-grow leading-snug line-clamp-2">{r.title}</span>
+                    <span className="text-zinc-300 flex-shrink-0 group-hover:text-emerald-500">›</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 네이버 지도 카드 */}
+          {hasValidNaverId && (
+            <a
+              href={`https://map.naver.com/p/entry/place/${place.naver_place_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
+              <img
+                src={place.image_url || `https://picsum.photos/seed/naver-${place.id}/200/200`}
+                alt={displayTitle}
+                className="w-20 h-20 object-cover flex-shrink-0"
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/naver-${place.id}/200/200`; }}
+              />
+              <div className="flex items-center gap-2 flex-1 pr-4">
+                <span className="text-base font-black text-[#03C75A]">N</span>
+                <span className="text-sm font-bold text-zinc-800">네이버지도에서 보기</span>
+                <span className="ml-auto text-zinc-300 text-lg">›</span>
+              </div>
+            </a>
+          )}
+
+          {/* 공연·축제 관련 링크 */}
+          {isPerformanceRegion && place.link_url && (
+            <a
+              href={place.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
+              <img
+                src={place.image_url || `https://picsum.photos/seed/link-${place.id}/200/200`}
+                alt={displayTitle}
+                className="w-20 h-20 object-cover flex-shrink-0"
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/link-${place.id}/200/200`; }}
+              />
+              <div className="flex items-center gap-2 flex-1 pr-4">
+                <Globe size={16} className="text-emerald-500 flex-shrink-0" />
+                <span className="text-sm font-bold text-zinc-800">공식 페이지 바로가기</span>
+                <span className="ml-auto text-zinc-300 text-lg">›</span>
+              </div>
+            </a>
+          )}
         </div>
 
         {/* 인아티클 광고 — 상세정보와 위치안내 사이 */}

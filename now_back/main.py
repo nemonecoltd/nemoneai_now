@@ -7,12 +7,14 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import engine, cleanup_expired_data
+from image_storage import rehost_image, delete_image, upload_bytes, get_storage_usage
 from gemini_service import get_embedding, generate_answer
 from apscheduler.schedulers.background import BackgroundScheduler
 import uvicorn
 import logging
 import os
 import uuid
+import json
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -517,10 +519,11 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         title_field = "title_en" if lang == "en" else "title"
         content_field = "content_en" if lang == "en" else "content"
         
-        search_query = text(f"SELECT {title_field}, {content_field}, location FROM seongsu_places WHERE region = :region LIMIT 15")
+        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) LIMIT 15")
         with engine.connect() as conn:
             result = conn.execute(search_query, {"region": region})
-            context_text = "\n".join([f"[{row[0]}] {row[1]}" for row in result])
+            rows = result.fetchall()
+            context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
         
         from gemini_service import generate_walking_tour
         # 프롬프트에 지역 및 언어 정보 전달
@@ -570,9 +573,9 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
     where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
-        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at "
+        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at, naver_place_id "
         f"FROM seongsu_places {where_clause} "
-        f"ORDER BY pinned_at DESC NULLS LAST, CASE WHEN image_url IS NULL OR image_url = '' THEN 1 ELSE 0 END, created_at DESC {limit_clause}"
+        f"ORDER BY pinned_at DESC NULLS LAST, RANDOM() {limit_clause}"
     )
     with engine.connect() as conn:
         params = {"offset": offset}
@@ -585,13 +588,23 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Place not found")
         return dict(row._mapping)
+
+@app.post("/places/upload-image")
+async def upload_place_image(file: UploadFile = File(...)):
+    """어드민 장소 등록/수정 화면에서 이미지 파일 직접 업로드 (압축 후 Supabase Storage 저장)."""
+    try:
+        raw_bytes = await file.read()
+        url = upload_bytes(raw_bytes, name_hint=file.filename or "upload")
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/places")
 async def create_place(place: PlaceUpdate):
@@ -602,7 +615,11 @@ async def create_place(place: PlaceUpdate):
             raise HTTPException(status_code=400, detail="title is required")
         if "content" not in data:
             data["content"] = ""
-        
+
+        # 외부 이미지 URL → Supabase Storage 재호스팅 (hotlink 차단/SEO 색인 오류 방지)
+        if data.get("image_url"):
+            data["image_url"] = rehost_image(data["image_url"])
+
         # 임베딩 생성
         data["embedding"] = f"[{','.join(map(str, get_embedding(data['content'])))}]"
         
@@ -620,9 +637,22 @@ async def create_place(place: PlaceUpdate):
 @app.put("/places/{place_id}")
 async def update_place(place_id: int, place: PlaceUpdate):
     try:
+        import re as _re
+        from datetime import date as _date
         update_data = place.dict(exclude_unset=True)
+        if update_data.get("image_url"):
+            update_data["image_url"] = rehost_image(update_data["image_url"])
         if "content" in update_data:
             update_data["embedding"] = f"[{','.join(map(str, get_embedding(update_data['content'])))}]"
+        # date_range → end_date 자동 파싱 (어드민에서 운영일시만 수정해도 삭제 기준 동기화)
+        if "date_range" in update_data and "end_date" not in update_data:
+            dr = update_data["date_range"] or ""
+            m = _re.search(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", dr.split("~")[-1])
+            if m:
+                try:
+                    update_data["end_date"] = _date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                except ValueError:
+                    pass
         # pinned bool → pinned_at timestamp
         if "pinned" in update_data:
             update_data["pinned_at"] = "NOW()" if update_data.pop("pinned") else None
@@ -643,11 +673,154 @@ async def update_place(place_id: int, place: PlaceUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/places/{place_id}/enrich")
+async def enrich_place_content(place_id: int):
+    """pcmap에서 방문자 리뷰 텍스트를 수집해 Gemini로 고품질 소개 생성. 어드민 수동 트리거용."""
+    import asyncio
+    import re as _re
+
+    # 1. DB에서 place 정보 조회
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("SELECT title, location, naver_place_id FROM seongsu_places WHERE id = :id"),
+            {"id": place_id}
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Place not found")
+
+    title = row[0] or ""
+    location = row[1] or ""
+    naver_place_id = row[2] or ""
+    if not naver_place_id:
+        raise HTTPException(status_code=400, detail="naver_place_id 없음 — pcmap 조회 불가")
+
+    # 2. pcmap 방문자 리뷰 탭 — 블로그 카드 스크래핑
+    try:
+        from playwright.async_api import async_playwright
+
+        blog_reviews: list[dict] = []
+        road_text = ""
+
+        async def _scrape():
+            nonlocal road_text
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                ctx = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                )
+                page = await ctx.new_page()
+
+                # 홈 탭 — Apollo state에서 road 텍스트만 수집
+                await page.goto(
+                    f"https://pcmap.place.naver.com/place/{naver_place_id}/home",
+                    wait_until="domcontentloaded", timeout=25000
+                )
+                await page.wait_for_timeout(2000)
+                home_html = await page.content()
+                apollo_match = _re.search(r'window\.__APOLLO_STATE__\s*=\s*(\{.+?\});\s*</script>', home_html, _re.DOTALL)
+                if apollo_match:
+                    try:
+                        apollo = json.loads(apollo_match.group(1))
+                        for key, val in apollo.items():
+                            if key.startswith("PlaceDetailBase:") and isinstance(val, dict):
+                                road_text = val.get("road") or ""
+                    except Exception:
+                        pass
+
+                async def _extract_blog_cards(pg):
+                    return await pg.evaluate("""() => {
+                        const result = [];
+                        const links = document.querySelectorAll('a[href*="blog.naver.com"]');
+                        for (const a of links) {
+                            const lines = (a.innerText || '').split('\\n').map(s => s.trim()).filter(Boolean);
+                            const title = lines[3] || lines[2] || lines[1] || lines[0] || '';
+                            const img = a.querySelector('img');
+                            if (title.length > 5) {
+                                result.push({
+                                    title: title.substring(0, 100),
+                                    url: a.href,
+                                    thumbnail: img ? img.src : ''
+                                });
+                            }
+                            if (result.length >= 5) break;
+                        }
+                        return result;
+                    }""")
+
+                # 블로그 리뷰 탭
+                await page.goto(
+                    f"https://pcmap.place.naver.com/place/{naver_place_id}/review/ugc",
+                    wait_until="domcontentloaded", timeout=25000
+                )
+                await page.wait_for_timeout(3000)
+                cards = await _extract_blog_cards(page)
+
+                await browser.close()
+                return cards
+
+        blog_reviews = await asyncio.wait_for(_scrape(), timeout=45)
+
+    except Exception as e:
+        logger.warning(f"pcmap 스크래핑 실패 ({naver_place_id}): {e}")
+        blog_reviews = []
+        road_text = ""
+
+    # 3. Gemini로 고품질 소개 생성
+    try:
+        from google import genai as _genai
+        client = _genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+        blog_block = ""
+        if blog_reviews:
+            blog_block = "\n실제 방문자 블로그 후기 제목:\n" + "\n".join(f"- {r['title']}" for r in blog_reviews)
+        road_block = f"\n찾아오는 길: {road_text}" if road_text else ""
+
+        if blog_reviews:
+            length_guide = "3~4문장, 1문단으로"
+        else:
+            length_guide = "2~3문단으로 구체적으로 (각 문단은 빈 줄로 구분)"
+
+        prompt = (
+            f"다음 팝업스토어 소개 글을 {length_guide} 작성해줘.\n"
+            f"장소명: {title}\n위치: {location}"
+            f"{blog_block}"
+            f"{road_block}\n\n"
+            f"조건: 방문자 입장에서, 이모지 없이, 마크다운 기호 없이, 선택지/옵션 없이 소개 문구만 출력. "
+            f"블로그 후기 제목이 있다면 그 분위기와 특징을 반드시 녹여낼 것."
+        )
+
+        resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        generated = (resp.text or "").strip()[:600]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini 생성 실패: {e}")
+
+    # 4. DB 저장 — content 업데이트 + blog_reviews 저장
+    with engine.connect() as conn:
+        conn.execute(
+            text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews WHERE id = :id"),
+            {
+                "content": generated,
+                "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False) if blog_reviews else None,
+                "id": place_id,
+            }
+        )
+        conn.commit()
+
+    return {
+        "content": generated,
+        "blog_reviews": blog_reviews,
+        "has_road": bool(road_text),
+    }
+
+
 @app.delete("/places/{place_id}")
 async def delete_place(place_id: int):
     with engine.connect() as conn:
+        row = conn.execute(text("SELECT image_url FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id}).fetchone()
         conn.execute(text("DELETE FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id})
         conn.commit()
+    if row and row[0]:
+        delete_image(row[0])
     return {"status": "success"}
 
 @app.get("/users/{user_id}/usage/itinerary")
@@ -737,10 +910,15 @@ async def get_admin_stats():
         except Exception:
             pass
 
+    storage = get_storage_usage()
+
     return {
         "total_users": total_users,
         "total_courses": course_count or 0,
         "total_places": place_count or 0,
+        "storage_used_bytes": storage["used_bytes"],
+        "storage_limit_bytes": storage["limit_bytes"],
+        "storage_percent": storage["percent"],
     }
 
 scheduler = BackgroundScheduler()

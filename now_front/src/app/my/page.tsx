@@ -121,7 +121,7 @@ export default function MyPage() {
       </div>
       <h2 className="text-2xl font-bold font-display">로그인이 필요합니다</h2>
       <p className="text-zinc-500 text-sm">마이페이지를 확인하시려면 로그인해 주세요.</p>
-      <button onClick={() => router.push('/login')} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">로그인하기</button>
+      <button onClick={() => { const u = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'; window.location.href = `${u}/login?next=${encodeURIComponent(window.location.origin)}`; }} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">로그인하기</button>
       <button onClick={() => router.push('/')} className="text-zinc-400 text-sm font-bold">홈으로 돌아가기</button>
     </div>
   );

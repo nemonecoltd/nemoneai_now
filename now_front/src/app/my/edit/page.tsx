@@ -26,7 +26,9 @@ export default function EditProfilePage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/login');
+      const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002';
+      window.location.href = `${authUrl}/login?next=${encodeURIComponent(window.location.origin)}`;
+      return;
     } else if (user) {
       setName(user.user_metadata?.full_name || '');
       setGender(user.user_metadata?.gender || '');

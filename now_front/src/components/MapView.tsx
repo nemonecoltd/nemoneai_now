@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { MapPin, Calendar, Filter, Navigation } from 'lucide-react';
+import { Calendar, Navigation, X, MapPin, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -14,9 +13,14 @@ function cn(...inputs: ClassValue[]) {
 interface Place {
   id: number;
   title: string;
+  title_en?: string;
   location?: string;
   latitude?: number;
   longitude?: number;
+  image_url?: string;
+  date_range?: string;
+  content?: string;
+  region?: string;
 }
 
 declare global {
@@ -37,6 +41,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -60,7 +65,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
   useEffect(() => {
     if (mapLoaded && mapRef.current && window.google) {
       const currentRegion = REGIONS[region as keyof typeof REGIONS] || REGIONS['성수'];
-      
+
       const map = new window.google.maps.Map(mapRef.current, {
         center: { lat: currentRegion.lat, lng: currentRegion.lng },
         zoom: 15,
@@ -71,15 +76,15 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           { "featureType": "transit", "stylers": [{ "visibility": "simplified" }] }
         ]
       });
-      
+
       setMapInstance(map);
 
-      places.forEach((place: any, idx) => {
-        const position = (place.latitude && place.longitude) 
+      places.forEach((place) => {
+        const position = (place.latitude && place.longitude)
           ? { lat: Number(place.latitude), lng: Number(place.longitude) }
-          : { 
-              lat: currentRegion.lat + (Math.random() - 0.5) * 0.006, 
-              lng: currentRegion.lng + (Math.random() - 0.5) * 0.006 
+          : {
+              lat: currentRegion.lat + (Math.random() - 0.5) * 0.006,
+              lng: currentRegion.lng + (Math.random() - 0.5) * 0.006
             };
 
         const marker = new window.google.maps.Marker({
@@ -88,7 +93,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           title: lang === 'en' ? (place.title_en || place.title) : place.title,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: region === '홍대' ? '#8b5cf6' : '#10b981', // 홍대는 보라색, 성수는 에메랄드
+            fillColor: region === '홍대' ? '#8b5cf6' : '#10b981',
             fillOpacity: 1,
             strokeColor: '#ffffff',
             strokeWeight: 2,
@@ -96,29 +101,21 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           }
         });
 
-        // 마커 클릭 시 상세 페이지로 이동
         marker.addListener('click', () => {
-          router.push(`/posts/${place.id}?region=${encodeURIComponent(region)}`);
+          setSelectedPlace(place);
         });
       });
     }
-  }, [mapLoaded, places, router, region, lang]);
+  }, [mapLoaded, places, region, lang]);
 
   const handleMyLocation = () => {
     if (!mapInstance) return;
-    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          
+          const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
           mapInstance.panTo(pos);
           mapInstance.setZoom(17);
-          
-          // 내 위치 마커 표시 (파란색 점)
           new window.google.maps.Marker({
             position: pos,
             map: mapInstance,
@@ -133,9 +130,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
             }
           });
         },
-        () => {
-          alert(lang === 'en' ? "Unable to retrieve your location." : "현재 위치를 가져올 수 없습니다.");
-        }
+        () => alert(lang === 'en' ? "Unable to retrieve your location." : "현재 위치를 가져올 수 없습니다.")
       );
     } else {
       alert(lang === 'en' ? "Geolocation is not supported by your browser." : "브라우저가 위치 정보를 지원하지 않습니다.");
@@ -150,16 +145,22 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
       <div className="absolute top-6 left-6 right-6 z-50 pointer-events-none">
         <div className="bg-white/90 backdrop-blur-xl p-4 rounded-3xl border border-white/40 shadow-2xl flex items-center gap-4 pointer-events-auto">
           <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner",
+            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner flex-shrink-0",
             region === '홍대' ? "bg-purple-500" : "bg-emerald-500"
           )}>
             <Calendar size={24} />
           </div>
           <div>
             <h4 className="text-sm font-black text-zinc-900 tracking-tight">
-              {lang === 'en' 
-                ? `${region === '성수' ? 'Seongsu' : 'Hongdae'} Map` 
+              {lang === 'en'
+                ? `${region === '성수' ? 'Seongsu' : 'Hongdae'} Map`
                 : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
+              <span className={cn(
+                "ml-2 text-xs font-bold",
+                region === '홍대' ? "text-purple-400" : "text-emerald-400"
+              )}>
+                (지금 당장 {places.length}개)
+              </span>
             </h4>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
               {lang === 'en' ? 'Tap markers for details' : '마커를 누르면 상세 정보를 확인합니다'}
@@ -167,15 +168,25 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           </div>
         </div>
       </div>
-      
-      {/* My Location Button */}
-      <button 
-        onClick={handleMyLocation}
-        className="fixed bottom-28 left-6 z-[60] bg-white p-3.5 rounded-full shadow-2xl border border-zinc-200 text-zinc-600 hover:text-emerald-500 hover:border-emerald-500 transition-all active:scale-95 flex items-center justify-center"
-        aria-label="My Location"
-      >
-        <Navigation size={24} className="fill-zinc-600 hover:fill-emerald-500" />
-      </button>
+
+      {/* 우측 컨트롤 버튼 그룹 */}
+      <div className="absolute bottom-28 right-6 z-[60] flex flex-col gap-1 shadow-2xl rounded-2xl overflow-hidden border border-zinc-200">
+        <button
+          onClick={() => mapInstance?.setZoom((mapInstance.getZoom() ?? 15) + 1)}
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
+        >+</button>
+        <button
+          onClick={() => mapInstance?.setZoom((mapInstance.getZoom() ?? 15) - 1)}
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
+        >−</button>
+        <button
+          onClick={handleMyLocation}
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center"
+          aria-label="My Location"
+        >
+          <Navigation size={18} />
+        </button>
+      </div>
 
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 z-10">
@@ -186,6 +197,72 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
             </p>
           </div>
         </div>
+      )}
+
+      {/* 장소 바텀시트 */}
+      {selectedPlace && (
+        <>
+          {/* 배경 딤 */}
+          <div
+            className="absolute inset-0 z-[70] bg-black/20"
+            onClick={() => setSelectedPlace(null)}
+          />
+          {/* 시트 */}
+          <div className="absolute bottom-0 left-0 right-0 z-[80] bg-white rounded-t-3xl shadow-2xl overflow-hidden animate-slide-up">
+            {/* 이미지 */}
+            {selectedPlace.image_url && (
+              <div className="relative h-40 overflow-hidden">
+                <img
+                  src={selectedPlace.image_url}
+                  alt={selectedPlace.title}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              </div>
+            )}
+
+            <div className="p-5">
+              {/* 닫기 버튼 */}
+              <button
+                onClick={() => setSelectedPlace(null)}
+                className="absolute top-4 right-4 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow z-10"
+              >
+                <X size={16} className="text-zinc-600" />
+              </button>
+
+              <h3 className="text-base font-black text-zinc-900 leading-snug pr-8 mb-2">
+                {lang === 'en' ? (selectedPlace.title_en || selectedPlace.title) : selectedPlace.title}
+              </h3>
+
+              {selectedPlace.location && (
+                <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-1">
+                  <MapPin size={12} />
+                  <span>{selectedPlace.location}</span>
+                </div>
+              )}
+
+              {selectedPlace.date_range && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold mb-4">
+                  <Calendar size={12} />
+                  <span>{selectedPlace.date_range}</span>
+                </div>
+              )}
+
+              <button
+                onClick={() => router.push(`/posts/${selectedPlace.id}?region=${encodeURIComponent(region)}`)}
+                className={cn(
+                  "w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2",
+                  region === '홍대' ? "bg-purple-500" : "bg-emerald-500"
+                )}
+              >
+                자세히 보기
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

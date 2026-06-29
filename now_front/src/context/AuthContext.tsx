@@ -9,6 +9,7 @@ type AuthContextType = {
   session: Session | null
   isLoading: boolean
   signInWithGoogle: () => Promise<void>
+  signInWithKakao: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>
   signUpWithEmail: (email: string, password: string, metadata: any) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -46,6 +47,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${authUrl}/login?next=${encodeURIComponent(currentUrl)}`
   }
 
+  const signInWithKakao = async () => {
+    const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
+    const currentUrl = window.location.origin
+    window.location.href = `${authUrl}/login?provider=kakao&next=${encodeURIComponent(currentUrl)}`
+  }
+
   const signInWithEmail = async (email: string, password: string) => {
     const { error } = await supabaseRef.current!.auth.signInWithPassword({ email, password })
     return { error }
@@ -65,10 +72,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabaseRef.current?.auth.signOut()
+    const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
+    window.location.href = `${authUrl}/login?next=${encodeURIComponent(window.location.origin)}`
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signInWithKakao, signInWithEmail, signUpWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   )
