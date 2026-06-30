@@ -1,10 +1,41 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin } from 'lucide-react';
+import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive } from 'lucide-react';
+
+const compressPlaceImage = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIMENSION = 1000;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIMENSION) {
+          height *= MAX_DIMENSION / width;
+          width = MAX_DIMENSION;
+        } else if (height >= width && height > MAX_DIMENSION) {
+          width *= MAX_DIMENSION / height;
+          height = MAX_DIMENSION;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Canvas to Blob failed'));
+        }, 'image/webp', 0.8);
+      };
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
 
 interface Place {
   id: number;
@@ -17,6 +48,7 @@ interface Place {
   date_range?: string;
   region?: string;
   pinned_at?: string | null;
+  naver_place_id?: string;
 }
 
 interface Theme {
@@ -36,6 +68,9 @@ interface AdminStats {
   total_users: number;
   total_courses: number;
   total_places: number;
+  storage_used_bytes?: number;
+  storage_limit_bytes?: number;
+  storage_percent?: number;
 }
 
 type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
@@ -54,25 +89,55 @@ export default function AdminPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Place> & { region?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
+  const [placeSearch, setPlaceSearch] = useState('');
   const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
   const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
   const [themeEditForm, setThemeEditForm] = useState<{ title: string; description: string }>({ title: '', description: '' });
   const [addingPlaceThemeId, setAddingPlaceThemeId] = useState<number | null>(null);
-  const [placeSearchTerm, setPlaceSearchTerm] = useState('');
-  const [placeSearchResults, setPlaceSearchResults] = useState<any[]>([]);
-  const [allPlacesCache, setAllPlacesCache] = useState<any[]>([]);
+  const [newPlaceForm, setNewPlaceForm] = useState<{ title: string; location: string; content: string; image_url: string; video_url: string; date_range: string }>({
+    title: '', location: '', content: '', image_url: '', video_url: '', date_range: '',
+  });
+  const [editingPlace, setEditingPlace] = useState<{ themeId: number; index: number } | null>(null);
+  const [editPlaceForm, setEditPlaceForm] = useState<{ title: string; location: string; content: string; image_url: string; video_url: string; date_range: string }>({
+    title: '', location: '', content: '', image_url: '', video_url: '', date_range: '',
+  });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const handlePlaceImageUpload = async (file: File, onUploaded: (url: string) => void) => {
+    setIsUploadingImage(true);
+    try {
+      const compressedBlob = await compressPlaceImage(file);
+      const formData = new FormData();
+      formData.append('file', compressedBlob, 'upload.webp');
+      const res = await fetch('/api-now/places/upload-image', { method: 'POST', body: formData });
+      if (!res.ok) {
+        alert('이미지 업로드에 실패했습니다.');
+        return;
+      }
+      const { url } = await res.json();
+      onUploaded(url);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const [isLocalDev, setIsLocalDev] = useState(false);
+  useEffect(() => { setIsLocalDev(window.location.hostname === 'localhost'); }, []);
 
   useEffect(() => {
+    if (isLocalDev) return;
     if (!authLoading && !user) {
       signInWithGoogle();
     } else if (user && user.email !== 'nemonecoltd@gmail.com') {
       alert('관리자 권한이 없습니다.');
       router.push('/');
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, isLocalDev]);
 
   useEffect(() => {
-    if (user?.email === 'nemonecoltd@gmail.com') {
+    if (isLocalDev || user?.email === 'nemonecoltd@gmail.com') {
       fetchAdminStats();
       if (viewMode === 'spots') {
         fetchPlaces();
@@ -80,7 +145,7 @@ export default function AdminPage() {
         fetchThemes();
       }
     }
-  }, [user, region, viewMode]);
+  }, [user, region, viewMode, isLocalDev]);
 
   const fetchAdminStats = async () => {
     const res = await fetch('/api-now/admin/stats');
@@ -95,43 +160,61 @@ export default function AdminPage() {
     if (res.ok) setThemes(await res.json());
   };
 
-  const openAddPlace = async (themeId: number) => {
+  const openAddPlace = (themeId: number) => {
     setAddingPlaceThemeId(themeId);
-    setPlaceSearchTerm('');
-    setPlaceSearchResults([]);
-    if (allPlacesCache.length === 0) {
-      const res = await fetch('/api-now/places');
-      if (res.ok) setAllPlacesCache(await res.json());
+    setNewPlaceForm({ title: '', location: '', content: '', image_url: '', video_url: '', date_range: '' });
+  };
+
+  const savePlaceEdit = async (theme: Theme) => {
+    if (!editPlaceForm.title.trim() || !editPlaceForm.location.trim() || !editPlaceForm.content.trim()) {
+      alert('이름, 주소, 설명은 필수입니다.');
+      return;
     }
-  };
-
-  const handlePlaceSearch = (term: string) => {
-    setPlaceSearchTerm(term);
-    if (!term.trim()) { setPlaceSearchResults([]); return; }
-    setPlaceSearchResults(
-      allPlacesCache.filter(p => p.title?.includes(term) || p.location?.includes(term)).slice(0, 8)
-    );
-  };
-
-  const addPlaceToTheme = async (theme: Theme, place: any) => {
-    const newPlace: any = {
-      title: place.title,
-      location: place.location || '',
-      content: place.content || '',
+    const updated = [...theme.places];
+    const updatedPlace: any = {
+      title: editPlaceForm.title.trim(),
+      location: editPlaceForm.location.trim(),
+      content: editPlaceForm.content.trim(),
     };
-    if (place.image_url) newPlace.image_url = place.image_url;
-    if (place.video_url) newPlace.video_url = place.video_url;
-    if (place.date_range) newPlace.date_range = place.date_range;
+    if (editPlaceForm.image_url.trim()) updatedPlace.image_url = editPlaceForm.image_url.trim();
+    if (editPlaceForm.video_url.trim()) updatedPlace.video_url = editPlaceForm.video_url.trim();
+    if (editPlaceForm.date_range.trim()) updatedPlace.date_range = editPlaceForm.date_range.trim();
+    updated[editingPlace!.index] = updatedPlace;
+
+    setIsLoading(true);
+    await fetch(`/api-now/admin/themes/${theme.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ places: updated }),
+    });
+    setIsLoading(false);
+    setEditingPlace(null);
+    fetchThemes();
+  };
+
+  const addPlaceToTheme = async (theme: Theme) => {
+    if (!newPlaceForm.title.trim() || !newPlaceForm.location.trim() || !newPlaceForm.content.trim()) {
+      alert('이름, 주소, 설명은 필수입니다.');
+      return;
+    }
+    const newPlace: any = {
+      title: newPlaceForm.title.trim(),
+      location: newPlaceForm.location.trim(),
+      content: newPlaceForm.content.trim(),
+    };
+    if (newPlaceForm.image_url.trim()) newPlace.image_url = newPlaceForm.image_url.trim();
+    if (newPlaceForm.video_url.trim()) newPlace.video_url = newPlaceForm.video_url.trim();
+    if (newPlaceForm.date_range.trim()) newPlace.date_range = newPlaceForm.date_range.trim();
 
     const updatedPlaces = [...(Array.isArray(theme.places) ? theme.places : []), newPlace];
+    setIsLoading(true);
     await fetch(`/api-now/admin/themes/${theme.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ places: updatedPlaces }),
     });
+    setIsLoading(false);
     setAddingPlaceThemeId(null);
-    setPlaceSearchTerm('');
-    setPlaceSearchResults([]);
     fetchThemes();
   };
 
@@ -163,6 +246,29 @@ export default function AdminPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleEnrich = async () => {
+    if (!editingId) return;
+    setIsEnriching(true);
+    setEnriched(null);
+    try {
+      const res = await fetch(`/api-now/places/${editingId}/enrich`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setEditForm(prev => ({ ...prev, content: data.content }));
+        if ((data.blog_reviews || []).length > 0) {
+          setEnriched({ placeId: editingId, reviews: data.blog_reviews });
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(`실패: ${err.detail || res.statusText}`);
+      }
+    } catch (e) {
+      alert('네트워크 오류');
+    } finally {
+      setIsEnriching(false);
     }
   };
 
@@ -198,8 +304,8 @@ export default function AdminPage() {
   };
 
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
-  if (user?.email !== 'nemonecoltd@gmail.com') return null;
+  if (!isLocalDev && authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
+  if (!isLocalDev && user?.email !== 'nemonecoltd@gmail.com') return null;
 
   return (
     <div className="min-h-screen bg-zinc-50 p-8 font-sans">
@@ -265,7 +371,7 @@ export default function AdminPage() {
         </header>
 
         {stats && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
                 <Users size={24} />
@@ -291,6 +397,20 @@ export default function AdminPage() {
               <div>
                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">등록된 장소</div>
                 <div className="text-2xl font-black text-zinc-900">{(stats?.total_places ?? 0).toLocaleString()}곳</div>
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                <HardDrive size={24} />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">스토리지 사용량</div>
+                <div className="text-2xl font-black text-zinc-900">
+                  {(stats?.storage_percent ?? 0).toFixed(1)}%
+                  <span className="text-xs font-bold text-zinc-400 ml-1">
+                    ({((stats?.storage_used_bytes ?? 0) / 1024 / 1024).toFixed(1)}MB)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -353,12 +473,24 @@ export default function AdminPage() {
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
-                          <input
-                            type="text"
-                            value={editForm.image_url || ''}
-                            onChange={e => setEditForm({...editForm, image_url: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editForm.image_url || ''}
+                              onChange={e => setEditForm({...editForm, image_url: e.target.value})}
+                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            />
+                            <label className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-200 transition-colors">
+                              {isUploadingImage ? <Loader2 size={16} className="animate-spin text-zinc-500" /> : <Upload size={16} className="text-zinc-500" />}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploadingImage}
+                                onChange={e => e.target.files?.[0] && handlePlaceImageUpload(e.target.files[0], (url) => setEditForm({...editForm, image_url: url}))}
+                              />
+                            </label>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
@@ -384,8 +516,32 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
-            {places.map((place) => (
-              <div key={place.id} className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-emerald-200">
+            <div className="flex items-center gap-3 bg-white border border-zinc-200 rounded-2xl px-4 py-2.5 shadow-sm">
+              <svg className="text-zinc-400 flex-shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input
+                type="text"
+                placeholder="장소명 또는 네이버 플레이스 ID 검색..."
+                value={placeSearch}
+                onChange={e => setPlaceSearch(e.target.value)}
+                className="flex-grow text-sm text-zinc-800 placeholder-zinc-400 bg-transparent outline-none"
+              />
+              {placeSearch && (
+                <button onClick={() => setPlaceSearch('')} className="text-zinc-400 hover:text-zinc-600 flex-shrink-0">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            {places.filter(p => {
+              if (!placeSearch.trim()) return true;
+              const q = placeSearch.trim().toLowerCase();
+              return (
+                p.title.toLowerCase().includes(q) ||
+                (p.naver_place_id || '').toLowerCase().includes(q) ||
+                String(p.id).includes(q)
+              );
+            }).map((place) => (
+              <React.Fragment key={place.id}>
+              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-emerald-200">
                 <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">
                   {place.image_url ? (
                     <img src={place.image_url} alt="" className="w-full h-full object-cover" />
@@ -396,32 +552,43 @@ export default function AdminPage() {
 
                 <div className="flex-grow space-y-2">
                   {editingId === place.id ? (
+                    <>
                     <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-emerald-100">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">장소명</label>
-                          <input 
-                            type="text" 
-                            value={editForm.title || ''} 
+                          <input
+                            type="text"
+                            value={editForm.title || ''}
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 (Geocoding 대상)</label>
-                          <input 
-                            type="text" 
-                            value={editForm.location || ''} 
+                          <input
+                            type="text"
+                            value={editForm.location || ''}
                             onChange={e => setEditForm({...editForm, location: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">상세 내용 (RAG 리소스)</label>
-                        <textarea 
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">상세 내용 (RAG 리소스)</label>
+                          <button
+                            onClick={handleEnrich}
+                            disabled={isEnriching}
+                            className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {isEnriching ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                            {isEnriching ? 'pcmap 불러오는 중...' : 'pcmap 소개 자동생성'}
+                          </button>
+                        </div>
+                        <textarea
                           rows={3}
-                          value={editForm.content || ''} 
+                          value={editForm.content || ''}
                           onChange={e => setEditForm({...editForm, content: e.target.value})}
                           className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
                         />
@@ -441,12 +608,24 @@ export default function AdminPage() {
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
-                          <input
-                            type="text"
-                            value={editForm.image_url || ''}
-                            onChange={e => setEditForm({...editForm, image_url: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
-                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editForm.image_url || ''}
+                              onChange={e => setEditForm({...editForm, image_url: e.target.value})}
+                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            />
+                            <label className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-200 transition-colors">
+                              {isUploadingImage ? <Loader2 size={16} className="animate-spin text-zinc-500" /> : <Upload size={16} className="text-zinc-500" />}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploadingImage}
+                                onChange={e => e.target.files?.[0] && handlePlaceImageUpload(e.target.files[0], (url) => setEditForm({...editForm, image_url: url}))}
+                              />
+                            </label>
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
@@ -482,6 +661,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                     </div>
+                    </>
                   ) : (
                     <>
                       <div className="flex items-center gap-3">
@@ -512,6 +692,22 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
+              {enriched?.placeId === place.id && (
+                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">pcmap 블로그 후기 ({enriched.reviews.length})</p>
+                  <div className="flex flex-col gap-1.5">
+                    {enriched.reviews.map((r, i) => (
+                      <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2.5 p-2 bg-white border border-emerald-100 rounded-xl hover:border-emerald-400 transition-colors no-underline group">
+                        <span className="text-[11px] font-bold text-zinc-400 w-4 flex-shrink-0">{i + 1}</span>
+                        <span className="text-xs text-zinc-700 group-hover:text-emerald-700 flex-grow leading-snug">{r.title}</span>
+                        <ExternalLink size={11} className="flex-shrink-0 text-emerald-300 group-hover:text-emerald-600 ml-auto" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+              </React.Fragment>
             ))}
           </div>
         ) : (
@@ -631,35 +827,56 @@ export default function AdminPage() {
                       </div>
 
                       {addingPlaceThemeId === theme.id && (
-                        <div className="mb-3 bg-white rounded-xl border border-zinc-200 p-3 space-y-2">
-                          <input
-                            type="text"
-                            value={placeSearchTerm}
-                            onChange={e => handlePlaceSearch(e.target.value)}
-                            placeholder="장소명 또는 주소 검색..."
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-                            autoFocus
-                          />
-                          {placeSearchResults.length > 0 && (
-                            <div className="space-y-1 max-h-48 overflow-y-auto">
-                              {placeSearchResults.map((p: any) => (
-                                <button
-                                  key={p.id}
-                                  onClick={() => addPlaceToTheme(theme, p)}
-                                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-emerald-50 transition-colors text-left"
-                                >
-                                  {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-zinc-800 truncate">{p.title}</p>
-                                    {p.location && <p className="text-xs text-zinc-400 truncate">{p.location}</p>}
-                                  </div>
-                                </button>
-                              ))}
+                        <div className="mb-3 bg-white rounded-xl border border-emerald-200 p-4 space-y-3">
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">새 장소 직접 입력</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이름 *</label>
+                              <input type="text" value={newPlaceForm.title} onChange={e => setNewPlaceForm(f => ({...f, title: e.target.value}))}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" autoFocus />
                             </div>
-                          )}
-                          {placeSearchTerm && placeSearchResults.length === 0 && (
-                            <p className="text-xs text-zinc-400 text-center py-2">검색 결과 없음</p>
-                          )}
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 *</label>
+                              <input type="text" value={newPlaceForm.location} onChange={e => setNewPlaceForm(f => ({...f, location: e.target.value}))}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">설명 *</label>
+                            <textarea rows={2} value={newPlaceForm.content} onChange={e => setNewPlaceForm(f => ({...f, content: e.target.value}))}
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none" />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
+                              <div className="flex gap-2">
+                                <input type="text" value={newPlaceForm.image_url} onChange={e => setNewPlaceForm(f => ({...f, image_url: e.target.value}))}
+                                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                                <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-200 transition-colors">
+                                  {isUploadingImage ? <Loader2 size={14} className="animate-spin text-zinc-500" /> : <Upload size={14} className="text-zinc-500" />}
+                                  <input type="file" accept="image/*" className="hidden" disabled={isUploadingImage}
+                                    onChange={e => e.target.files?.[0] && handlePlaceImageUpload(e.target.files[0], (url) => setNewPlaceForm(f => ({...f, image_url: url})))} />
+                                </label>
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">동영상 URL</label>
+                              <input type="text" value={newPlaceForm.video_url} onChange={e => setNewPlaceForm(f => ({...f, video_url: e.target.value}))}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
+                              <input type="text" value={newPlaceForm.date_range} onChange={e => setNewPlaceForm(f => ({...f, date_range: e.target.value}))}
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setAddingPlaceThemeId(null)} className="px-4 py-1.5 text-zinc-400 font-bold text-xs">취소</button>
+                            <button onClick={() => addPlaceToTheme(theme)} disabled={isLoading}
+                              className="bg-emerald-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50">
+                              <Plus size={12} /> {isLoading ? '저장 중...' : '장소 추가'}
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -668,28 +885,101 @@ export default function AdminPage() {
                       ) : (
                         <div className="grid gap-2">
                           {places.map((p: any, i: number) => (
-                            <div key={i} className="flex items-center gap-3 bg-white rounded-xl px-4 py-2.5 border border-zinc-100">
-                              {p.image_url && <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
-                              <div className="flex-grow min-w-0">
-                                <p className="text-sm font-bold text-zinc-800">{p.title}</p>
-                                {p.location && <p className="text-xs text-zinc-400">{p.location}</p>}
-                              </div>
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`"${p.title}" 장소를 이 테마에서 삭제하시겠습니까?`)) return;
-                                  const newPlaces = places.filter((_: any, idx: number) => idx !== i);
-                                  await fetch(`/api-now/admin/themes/${theme.id}`, {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ places: newPlaces }),
-                                  });
-                                  fetchThemes();
-                                }}
-                                className="p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
-                                title="이 장소 삭제"
-                              >
-                                <X size={14} />
-                              </button>
+                            <div key={i} className="bg-white rounded-xl border border-zinc-100 overflow-hidden">
+                              {editingPlace?.themeId === theme.id && editingPlace?.index === i ? (
+                                <div className="p-3 space-y-2 border-emerald-200 border rounded-xl">
+                                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">장소 수정</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이름 *</label>
+                                      <input type="text" value={editPlaceForm.title} onChange={e => setEditPlaceForm(f => ({...f, title: e.target.value}))}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" autoFocus />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 *</label>
+                                      <input type="text" value={editPlaceForm.location} onChange={e => setEditPlaceForm(f => ({...f, location: e.target.value}))}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">설명 *</label>
+                                    <textarea rows={2} value={editPlaceForm.content} onChange={e => setEditPlaceForm(f => ({...f, content: e.target.value}))}
+                                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 resize-none" />
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
+                                      <div className="flex gap-2">
+                                        <input type="text" value={editPlaceForm.image_url} onChange={e => setEditPlaceForm(f => ({...f, image_url: e.target.value}))}
+                                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                        <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-200 transition-colors">
+                                          {isUploadingImage ? <Loader2 size={14} className="animate-spin text-zinc-500" /> : <Upload size={14} className="text-zinc-500" />}
+                                          <input type="file" accept="image/*" className="hidden" disabled={isUploadingImage}
+                                            onChange={e => e.target.files?.[0] && handlePlaceImageUpload(e.target.files[0], (url) => setEditPlaceForm(f => ({...f, image_url: url})))} />
+                                        </label>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">동영상 URL</label>
+                                      <input type="text" value={editPlaceForm.video_url} onChange={e => setEditPlaceForm(f => ({...f, video_url: e.target.value}))}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
+                                      <input type="text" value={editPlaceForm.date_range} onChange={e => setEditPlaceForm(f => ({...f, date_range: e.target.value}))}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-end gap-2">
+                                    <button onClick={() => setEditingPlace(null)} className="px-4 py-1.5 text-zinc-400 font-bold text-xs">취소</button>
+                                    <button onClick={() => savePlaceEdit(theme)} disabled={isLoading}
+                                      className="bg-emerald-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50">
+                                      <Save size={12} /> {isLoading ? '저장 중...' : '수정 저장'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-3 px-4 py-2.5">
+                                  {p.image_url && <img src={p.image_url} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" referrerPolicy="no-referrer" />}
+                                  <div className="flex-grow min-w-0">
+                                    <p className="text-sm font-bold text-zinc-800">{p.title}</p>
+                                    {p.location && <p className="text-xs text-zinc-400">{p.location}</p>}
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      setEditingPlace({ themeId: theme.id, index: i });
+                                      setEditPlaceForm({
+                                        title: p.title || '',
+                                        location: p.location || '',
+                                        content: p.content || '',
+                                        image_url: p.image_url || '',
+                                        video_url: p.video_url || '',
+                                        date_range: p.date_range || '',
+                                      });
+                                    }}
+                                    className="p-1.5 text-zinc-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex-shrink-0"
+                                    title="수정"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`"${p.title}" 장소를 이 테마에서 삭제하시겠습니까?`)) return;
+                                      const newPlaces = places.filter((_: any, idx: number) => idx !== i);
+                                      await fetch(`/api-now/admin/themes/${theme.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ places: newPlaces }),
+                                      });
+                                      fetchThemes();
+                                    }}
+                                    className="p-1.5 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0"
+                                    title="삭제"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

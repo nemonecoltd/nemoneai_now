@@ -52,11 +52,61 @@ const dict = {
   }
 };
 
+// 마크다운·표·URL 정리 후 줄바꿈 처리
+function formatMessage(text: string): React.ReactNode {
+  const cleaned = text
+    .replace(/```[\s\S]*?```/g, '')   // 코드블록 제거
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\|.*\|$/gm, '')         // 표 행 제거
+    .replace(/^\s*[-:]+\s*\|/gm, '')   // 표 구분선 제거
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\*\*([^*]+)\*\*/g, '[[B]]$1[[/B]]')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^\s*[-•]\s+/gm, '• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return cleaned.split('\n').map((line, i) => {
+    if (!line.trim()) return <br key={i} />;
+
+    // URL → "바로가기" 링크
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    if (urlRegex.test(line)) {
+      const parts = line.split(/(https?:\/\/[^\s]+)/g);
+      return (
+        <p key={i} className="mb-1">
+          {parts.map((part, j) =>
+            /^https?:\/\//.test(part)
+              ? <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">바로가기</a>
+              : part
+          )}
+        </p>
+      );
+    }
+
+    // 굵은 글씨
+    if (line.includes('[[B]]')) {
+      const parts = line.split(/(\[\[B\]\].*?\[\[\/B\]\])/g);
+      return (
+        <p key={i} className="mb-1">
+          {parts.map((part, j) => {
+            const m = part.match(/^\[\[B\]\](.*)\[\[\/B\]\]$/);
+            return m ? <strong key={j}>{m[1]}</strong> : part;
+          })}
+        </p>
+      );
+    }
+
+    return <p key={i} className={line.startsWith('•') ? 'mb-1 pl-1' : 'mb-1'}>{line}</p>;
+  });
+}
+
 export default function AskAI({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setNewInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
   const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : 'Hongdae') : region;
@@ -98,29 +148,54 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
     }
   };
 
+  const isEmpty = messages.length === 0;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)]">
-      <div className="p-6 pb-2">
+    <div className="flex flex-col h-[calc(100dvh-240px)] min-h-[400px]">
+      {/* 헤더 */}
+      <div className="p-6 pb-2 flex-shrink-0">
         <h2 className="text-xl font-bold font-display flex items-center gap-2 text-zinc-900">
           <Sparkles className="text-emerald-500" size={20} /> {t.title}
         </h2>
         <p className="text-xs text-zinc-500 mt-1">{t.subtitle.replace('{region}', displayRegion)}</p>
       </div>
 
-      <div 
+      {/* 빈 상태: 입력창 상단 노출 */}
+      {isEmpty && (
+        <div className="px-6 pt-4 pb-2 flex-shrink-0">
+          <form onSubmit={handleSend} className="relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setNewInput(e.target.value)}
+              placeholder={t.placeholder}
+              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-emerald-600"
+            >
+              <Send size={18} />
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* 메시지 영역 */}
+      <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar"
+        className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar min-h-0"
       >
-        {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50 px-10">
+        {isEmpty && (
+          <div className="flex flex-col items-center justify-center text-center space-y-4 opacity-40 px-10 pt-8">
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center">
               <Bot className="text-emerald-500" size={32} />
             </div>
             <div className="space-y-2">
               {currentExamples.map((ex, i) => (
-                <p key={i} className="text-xs font-medium text-zinc-500 italic">
-                  {ex}
-                </p>
+                <p key={i} className="text-xs font-medium text-zinc-500 italic">{ex}</p>
               ))}
             </div>
           </div>
@@ -131,10 +206,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
             key={idx}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex gap-3",
-              msg.role === 'user' ? "flex-row-reverse" : "flex-row"
-            )}
+            className={cn("flex gap-3", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}
           >
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
@@ -144,11 +216,11 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
             </div>
             <div className={cn(
               "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-              msg.role === 'user' 
-                ? "bg-zinc-900 text-white rounded-tr-none" 
+              msg.role === 'user'
+                ? "bg-zinc-900 text-white rounded-tr-none"
                 : "bg-white border border-zinc-100 rounded-tl-none text-zinc-800"
             )}>
-              {msg.content}
+              {msg.role === 'assistant' ? formatMessage(msg.content) : msg.content}
             </div>
           </motion.div>
         ))}
@@ -165,25 +237,27 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
         )}
       </div>
 
-      <div className="p-6 bg-zinc-50/80 backdrop-blur-md border-t border-zinc-100">
-        <form onSubmit={handleSend} className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setNewInput(e.target.value)}
-            placeholder={t.placeholder}
-            className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-emerald-600"
-          >
-            <Send size={18} />
-          </button>
-        </form>
-      </div>
+      {/* 메시지 있을 때만 하단 입력창 */}
+      {!isEmpty && (
+        <div className="p-6 bg-zinc-50/80 backdrop-blur-md border-t border-zinc-100 flex-shrink-0">
+          <form onSubmit={handleSend} className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setNewInput(e.target.value)}
+              placeholder={t.placeholder}
+              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-emerald-600"
+            >
+              <Send size={18} />
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -1,17 +1,43 @@
 """
 네이버 지도 팝업스토어 검색 스크래퍼 v2.
-DOM 파싱 대신 브라우저가 호출하는 allSearch API 응답을 직접 가로채서 사용.
+map.naver.com의 allSearch(스크롤 기반, 1페이지=20개)는 운영기간이 없고 더 가져오려면
+스크롤 자동화가 필요해 불안정했음. 대신 pcmap.place.naver.com/popupstore/list 페이지의
+__APOLLO_STATE__(PopupstoreSearchBusinessItem)를 단일 요청으로 직접 읽음 — 스크롤 없이
+한 번에 최대 ~79개(display 파라미터로도 더 안 늘어나는 자체 상한)를 운영기간까지 포함해 가져옴.
 """
 import asyncio
+import json
+import re
+from datetime import date
+from typing import Optional
+
 from playwright.async_api import async_playwright
 
-_DETAIL_CONCURRENCY = 1  # 순차 방문 — 차단 방지
+
+def _parse_naver_date(s: Optional[str]) -> Optional[date]:
+    """'26.06.16.' 형식(YY.MM.DD.)을 date로 변환."""
+    if not s:
+        return None
+    m = re.match(r"(\d{2})\.(\d{2})\.(\d{2})", s.strip())
+    if not m:
+        return None
+    yy, mm, dd = m.groups()
+    try:
+        return date(2000 + int(yy), int(mm), int(dd))
+    except ValueError:
+        return None
+
+
+def _safe_float(val):
+    try:
+        return float(val) if val else None
+    except (ValueError, TypeError):
+        return None
 
 
 async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list[dict]:
-    print(f"🗺️ [네이버지도] '{query}' 검색 시작")
-    raw_items: list[dict] = []
-    seen_ids: set[str] = set()
+    print(f"🗺️ [네이버지도] '{query}' 검색 시작 (popupstore/list)")
+    encoded = query.replace(" ", "%20")
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -24,89 +50,52 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
             viewport={"width": 1920, "height": 1080},
         )
         page = await context.new_page()
-
-        async def on_response(response):
-            if "allSearch" in response.url and response.status == 200:
-                try:
-                    data = await response.json()
-                    places = (data.get("result", {}).get("place") or {}).get("list", [])
-                    new_items = [p for p in places if str(p.get("id", "")) not in seen_ids]
-                    for item in new_items:
-                        seen_ids.add(str(item.get("id", "")))
-                        raw_items.append(item)
-                    if new_items:
-                        total = (data["result"]["place"] or {}).get("totalCount", "?")
-                        print(f"  ✅ +{len(new_items)}개 수집 (누적 {len(raw_items)}개 / 전체 {total}개)")
-                except Exception as e:
-                    print(f"  ⚠️ 응답 파싱 실패: {e}")
-
-        page.on("response", on_response)
-
-        encoded = query.replace(" ", "%20")
         await page.goto(
-            f"https://map.naver.com/p/search/{encoded}",
+            f"https://pcmap.place.naver.com/popupstore/list?query={encoded}&display=100",
             wait_until="domcontentloaded",
             timeout=30000,
         )
-        await page.wait_for_timeout(4000)
-
-        # 마우스 휠로 결과 패널 스크롤 (최대 20회 — 20개씩 × 20 = 400개)
-        for scroll_attempt in range(20):
-            prev_count = len(raw_items)
-            # 좌측 결과 패널 위치(x=300)에서 마우스 휠 스크롤
-            await page.mouse.move(300, 400)
-            await page.mouse.wheel(0, 3000)
-            await page.wait_for_timeout(2500)
-            if len(raw_items) == prev_count:
-                print(f"  ℹ️ 스크롤 {scroll_attempt + 1}회 후 추가 결과 없음, 완료")
-                break
-            print(f"  🔄 스크롤 {scroll_attempt + 1}회: 누적 {len(raw_items)}개")
-
+        await page.wait_for_timeout(2500)
+        html = await page.content()
         await page.close()
         await browser.close()
 
-    if not raw_items:
+    m = re.search(r"window\.__APOLLO_STATE__\s*=\s*(\{.*?\});", html, re.S)
+    if not m:
         print("⚠️ [네이버지도] 수집된 데이터 없음")
         return []
 
+    apollo = json.loads(m.group(1))
+
     results = []
-    for item in raw_items:
-        name = item.get("name", "").strip()
+    for key, item in apollo.items():
+        if not key.startswith("PopupstoreSearchBusinessItem:") or not isinstance(item, dict):
+            continue
+        name = (item.get("name") or "").strip()
         if not name:
             continue
-        place_id = str(item.get("id", f"nmap_{hash(name) % 100000}"))
-        intro = ""
+        place_id = str(item.get("id") or f"nmap_{hash(name) % 100000}")
         results.append({
             "naver_place_id": place_id,
             "title": name,
-            "title_en": item.get("nameEn") or name,
-            "location": item.get("roadAddress") or item.get("address") or "성수동",
+            "title_en": name,
+            "location": item.get("roadAddress") or item.get("address") or "",
             "latitude": _safe_float(item.get("y")),
             "longitude": _safe_float(item.get("x")),
-            "content": _build_content(item, intro),
+            "content": "",
             "content_en": "",
             "video_url": "",
-            "image_url": item.get("thumUrl") or "",
+            "image_url": item.get("imageUrl") or "",
+            "start_date": _parse_naver_date(item.get("operationStartDateTime")),
+            "end_date": _parse_naver_date(item.get("operationEndDateTime")),
         })
 
-    print(f"✅ [네이버지도] 최종 {len(results)}개 수집 완료")
+    matched = sum(1 for r in results if r["end_date"])
+    print(f"✅ [네이버지도] 최종 {len(results)}개 수집 완료 (운영기간 매칭 {matched}개)")
     return results
-
-
-def _safe_float(val):
-    try:
-        return float(val) if val else None
-    except (ValueError, TypeError):
-        return None
-
-
-def _build_content(item: dict, intro: str = "") -> str:
-    return intro or ""
 
 
 if __name__ == "__main__":
     results = asyncio.run(scrape_naver_map_popups())
     for r in results:
-        print(f"  - {r['title']} / {r['location']}")
-        if r["content"]:
-            print(f"    {r['content'][:120]}")
+        print(f"  - {r['title']} / {r['location']} / {r['start_date']}~{r['end_date']}")

@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from sqlalchemy import text
 from database import engine
 from scraper_naver_map_v2 import scrape_naver_map_popups
@@ -10,7 +11,7 @@ from gemini_service import get_embedding
 from datetime import date, timedelta
 
 
-def dedup_by_title(items: list[dict]) -> list[dict]:
+def dedup_by_title(items: "list[dict]") -> "list[dict]":
     """같은 배치 내 타이틀 중복 제거 (첫 번째 항목 유지)"""
     seen = {}
     for item in items:
@@ -20,12 +21,12 @@ def dedup_by_title(items: list[dict]) -> list[dict]:
     return list(seen.values())
 
 
-def upsert_items(combined_data: list[dict], region: str | None = None):
+def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
     """region을 지정하면 모든 항목에 고정 적용, None이면 항목별 item['region']을 사용 (문체부API처럼 항목마다 지역이 다른 경우)."""
     deduped = dedup_by_title(combined_data)
     print(f"📋 [{region or '항목별'}] 중복 제거 후 {len(deduped)}개 처리 (원본 {len(combined_data)}개)")
 
-    for item in deduped:
+    for item in reversed(deduped):
         with engine.connect() as conn:
             try:
                 title = item["title"].strip()
@@ -47,7 +48,8 @@ def upsert_items(combined_data: list[dict], region: str | None = None):
                         longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
                         content = EXCLUDED.content,
                         image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
-                        region = EXCLUDED.region
+                        region = EXCLUDED.region,
+                        created_at = CURRENT_TIMESTAMP
                 """)
 
                 # end_date: 실제 행사 종료일 우선 (date 객체 또는 ISO 문자열), 없으면 +30일

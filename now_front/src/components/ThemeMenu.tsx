@@ -203,15 +203,16 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-100 flex-shrink-0 bg-zinc-50">
-                      <img 
-                        src={theme.user_image || `https://ui-avatars.com/api/?name=${theme.user_name || 'U'}&background=random`} 
-                        className="w-full h-full object-cover" 
-                        alt="" 
+                      <img
+                        src={theme.user_image || `https://picsum.photos/seed/u${theme.id}/200`}
+                        className="w-full h-full object-cover"
+                        alt=""
+                        onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${theme.id}/200`; }}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name}</p>
+                        <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || '아무개'}</p>
                         <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">테마</span>
                       </div>
                     </div>
@@ -243,16 +244,17 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
               {latest.map((theme: any) => (
                 <div key={theme.id} onClick={() => setSelectedTheme(theme)} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm cursor-pointer hover:border-blue-200 transition-all flex items-center gap-4 group">
                   <div className="w-12 h-12 rounded-xl overflow-hidden border border-zinc-100 flex-shrink-0 bg-zinc-50">
-                    <img 
-                      src={theme.user_image || `https://ui-avatars.com/api/?name=${theme.user_name || 'U'}&background=random`} 
-                      className="w-full h-full object-cover" 
-                      alt="" 
+                    <img
+                      src={theme.user_image || `https://picsum.photos/seed/u${theme.id}/200`}
+                      className="w-full h-full object-cover"
+                      alt=""
+                      onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${theme.id}/200`; }}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-zinc-900 text-sm tracking-tight line-clamp-1 group-hover:text-blue-600 transition-colors">{theme.title}</h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-bold text-zinc-400 truncate">{theme.user_name}</span>
+                      <span className="text-[9px] font-bold text-zinc-400 truncate">{theme.user_name || '아무개'}</span>
                       <span className="text-[9px] font-black text-zinc-300 ml-auto flex items-center gap-1"><Heart size={10} /> {theme.like_count}</span>
                     </div>
                   </div>
@@ -275,10 +277,15 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={selectedTheme.user_image || "https://ui-avatars.com/api/?name=U&background=random"} className="w-10 h-10 rounded-full border border-zinc-100 bg-zinc-50 object-cover" alt="" />
+                  <img
+                    src={selectedTheme.user_image || `https://picsum.photos/seed/u${selectedTheme.id}/200`}
+                    className="w-10 h-10 rounded-full border border-zinc-100 bg-zinc-50 object-cover"
+                    alt=""
+                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${selectedTheme.id}/200`; }}
+                  />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{selectedTheme.user_name}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || '아무개')}의 테마</p>
                   </div>
                 </div>
                 <div className="flex gap-2">

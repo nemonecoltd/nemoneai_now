@@ -77,26 +77,35 @@ def upsert_naver_items(items: list[dict], region: str):
 
         try:
             embedding = get_embedding(content)
-            end_date = date.today() + timedelta(days=30)
+            # 네이버 popupstore/list에서 실제 운영 시작/종료일을 가져온 경우 그걸 쓰고,
+            # 못 찾았을 때만 today+30일 임시값으로 fallback (정확한 기간 모름을 의미)
+            start_date = item.get("start_date")
+            end_date = item.get("end_date") or (date.today() + timedelta(days=30))
+            date_range = (
+                f"{start_date.strftime('%Y.%m.%d.')} ~ {end_date.strftime('%Y.%m.%d.')}"
+                if start_date and item.get("end_date") else ""
+            )
 
             with engine.connect() as conn:
                 conn.execute(text("""
                     INSERT INTO seongsu_places
                     (title, title_en, content, content_en, location, latitude, longitude,
-                     naver_place_id, video_url, image_url, embedding, end_date, region)
+                     naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
                     VALUES
                     (:title, :title_en, :content, :content_en, :location, :latitude, :longitude,
-                     :naver_place_id, :video_url, :image_url, :embedding, :end_date, :region)
+                     :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
                     ON CONFLICT (naver_place_id)
                     DO UPDATE SET
-                        title     = EXCLUDED.title,
-                        title_en  = EXCLUDED.title_en,
-                        content   = EXCLUDED.content,
-                        location  = EXCLUDED.location,
-                        latitude  = COALESCE(EXCLUDED.latitude,  seongsu_places.latitude),
-                        longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
-                        image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
-                        region    = EXCLUDED.region,
+                        title      = EXCLUDED.title,
+                        title_en   = EXCLUDED.title_en,
+                        content    = EXCLUDED.content,
+                        location   = EXCLUDED.location,
+                        latitude   = COALESCE(EXCLUDED.latitude,  seongsu_places.latitude),
+                        longitude  = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
+                        image_url  = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
+                        region     = EXCLUDED.region,
+                        end_date   = COALESCE(:real_end_date, seongsu_places.end_date),
+                        date_range = CASE WHEN EXCLUDED.date_range != '' THEN EXCLUDED.date_range ELSE seongsu_places.date_range END,
                         created_at = CURRENT_TIMESTAMP
                 """), {
                     "title":          title,
@@ -111,6 +120,8 @@ def upsert_naver_items(items: list[dict], region: str):
                     "image_url":      item.get("image_url", ""),
                     "embedding":      f"[{','.join(map(str, embedding))}]",
                     "end_date":       end_date,
+                    "real_end_date":  item.get("end_date"),
+                    "date_range":     date_range,
                     "region":         region,
                 })
                 conn.commit()

@@ -10,7 +10,19 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 def generate_answer(user_query: str, context: str, region: str = "성수", lang: str = "ko"):
     """일반 채팅용 답변 생성"""
     lang_name = "영어" if lang == "en" else "한국어"
-    prompt = f"당신은 {region} 지역 최고의 로컬 가이드입니다. 다음 정보를 바탕으로 {lang_name}로 답하세요: {context}\n\n질문: {user_query}"
+    prompt = f"""당신은 {region} 지역 로컬 가이드입니다. 아래 장소 정보를 참고해 {lang_name}로 친절하게 답하세요.
+
+[장소 정보]
+{context}
+
+[답변 형식 규칙 - 반드시 준수]
+- 표(table) 사용 금지
+- 마크다운 기호(#, **, *, ---, |) 사용 금지
+- URL은 절대 그대로 출력하지 말 것. 네이버 지도 링크가 필요하면 "네이버 지도에서 확인하세요" 같은 문장으로 대체
+- 줄바꿈으로 문단을 구분하고, 목록은 "• " 기호만 사용
+- 짧고 명확하게 3~5문장 이내로 답변
+
+질문: {user_query}"""
     response = client.models.generate_content(
         model="gemini-2.5-pro",
         contents=prompt
@@ -41,12 +53,16 @@ def generate_walking_tour(companion: str, context: str, region: str = "성수", 
       "steps": [
         {{
           "time": "14:00",
+          "place_id": 42,
           "place_name": "Name",
+          "date_range": "2026.06.01 ~ 2026.07.31",
           "activity": "Activity in {lang_name}",
           "duration": 60
         }}
       ]
     }}
+    - place_id는 반드시 [id:숫자] 형식에서 추출한 정수 그대로 사용
+    - date_range는 장소 정보의 운영일시를 그대로 복사 (없으면 null)
     """
     
     response = client.models.generate_content(

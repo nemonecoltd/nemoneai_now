@@ -240,7 +240,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name}</p>
+                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || (lang === 'en' ? 'Anony' : '아무개')}</p>
                           <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">
                             {lang === 'en' ? 'Theme' : '테마'}
                           </span>
@@ -333,7 +333,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   <img src={selectedCourse.user_image} className="w-10 h-10 rounded-full border border-zinc-100" alt="" />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedCourse.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{selectedCourse.user_name}의 추천 코스</p>
+                    <p className="text-xs text-zinc-400 font-bold">
+                      {selectedCourse.user_name}의 추천 코스
+                      {selectedCourse.created_at && (
+                        <span className="ml-2 font-normal text-zinc-300">
+                          {new Date(selectedCourse.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedCourse(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
@@ -346,8 +353,25 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     <div className="space-y-2">
                       <p className="text-[10px] font-black text-zinc-400 font-mono uppercase">{step.time} • {step.duration}MIN</p>
                       <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                        <h4 className="font-bold text-zinc-900 text-sm">{step.place_name}</h4>
-                        <p className="text-[11px] text-zinc-500 mt-1">{step.activity}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-zinc-900 text-sm">{step.place_name}</h4>
+                            {step.date_range && (
+                              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{step.date_range}</p>
+                            )}
+                            <p className="text-[11px] text-zinc-500 mt-1">{step.activity}</p>
+                          </div>
+                          {step.place_id && (
+                            <Link
+                              href={`/posts/${step.place_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-shrink-0 w-7 h-7 bg-white border border-zinc-200 rounded-xl flex items-center justify-center text-zinc-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
+                            >
+                              <ChevronRight size={14} />
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -372,10 +396,15 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={selectedTheme.user_image} className="w-10 h-10 rounded-full border border-zinc-100" alt="" />
+                  <img
+                    src={selectedTheme.user_image || `https://picsum.photos/seed/u${selectedTheme.id}/200`}
+                    className="w-10 h-10 rounded-full border border-zinc-100 object-cover"
+                    alt=""
+                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${selectedTheme.id}/200`; }}
+                  />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{selectedTheme.user_name}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || (lang === 'en' ? 'Anony' : '아무개'))}의 테마</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedTheme(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
