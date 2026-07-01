@@ -92,6 +92,8 @@ export default function AdminPage() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
   const [placeSearch, setPlaceSearch] = useState('');
+  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number}[]>([]);
+  const [enrichingRankId, setEnrichingRankId] = useState<number | null>(null);
   const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
   const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
   const [themeEditForm, setThemeEditForm] = useState<{ title: string; description: string }>({ title: '', description: '' });
@@ -139,6 +141,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (isLocalDev || user?.email === 'nemonecoltd@gmail.com') {
       fetchAdminStats();
+      fetchWeeklyRanking();
       if (viewMode === 'spots') {
         fetchPlaces();
       } else if (viewMode === 'themes') {
@@ -152,6 +155,28 @@ export default function AdminPage() {
     if (res.ok) {
       const data = await res.json();
       setStats(data);
+    }
+  };
+
+  const fetchWeeklyRanking = async () => {
+    const res = await fetch('/api-now/admin/ranking/weekly');
+    if (res.ok) setWeeklyRanking(await res.json());
+  };
+
+  const handleEnrichRanking = async (placeId: number) => {
+    setEnrichingRankId(placeId);
+    try {
+      const res = await fetch(`/api-now/places/${placeId}/enrich`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`✅ ${data.blog_reviews?.length ?? 0}개 블로그 후기 업데이트 완료`);
+      } else {
+        alert('실패');
+      }
+    } catch {
+      alert('네트워크 오류');
+    } finally {
+      setEnrichingRankId(null);
     }
   };
 
@@ -219,7 +244,7 @@ export default function AdminPage() {
   };
 
   const fetchPlaces = async () => {
-    const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}`);
+    const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(region)}`);
     if (res.ok) {
       const data = await res.json();
       setPlaces(data);
@@ -416,6 +441,38 @@ export default function AdminPage() {
           </div>
         )}
 
+        {weeklyRanking.length > 0 && (
+          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-base font-black text-zinc-900">📊 주간 조회수 TOP {weeklyRanking.length}</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 7일</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {weeklyRanking.map((item, idx) => (
+                <div key={item.id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                  <span className="text-lg font-black text-zinc-300 w-6 text-center">{idx + 1}</span>
+                  {item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />}
+                  <div className="flex-grow min-w-0">
+                    <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
+                    <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
+                  </div>
+                  <button
+                    onClick={() => handleEnrichRanking(item.id)}
+                    disabled={enrichingRankId === item.id}
+                    className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
+                  >
+                    {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                    {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
+                  </button>
+                  <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0">
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {viewMode === 'spots' ? (
           <div className="grid gap-6">
             {isCreating && (
@@ -533,11 +590,12 @@ export default function AdminPage() {
             </div>
             {places.filter(p => {
               if (!placeSearch.trim()) return true;
-              const q = placeSearch.trim().toLowerCase();
+              const q = placeSearch.trim().toLowerCase().replace(/^#/, '');
+              if (/^\d+$/.test(q)) return String(p.id) === q;
               return (
                 p.title.toLowerCase().includes(q) ||
-                (p.naver_place_id || '').toLowerCase().includes(q) ||
-                String(p.id).includes(q)
+                (p.content || '').toLowerCase().includes(q) ||
+                (p.naver_place_id || '').toLowerCase().includes(q)
               );
             }).map((place) => (
               <React.Fragment key={place.id}>

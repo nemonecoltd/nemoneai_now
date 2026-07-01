@@ -596,6 +596,45 @@ async def get_place(place_id: int):
             raise HTTPException(status_code=404, detail="Place not found")
         return dict(row._mapping)
 
+@app.post("/places/{place_id}/view")
+async def record_place_view(place_id: int):
+    """장소 조회수 기록 — 상세 페이지 진입 시 호출"""
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS place_views (
+                id SERIAL PRIMARY KEY,
+                place_id INTEGER NOT NULL,
+                viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.execute(text("INSERT INTO place_views (place_id) VALUES (:place_id)"), {"place_id": place_id})
+        conn.commit()
+    return {"ok": True}
+
+@app.get("/admin/ranking/weekly")
+async def admin_weekly_ranking():
+    """주간 장소 조회수 TOP 10"""
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS place_views (
+                id SERIAL PRIMARY KEY,
+                place_id INTEGER NOT NULL,
+                viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        conn.commit()
+        result = conn.execute(text("""
+            SELECT p.id, p.title, p.image_url, p.region, p.naver_place_id,
+                   COUNT(v.id) AS view_count
+            FROM seongsu_places p
+            JOIN place_views v ON v.place_id = p.id
+            WHERE v.viewed_at >= NOW() - INTERVAL '7 days'
+            GROUP BY p.id, p.title, p.image_url, p.region, p.naver_place_id
+            ORDER BY view_count DESC
+            LIMIT 10
+        """))
+        return [dict(row._mapping) for row in result]
+
 @app.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):
     """어드민 장소 등록/수정 화면에서 이미지 파일 직접 업로드 (압축 후 Supabase Storage 저장)."""
@@ -886,6 +925,20 @@ async def reply_feedback(feedback_id: int, req: FeedbackReply):
         conn.execute(text("UPDATE feedbacks SET admin_reply = :reply WHERE id = :id"), {"reply": req.reply, "id": feedback_id})
         conn.commit()
     return {"status": "success"}
+
+@app.get("/admin/places")
+async def admin_list_all_places(region: Optional[str] = None):
+    """어드민 전용 — 만료 포함 전체 장소 조회"""
+    where_clause = "WHERE region = :region" if region else ""
+    params: dict = {"region": region} if region else {}
+    query = text(
+        f"SELECT id, title, content, image_url, location, date_range, end_date, region, pinned_at, naver_place_id "
+        f"FROM seongsu_places {where_clause} "
+        f"ORDER BY pinned_at DESC NULLS LAST, id DESC"
+    )
+    with engine.connect() as conn:
+        result = conn.execute(query, params)
+        return [dict(row._mapping) for row in result]
 
 @app.get("/admin/stats")
 async def get_admin_stats():

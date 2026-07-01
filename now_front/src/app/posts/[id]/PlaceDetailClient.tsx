@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, MapPin, Calendar, Clock, Share2, Globe, Video } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
@@ -37,6 +38,12 @@ interface Props {
 
 export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (place?.id) {
+      fetch(`/api-now/places/${place.id}/view`, { method: 'POST' }).catch(() => {});
+    }
+  }, [place?.id]);
 
   if (!place) {
     return (
