@@ -74,7 +74,7 @@ interface AdminStats {
 }
 
 type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
-type ViewMode = 'spots' | 'themes';
+type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
   const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
@@ -345,7 +345,15 @@ export default function AdminPage() {
             
             <div className="flex items-center gap-6 mt-6 border-b border-zinc-200">
               <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">스팟 데이터</span>
+                <button
+                  onClick={() => setViewMode('ranking')}
+                  className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
+                    viewMode === 'ranking' ? "text-amber-500 border-amber-400" : "text-zinc-400 border-transparent hover:text-zinc-600"
+                  }`}
+                >
+                  📊 TOP 10
+                </button>
+                <div className="w-px h-4 bg-zinc-300 mb-1"></div>
                 {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map((r) => (
                   <button
                     key={r}
@@ -441,39 +449,69 @@ export default function AdminPage() {
           </div>
         )}
 
-        {weeklyRanking.length > 0 && (
+        {viewMode === 'ranking' && (
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-base font-black text-zinc-900">📊 주간 조회수 TOP {weeklyRanking.length}</span>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 7일</span>
             </div>
-            <div className="flex flex-col gap-2">
-              {weeklyRanking.map((item, idx) => (
-                <div key={item.id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
-                  <span className="text-lg font-black text-zinc-300 w-6 text-center">{idx + 1}</span>
-                  {item.image_url && <img src={item.image_url} alt="" className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />}
-                  <div className="flex-grow min-w-0">
-                    <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
-                    <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
+            {weeklyRanking.length === 0 ? (
+              <p className="text-sm text-zinc-400 text-center py-8">아직 조회 데이터가 없습니다. 유저 방문이 쌓이면 표시됩니다.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {weeklyRanking.map((item, idx) => (
+                  <div key={item.id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                    <span className="text-lg font-black text-zinc-300 w-6 text-center">{idx + 1}</span>
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`}
+                        alt=""
+                        className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-zinc-200 flex-shrink-0" />
+                    )}
+                    <div className="flex-grow min-w-0">
+                      <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
+                      <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setRegion(item.region as Region);
+                        setViewMode('spots');
+                        // 해당 리전 로드 후 편집 폼 열기
+                        const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
+                        if (res.ok) {
+                          const data = await res.json();
+                          setPlaces(data);
+                          const found = data.find((p: Place) => p.id === item.id);
+                          if (found) { setEditingId(found.id); setEditForm({ ...found }); }
+                        }
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 flex-shrink-0 transition-colors"
+                    >
+                      <Edit size={11} /> 편집
+                    </button>
+                    <button
+                      onClick={() => handleEnrichRanking(item.id)}
+                      disabled={enrichingRankId === item.id}
+                      className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
+                    >
+                      {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                      {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
+                    </button>
+                    <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0">
+                      <ExternalLink size={14} />
+                    </a>
                   </div>
-                  <button
-                    onClick={() => handleEnrichRanking(item.id)}
-                    disabled={enrichingRankId === item.id}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
-                  >
-                    {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
-                    {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
-                  </button>
-                  <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0">
-                    <ExternalLink size={14} />
-                  </a>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {viewMode === 'spots' ? (
+        {viewMode !== 'ranking' && (viewMode === 'spots' ? (
           <div className="grid gap-6">
             {isCreating && (
               <div className="bg-white border border-emerald-500 rounded-3xl p-6 shadow-md flex gap-6 items-start">
@@ -1048,7 +1086,7 @@ export default function AdminPage() {
               );
             })}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

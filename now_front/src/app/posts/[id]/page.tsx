@@ -15,17 +15,15 @@ async function getPlace(id: string): Promise<Place | null> {
   }
 }
 
-async function getSuggestions(excludeId: string): Promise<Place[]> {
+async function getSuggestions(excludeId: string, region: string): Promise<Place[]> {
   try {
-    const res = await fetch(`${BACKEND}/places`, {
+    const res = await fetch(`${BACKEND}/places?region=${encodeURIComponent(region)}&limit=30`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
     const all: Place[] = await res.json();
-    const pool = all.filter(
-      (p) => p.id !== Number(excludeId) && p.image_url && (p.region === '성수' || p.region === '홍대')
-    );
-    return pool.sort(() => Math.random() - 0.5).slice(0, 3);
+    const pool = all.filter((p) => p.id !== Number(excludeId) && p.image_url);
+    return pool.sort(() => Math.random() - 0.5).slice(0, 15);
   } catch {
     return [];
   }
@@ -73,10 +71,8 @@ export default async function PostDetailPage({
   const { id } = await params;
   const { lang = 'ko' } = await searchParams;
 
-  const [place, suggestions] = await Promise.all([
-    getPlace(id),
-    getSuggestions(id),
-  ]);
+  const place = await getPlace(id);
+  const suggestions = place ? await getSuggestions(id, place.region || '성수') : [];
 
   return <PlaceDetailClient place={place} lang={lang} suggestions={suggestions} />;
 }

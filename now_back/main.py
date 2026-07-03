@@ -452,6 +452,8 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
 async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — page.tsx의 fetchAllPlaces가 region 없이 전체를 사용함
     where_clause = "WHERE region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
+    if region in ("공연", "제주"):
+        where_clause += " AND p.naver_place_id LIKE 'kopis_%'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(f"""
         SELECT p.id, p.title, p.title_en, p.content, p.content_en, p.image_url, p.location, p.region, COUNT(l.id) as like_count
@@ -571,6 +573,9 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
 async def list_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
+    # 공연/제주는 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
+    if region in ("공연", "제주"):
+        where_clause += " AND naver_place_id LIKE 'kopis_%'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
         f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at, naver_place_id "
@@ -600,20 +605,15 @@ async def get_place(place_id: int):
 async def record_place_view(place_id: int):
     """장소 조회수 기록 — 상세 페이지 진입 시 호출"""
     with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS place_views (
-                id SERIAL PRIMARY KEY,
-                place_id INTEGER NOT NULL,
-                viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
         conn.execute(text("INSERT INTO place_views (place_id) VALUES (:place_id)"), {"place_id": place_id})
         conn.commit()
     return {"ok": True}
 
-@app.get("/admin/ranking/weekly")
-async def admin_weekly_ranking():
-    """주간 장소 조회수 TOP 10"""
+_weekly_ranking_cache: list = []
+
+def refresh_weekly_ranking():
+    """주간 장소 조회수 TOP 10 재계산 — 매일 자정에 한 번만 실행 (실시간 집계 불필요)"""
+    global _weekly_ranking_cache
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -622,6 +622,7 @@ async def admin_weekly_ranking():
                 viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
         """))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
         conn.commit()
         result = conn.execute(text("""
             SELECT p.id, p.title, p.image_url, p.region, p.naver_place_id,
@@ -633,7 +634,12 @@ async def admin_weekly_ranking():
             ORDER BY view_count DESC
             LIMIT 10
         """))
-        return [dict(row._mapping) for row in result]
+        _weekly_ranking_cache = [dict(row._mapping) for row in result]
+
+@app.get("/admin/ranking/weekly")
+async def admin_weekly_ranking():
+    """주간 장소 조회수 TOP 10 (자정에 계산된 캐시 반환)"""
+    return _weekly_ranking_cache
 
 @app.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):
@@ -974,8 +980,11 @@ async def get_admin_stats():
         "storage_percent": storage["percent"],
     }
 
+refresh_weekly_ranking()
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
+scheduler.add_job(refresh_weekly_ranking, 'cron', hour=0, minute=5)
 scheduler.start()
 
 if __name__ == "__main__":

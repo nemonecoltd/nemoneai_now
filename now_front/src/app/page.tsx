@@ -31,6 +31,8 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const PAGE_SIZE = 20;
+
 type Tab = 'rec' | 'map' | 'list' | 'theme' | 'tour' | 'chat';
 type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
 type Lang = 'ko' | 'en';
@@ -84,14 +86,20 @@ function Home() {
     if (t) setActiveTab(t);
   }, []);
   const [lang, setLang] = useState<Lang>('ko');
-  const [places, setPlaces] = useState([]); // 지역별 데이터
+  const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
+  const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (성수/홍대만)
   const [allPlaces, setAllPlaces] = useState([]); // 통합 데이터 (랭킹용)
 
   const t = dict[lang];
 
   useEffect(() => {
     fetchPlaces();
-    fetchAllPlaces(); 
+    fetchAllPlaces();
+    if (region === '성수' || region === '홍대') {
+      fetchMapPlaces();
+    } else {
+      setMapPlaces([]);
+    }
   }, [region, lang]);
 
   useEffect(() => {
@@ -103,13 +111,25 @@ function Home() {
 
   const fetchPlaces = async () => {
     try {
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&t=${Date.now()}`);
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=0&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setPlaces(data);
       }
     } catch (e) {
       console.error("Failed to fetch places:", e);
+    }
+  };
+
+  const fetchMapPlaces = async () => {
+    try {
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMapPlaces(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch map places:", e);
     }
   };
 
@@ -276,7 +296,7 @@ function Home() {
 
           {activeTab === 'map' && region !== '공연' && region !== '제주' && region !== '축제' && (
             <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-              <MapView places={places} region={region} lang={lang} />
+              <MapView places={mapPlaces} region={region} lang={lang} />
             </motion.div>
           )}
 

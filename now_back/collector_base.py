@@ -31,8 +31,8 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
 
                 upsert_query = text("""
                     INSERT INTO seongsu_places
-                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
-                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
+                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url)
+                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url)
                     ON CONFLICT (title)
                     DO UPDATE SET
                         title_en = EXCLUDED.title_en,
@@ -42,6 +42,7 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                         longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
                         content = EXCLUDED.content,
                         image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
+                        link_url = COALESCE(EXCLUDED.link_url, seongsu_places.link_url),
                         region = EXCLUDED.region,
                         end_date = COALESCE(:real_end_date, seongsu_places.end_date),
                         date_range = CASE WHEN EXCLUDED.date_range != '' THEN EXCLUDED.date_range ELSE seongsu_places.date_range END,
@@ -77,6 +78,7 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                     "real_end_date": real_end_date,
                     "date_range": item.get("date_range", ""),
                     "region": item_region,
+                    "link_url": item.get("link_url"),
                 })
                 conn.commit()
             except Exception as e:

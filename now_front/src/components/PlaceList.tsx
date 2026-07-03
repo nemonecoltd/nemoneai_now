@@ -13,6 +13,8 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const PAGE_SIZE = 20;
+
 interface Place {
   id: number;
   title: string;
@@ -31,15 +33,47 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
   const [places, setPlaces] = useState(initialPlaces);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [hasMore, setHasMore] = useState(initialPlaces.length >= PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPlaces(initialPlaces);
+    setHasMore(initialPlaces.length >= PAGE_SIZE);
   }, [initialPlaces]);
+
+  const loadMore = React.useCallback(async () => {
+    if (isLoadingMore || !hasMore || searchTerm) return;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}`);
+      if (res.ok) {
+        const data: Place[] = await res.json();
+        setPlaces(prev => [...prev, ...data]);
+        setHasMore(data.length >= PAGE_SIZE);
+      }
+    } catch (e) {
+      console.error("Failed to load more places", e);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: '400px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loadMore]);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchTerm.trim()) {
       setPlaces(initialPlaces);
+      setHasMore(initialPlaces.length >= PAGE_SIZE);
       return;
     }
 
@@ -49,6 +83,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
       if (res.ok) {
         const data = await res.json();
         setPlaces(data);
+        setHasMore(false);
       }
     } catch (e) {
       console.error(e);
@@ -119,13 +154,22 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
             className="bg-white rounded-3xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group relative"
           >
             <div className="relative h-48 overflow-hidden bg-zinc-100">
-              <img 
-                src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} 
-                alt={place.title} 
+              <img
+                src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`}
+                alt={place.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 referrerPolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://picsum.photos/seed/seongsu-${place.id}/400/300`;
+                  const img = e.target as HTMLImageElement;
+                  const retryCount = Number(img.dataset.retryCount || '0');
+                  if (retryCount < 2 && place.image_url) {
+                    img.dataset.retryCount = String(retryCount + 1);
+                    setTimeout(() => { img.src = place.image_url!; }, 600 * (retryCount + 1));
+                  } else {
+                    img.src = `https://picsum.photos/seed/seongsu-${place.id}/400/300`;
+                  }
                 }}
               />
               <div className="absolute top-4 left-4 flex gap-2">
@@ -173,6 +217,13 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
         {places.length === 0 && (
           <div className="text-center py-20 text-zinc-400 italic">
             {lang === 'en' ? 'No data available.' : '데이터가 없습니다.'}
+          </div>
+        )}
+        {hasMore && !searchTerm && (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            {isLoadingMore && (
+              <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+            )}
           </div>
         )}
       </div>

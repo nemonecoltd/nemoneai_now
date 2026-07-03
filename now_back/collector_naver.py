@@ -86,47 +86,62 @@ def upsert_naver_items(items: list[dict], region: str):
                 if start_date and item.get("end_date") else ""
             )
 
+            params = {
+                "title":          title,
+                "title_en":       item.get("title_en", title),
+                "content":        content,
+                "content_en":     "",
+                "location":       item.get("location", ""),
+                "latitude":       item.get("latitude"),
+                "longitude":      item.get("longitude"),
+                "naver_place_id": naver_place_id,
+                "video_url":      item.get("video_url", ""),
+                "image_url":      item.get("image_url", ""),
+                "embedding":      f"[{','.join(map(str, embedding))}]",
+                "end_date":       end_date,
+                "real_end_date":  item.get("end_date"),
+                "date_range":     date_range,
+                "region":         region,
+            }
+
             with engine.connect() as conn:
-                conn.execute(text("""
-                    INSERT INTO seongsu_places
-                    (title, title_en, content, content_en, location, latitude, longitude,
-                     naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
-                    VALUES
-                    (:title, :title_en, :content, :content_en, :location, :latitude, :longitude,
-                     :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
-                    ON CONFLICT (naver_place_id)
-                    DO UPDATE SET
-                        title      = EXCLUDED.title,
-                        title_en   = EXCLUDED.title_en,
-                        content    = EXCLUDED.content,
-                        location   = EXCLUDED.location,
-                        latitude   = COALESCE(EXCLUDED.latitude,  seongsu_places.latitude),
-                        longitude  = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
-                        image_url  = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
-                        region     = EXCLUDED.region,
-                        end_date   = COALESCE(:real_end_date, seongsu_places.end_date),
-                        date_range = CASE WHEN EXCLUDED.date_range != '' THEN EXCLUDED.date_range ELSE seongsu_places.date_range END,
-                        created_at = CURRENT_TIMESTAMP
-                """), {
-                    "title":          title,
-                    "title_en":       item.get("title_en", title),
-                    "content":        content,
-                    "content_en":     "",
-                    "location":       item.get("location", ""),
-                    "latitude":       item.get("latitude"),
-                    "longitude":      item.get("longitude"),
-                    "naver_place_id": item.get("naver_place_id"),
-                    "video_url":      item.get("video_url", ""),
-                    "image_url":      item.get("image_url", ""),
-                    "embedding":      f"[{','.join(map(str, embedding))}]",
-                    "end_date":       end_date,
-                    "real_end_date":  item.get("end_date"),
-                    "date_range":     date_range,
-                    "region":         region,
-                })
+                # naver_place_id가 바뀌어도(팝업 재등록 등) title이 같으면 같은 장소로 취급해 병합
+                existing_id = conn.execute(
+                    text("SELECT id FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
+                    {"naver_place_id": naver_place_id, "title": title}
+                ).scalar()
+
+                if existing_id:
+                    conn.execute(text("""
+                        UPDATE seongsu_places SET
+                            title          = :title,
+                            title_en       = :title_en,
+                            content        = :content,
+                            location       = :location,
+                            latitude       = COALESCE(:latitude, latitude),
+                            longitude      = COALESCE(:longitude, longitude),
+                            naver_place_id = :naver_place_id,
+                            image_url      = COALESCE(:image_url, image_url),
+                            embedding      = :embedding,
+                            region         = :region,
+                            end_date       = COALESCE(:real_end_date, end_date),
+                            date_range     = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END,
+                            created_at     = CURRENT_TIMESTAMP
+                        WHERE id = :id
+                    """), {**params, "id": existing_id})
+                else:
+                    conn.execute(text("""
+                        INSERT INTO seongsu_places
+                        (title, title_en, content, content_en, location, latitude, longitude,
+                         naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
+                        VALUES
+                        (:title, :title_en, :content, :content_en, :location, :latitude, :longitude,
+                         :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
+                    """), params)
                 conn.commit()
                 print(f"    ✅ 저장 완료")
         except Exception as e:
+            conn.rollback()
             print(f"    ❌ 저장 실패: {e}")
 
 
