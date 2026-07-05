@@ -29,6 +29,19 @@ async function getSuggestions(excludeId: string, region: string): Promise<Place[
   }
 }
 
+function cleanDescription(raw: string): string {
+  const flat = raw
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\|/g, ' ')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (flat.length <= 160) return flat;
+  const cut = flat.slice(0, 160);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 100 ? cut.slice(0, lastSpace) : cut).trim() + '...';
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -36,27 +49,37 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const place = await getPlace(id);
-  if (!place) return {};
+  const canonical = `https://now.nemoneai.com/posts/${id}`;
 
-  const description = place.content
-    ?.replace(/\|/g, ' ')
-    .replace(/https?:\/\/\S+/g, '')
-    .substring(0, 160);
+  if (!place) {
+    return {
+      title: `장소 정보 #${id}`,
+      alternates: { canonical },
+    };
+  }
+
+  const title = (place.title_en && place.title_en !== place.title)
+    ? `${place.title} · ${place.title_en}`
+    : place.title;
+  const description = cleanDescription(place.content || '');
 
   return {
-    title: `${place.title} | Now Here`,
+    title,
     description,
+    alternates: { canonical },
     openGraph: {
-      title: place.title,
+      title,
       description,
-      images: place.image_url ? [{ url: place.image_url }] : [],
+      url: canonical,
+      images: place.image_url ? [{ url: place.image_url, alt: place.title }] : ['/og-image.png'],
       type: 'article',
+      locale: 'ko_KR',
     },
     twitter: {
       card: 'summary_large_image',
-      title: place.title,
+      title,
       description,
-      images: place.image_url ? [place.image_url] : [],
+      images: place.image_url ? [place.image_url] : ['/og-image.png'],
     },
   };
 }

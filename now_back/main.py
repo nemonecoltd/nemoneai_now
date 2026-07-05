@@ -15,6 +15,8 @@ import logging
 import os
 import uuid
 import json
+import threading
+import urllib.request
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -679,6 +681,14 @@ async def create_place(place: PlaceUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def _revalidate_place(place_id: int):
+    try:
+        secret = os.getenv("ADMIN_SECRET_KEY", "")
+        url = f"http://127.0.0.1:3002/api/revalidate?path=/posts/{place_id}&secret={secret}"
+        urllib.request.urlopen(url, timeout=3)
+    except Exception:
+        pass
+
 @app.put("/places/{place_id}")
 async def update_place(place_id: int, place: PlaceUpdate):
     try:
@@ -714,6 +724,7 @@ async def update_place(place_id: int, place: PlaceUpdate):
         with engine.connect() as conn:
             conn.execute(query, {**update_data, "place_id": place_id})
             conn.commit()
+        threading.Thread(target=_revalidate_place, args=(place_id,), daemon=True).start()
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -984,7 +995,9 @@ refresh_weekly_ranking()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
-scheduler.add_job(refresh_weekly_ranking, 'cron', hour=0, minute=5)
+# 서버는 UTC 기준 — 한국시간(KST=UTC+9) 자정(00:00)/낮 12시(12:00)에 맞춰 UTC 15:00, 03:00에 실행
+scheduler.add_job(refresh_weekly_ranking, 'cron', hour=15, minute=5, id='ranking_kst_midnight')
+scheduler.add_job(refresh_weekly_ranking, 'cron', hour=3, minute=5, id='ranking_kst_noon')
 scheduler.start()
 
 if __name__ == "__main__":
