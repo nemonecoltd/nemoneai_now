@@ -9,7 +9,7 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generate_answer(user_query: str, context: str, region: str = "성수", lang: str = "ko"):
     """일반 채팅용 답변 생성"""
-    lang_name = "영어" if lang == "en" else "한국어"
+    lang_name = {"en": "영어", "zh": "중국어(간체)"}.get(lang, "한국어")
     prompt = f"""당신은 {region} 지역 로컬 가이드입니다. 아래 장소 정보를 참고해 {lang_name}로 친절하게 답하세요.
 
 [장소 정보]
@@ -31,7 +31,7 @@ def generate_answer(user_query: str, context: str, region: str = "성수", lang:
 
 def generate_walking_tour(companion: str, context: str, region: str = "성수", lang: str = "ko"):
     """[핵심] 3시간 맞춤형 도보 코스를 JSON 형식으로 설계"""
-    lang_name = "영어" if lang == "en" else "한국어"
+    lang_name = {"en": "영어", "zh": "중국어(간체)"}.get(lang, "한국어")
     prompt = f"""
     당신은 {region} 지역 최고의 로컬 가이드입니다. 
     아래 [{region} 팝업 데이터]를 바탕으로 '{companion}'와(과) 함께하는 최적의 '3시간 도보 코스'를 설계하세요.
@@ -76,6 +76,32 @@ def generate_walking_tour(companion: str, context: str, region: str = "성수", 
     # [방어 로직] 마크다운 기호 제거 후 JSON 추출
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     return json.loads(clean_json)
+
+def ai_translate(title: str, content: str) -> tuple[str, str, str, str]:
+    """한국어 title/content를 영어+중국어로 번역. 실패 시 빈 문자열 튜플 반환."""
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=(
+                f"다음 한국어 팝업스토어 정보를 자연스러운 영어와 중국어(간체)로 각각 번역해줘.\n"
+                f"제목: {title}\n내용: {content}\n\n"
+                f"조건: 아래 JSON 형식으로만 출력 (설명이나 코드블록 없이 순수 JSON만).\n"
+                f'{{"title_en": "English title", "content_en": "English content", '
+                f'"title_zh": "中文标题", "content_zh": "中文内容"}}'
+            ),
+        )
+        raw = (response.text or "").strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+        return (
+            (data.get("title_en", "") or "").strip(),
+            (data.get("content_en", "") or "").strip(),
+            (data.get("title_zh", "") or "").strip(),
+            (data.get("content_zh", "") or "").strip(),
+        )
+    except Exception as e:
+        print(f"    ⚠️ 번역 실패: {e}")
+        return "", "", "", ""
 
 def get_embedding(text: str):
     """텍스트 벡터화 (최신 다국어 모델 사용)"""

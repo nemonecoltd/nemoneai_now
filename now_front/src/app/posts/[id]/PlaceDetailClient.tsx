@@ -2,9 +2,10 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/context/AuthContext';
 
 export interface BlogReview {
   title: string;
@@ -15,8 +16,10 @@ export interface Place {
   id: number;
   title: string;
   title_en?: string;
+  title_zh?: string;
   content: string;
   content_en?: string;
+  content_zh?: string;
   location: string;
   image_url: string;
   video_url?: string;
@@ -36,9 +39,76 @@ interface Props {
   suggestions: Place[];
 }
 
+const T = {
+  ko: {
+    prevPlace: '이전 장소', nextPlace: '다음 장소', spotlight: '핫플레이스 상세',
+    duration: '운영 기간', openDaily: '상시 운영', status: '상태', active: '운영 중',
+    details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
+    locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
+    linkCopied: '링크가 복사되었습니다!',
+  },
+  en: {
+    prevPlace: 'Previous place', nextPlace: 'Next place', spotlight: 'Hotplace Spotlight',
+    duration: 'Duration', openDaily: 'Open Daily', status: 'Status', active: 'Active',
+    details: 'Details', moreToExplore: 'More to explore', location: 'Location',
+    locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
+    linkCopied: 'Link copied!',
+  },
+  zh: {
+    prevPlace: '上一个地点', nextPlace: '下一个地点', spotlight: '热门地点详情',
+    duration: '运营期间', openDaily: '全年营业', status: '状态', active: '营业中',
+    details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
+    locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
+    linkCopied: '链接已复制！',
+  },
+} as const;
+
 export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
   const router = useRouter();
+  const { user, signInWithGoogle } = useAuth();
   const [navIndex, setNavIndex] = React.useState(0);
+  const [liked, setLiked] = React.useState(false);
+  const t = T[(lang as keyof typeof T)] || T.ko;
+
+  React.useEffect(() => {
+    if (user?.id && place?.id) {
+      fetch(`/api-now/users/${user.id}/likes`)
+        .then(res => res.json())
+        .then((data: { id: number }[]) => setLiked(data.some(p => p.id === place.id)))
+        .catch(() => {});
+    }
+  }, [user, place?.id]);
+
+  const toggleLike = async () => {
+    if (!place) return;
+    if (!user) return signInWithGoogle();
+    try {
+      const res = await fetch('/api-now/likes/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, place_id: place.id }),
+      });
+      if (res.ok) {
+        const { liked: nowLiked } = await res.json();
+        setLiked(nowLiked);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!place) return;
+    const url = `https://now.nemoneai.com/posts/${place.id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: place.title, url }); } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        alert(t.linkCopied);
+      } catch {}
+    }
+  };
 
   React.useEffect(() => {
     if (place?.id) {
@@ -51,7 +121,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
     const nextIndex = (navIndex + direction + suggestions.length) % suggestions.length;
     setNavIndex(nextIndex);
     const target = suggestions[nextIndex];
-    router.push(`/posts/${target.id}${place?.region ? `?region=${encodeURIComponent(place.region)}` : ''}`);
+    router.push(`/posts/${target.id}?${new URLSearchParams({ ...(place?.region ? { region: place.region } : {}), lang }).toString()}`);
   };
 
   if (!place) {
@@ -72,7 +142,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
               {suggestions.map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => router.push(`/posts/${s.id}${s.region ? `?region=${encodeURIComponent(s.region)}` : ''}`)}
+                  onClick={() => router.push(`/posts/${s.id}?${new URLSearchParams({ ...(s.region ? { region: s.region } : {}), lang }).toString()}`)}
                   className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm text-left hover:shadow-md transition-shadow"
                 >
                   <img
@@ -98,7 +168,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         )}
 
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push(`/?lang=${lang}`)}
           className="w-full py-3 bg-zinc-900 text-white text-sm font-bold rounded-2xl"
         >
           전체 핫플레이스 보기
@@ -107,8 +177,12 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
     );
   }
 
-  const displayTitle = (lang === 'en' && place.title_en) ? place.title_en : place.title;
-  const displayContent = (lang === 'en' && place.content_en) ? place.content_en : place.content;
+  const displayTitle = (lang === 'en' && place.title_en) ? place.title_en
+    : (lang === 'zh' && place.title_zh) ? place.title_zh
+    : place.title;
+  const displayContent = (lang === 'en' && place.content_en) ? place.content_en
+    : (lang === 'zh' && place.content_zh) ? place.content_zh
+    : place.content;
 
   const displayDateRange = (() => {
     if (place.date_range) return place.date_range;
@@ -179,14 +253,14 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         <div className="fixed inset-0 max-w-md mx-auto z-30 pointer-events-none">
           <button
             onClick={() => goToSuggestion(-1)}
-            aria-label={lang === 'en' ? 'Previous place' : '이전 장소'}
+            aria-label={t.prevPlace}
             className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
           >
             <ChevronLeft size={22} />
           </button>
           <button
             onClick={() => goToSuggestion(1)}
-            aria-label={lang === 'en' ? 'Next place' : '다음 장소'}
+            aria-label={t.nextPlace}
             className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
           >
             <ChevronRight size={22} />
@@ -209,23 +283,34 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
 
         <div className="absolute top-8 left-6 right-6 flex justify-between">
           <button
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}`)}
+            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`)}
             className={`w-11 h-11 ${regionColorClass} backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform`}
           >
             <ChevronLeft size={24} />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <a
               href="https://nemoneai.com"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="네모네AIM (맛매치)"
-              className="w-11 h-11 rounded-full overflow-hidden border border-white/40 shadow-lg active:scale-95 transition-transform"
+              className="w-9 h-9 rounded-full overflow-hidden border border-white/40 shadow-lg active:scale-95 transition-transform"
             >
               <img src="/matmatch-icon.png" alt="네모네AIM" className="w-full h-full object-cover" />
             </a>
-            <button className="w-11 h-11 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform">
-              <Share2 size={20} />
+            <button
+              onClick={toggleLike}
+              aria-label={lang === 'en' ? 'Save' : lang === 'zh' ? '收藏' : '찜하기'}
+              className="w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform"
+            >
+              <Heart size={16} className={liked ? 'fill-rose-500 text-rose-500' : ''} />
+            </button>
+            <button
+              onClick={handleShare}
+              aria-label={lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유하기'}
+              className="w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform"
+            >
+              <Share2 size={16} />
             </button>
           </div>
         </div>
@@ -233,7 +318,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         <div className="absolute bottom-10 left-8 right-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 block">
-              {lang === 'en' ? 'Hotplace Spotlight' : '핫플레이스 상세'}
+              {t.spotlight}
             </span>
             <h1 className="text-3xl font-black text-white tracking-tighter leading-tight">{displayTitle}</h1>
           </motion.div>
@@ -248,24 +333,24 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
               <Calendar size={20} />
             </div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
-              {lang === 'en' ? 'Duration' : '운영 기간'}
+              {t.duration}
             </p>
-            <p className="text-xs font-bold text-zinc-900">{displayDateRange || (lang === 'en' ? 'Open Daily' : '상시 운영')}</p>
+            <p className="text-xs font-bold text-zinc-900">{displayDateRange || t.openDaily}</p>
           </div>
           <div className="flex-1 bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm">
             <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
               <Clock size={20} />
             </div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
-              {lang === 'en' ? 'Status' : '상태'}
+              {t.status}
             </p>
-            <p className="text-xs font-bold text-zinc-900">{lang === 'en' ? 'Active' : '운영 중'}</p>
+            <p className="text-xs font-bold text-zinc-900">{t.active}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
-            {lang === 'en' ? 'Details' : '상세 정보'}
+            {t.details}
           </h2>
           {(() => {
             const LABEL_RE = /^(기간|출연|러닝타임|관람연령|티켓가격|공연시간|기획|장소|주최|문의):\s*(.+)$/;
@@ -385,13 +470,13 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         {suggestions.length > 0 && (
           <div className="space-y-4">
             <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">
-              {lang === 'en' ? 'More to explore' : '이런 곳도 있어요'}
+              {t.moreToExplore}
             </p>
             <div className="flex flex-col gap-3">
               {suggestions.slice(0, 3).map((s) => (
                 <button
                   key={s.id}
-                  onClick={() => router.push(`/posts/${s.id}${s.region ? `?region=${encodeURIComponent(s.region)}` : ''}`)}
+                  onClick={() => router.push(`/posts/${s.id}?${new URLSearchParams({ ...(s.region ? { region: s.region } : {}), lang }).toString()}`)}
                   className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm text-left hover:shadow-md transition-shadow"
                 >
                   <img
@@ -419,7 +504,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
 
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
-            {lang === 'en' ? 'Location' : '위치 안내'}
+            {t.location}
           </h2>
           <div className="flex items-center gap-2 text-sm text-emerald-600 font-bold bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
             <MapPin size={18} />
@@ -451,7 +536,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
             <div className="w-full h-48 bg-zinc-100 rounded-3xl flex flex-col items-center justify-center text-zinc-400 border-2 border-dashed border-zinc-200">
               <MapPin size={24} className="mb-2 opacity-20" />
               <p className="text-[10px] font-bold uppercase tracking-widest">
-                {lang === 'en' ? 'Location Data Syncing' : '정확한 위치 정보 준비 중'}
+                {t.locationSyncing}
               </p>
             </div>
           )}
@@ -460,7 +545,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         {place.video_url && (
           <div className="pt-4">
             <button className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl">
-              <Video size={20} /> {lang === 'en' ? 'Watch Video' : '실시간 영상 보기'}
+              <Video size={20} /> {t.watchVideo}
             </button>
           </div>
         )}
@@ -468,7 +553,7 @@ export default function PlaceDetailClient({ place, lang, suggestions }: Props) {
         <footer className="mt-6 mb-10 pt-6 border-t border-zinc-100 space-y-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
-              {lang === 'en' ? 'NOW HERE' : '지금여기'}
+              {t.nowHere}
             </span>
             <span className="text-[9px] font-bold text-zinc-300 tracking-widest uppercase">
               © NEMONE INC. ALL RIGHTS RESERVED.

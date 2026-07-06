@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video } from 'lucide-react';
+import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
@@ -155,13 +155,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="px-6 py-4">
         <div className="flex bg-zinc-200/50 p-1 rounded-2xl">
           <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Courses' : '코스 랭킹'}
+            {lang === 'en' ? 'Courses' : lang === 'zh' ? '路线排行' : '코스 랭킹'}
           </button>
           <button onClick={() => setActiveTab('theme')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Themes' : '테마 랭킹'}
+            {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题排行' : '테마 랭킹'}
           </button>
           <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Places' : '플레이스 랭킹'}
+            {lang === 'en' ? 'Places' : lang === 'zh' ? '地点排行' : '플레이스 랭킹'}
           </button>
         </div>
       </div>
@@ -198,7 +198,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           )}>
                             {lang === 'en'
                               ? (course.region === '홍대' ? 'Hongdae' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
-                              : (course.region || '성수')}
+                              : lang === 'zh'
+                                ? (course.region === '홍대' ? '弘大' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
+                                : (course.region || '성수')}
                           </span>
                         </div>
                         <p className="text-[8px] text-zinc-400 font-medium">Verified Local Guide</p>
@@ -240,9 +242,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || (lang === 'en' ? 'Anony' : '아무개')}</p>
+                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : '아무개')}</p>
                           <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">
-                            {lang === 'en' ? 'Theme' : '테마'}
+                            {lang === 'en' ? 'Theme' : lang === 'zh' ? '主题' : '테마'}
                           </span>
                         </div>
                       </div>
@@ -289,26 +291,30 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         )}>
                           {lang === 'en'
                             ? (place.region === '홍대' ? 'HONGDAE' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
-                            : (place.region || '성수')}
+                            : lang === 'zh'
+                              ? (place.region === '홍대' ? '弘大' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
+                              : (place.region || '성수')}
                         </span>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                        {(lang === 'en' && place.title_en) ? place.title_en : place.title}
+                        {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
                       </h4>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Heart size={10} fill="currentColor" /> {place.like_count}
+                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {lang === 'en'
                             ? (place.region === '공연' ? 'Seoul Concert' : place.region === '제주' ? 'Jeju Culture' : place.region === '축제' ? 'Local Festival' : `Near ${place.region === '홍대' ? 'Hongdae' : 'Seongsu'}`)
-                            : (place.region === '공연' ? '서울 공연' : place.region === '제주' ? '제주 공연·전시' : place.region === '축제' ? '전국 축제' : `${place.location?.split(' ')[2] || place.region} 근처`)}
+                            : lang === 'zh'
+                              ? (place.region === '공연' ? '首尔演出' : place.region === '제주' ? '济州文化' : place.region === '축제' ? '全国节庆' : `${place.region === '홍대' ? '弘大' : '圣水洞'}附近`)
+                              : (place.region === '공연' ? '서울 공연' : place.region === '제주' ? '제주 공연·전시' : place.region === '축제' ? '전국 축제' : `${place.location?.split(' ')[2] || place.region} 근처`)}
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -404,7 +410,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || (lang === 'en' ? 'Anony' : '아무개'))}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : '아무개'))}의 테마</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedTheme(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>

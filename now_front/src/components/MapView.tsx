@@ -14,6 +14,7 @@ interface Place {
   id: number;
   title: string;
   title_en?: string;
+  title_zh?: string;
   location?: string;
   latitude?: number;
   longitude?: number;
@@ -90,7 +91,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
         const marker = new window.google.maps.Marker({
           position,
           map,
-          title: lang === 'en' ? (place.title_en || place.title) : place.title,
+          title: lang === 'en' ? (place.title_en || place.title) : lang === 'zh' ? (place.title_zh || place.title) : place.title,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             fillColor: region === '홍대' ? '#8b5cf6' : '#10b981',
@@ -119,7 +120,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           new window.google.maps.Marker({
             position: pos,
             map: mapInstance,
-            title: lang === 'en' ? "My Location" : "내 위치",
+            title: lang === 'en' ? "My Location" : lang === 'zh' ? "我的位置" : "내 위치",
             icon: {
               path: window.google.maps.SymbolPath.CIRCLE,
               fillColor: '#3b82f6',
@@ -130,10 +131,10 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
             }
           });
         },
-        () => alert(lang === 'en' ? "Unable to retrieve your location." : "현재 위치를 가져올 수 없습니다.")
+        () => alert(lang === 'en' ? "Unable to retrieve your location." : lang === 'zh' ? "无法获取您的位置。" : "현재 위치를 가져올 수 없습니다.")
       );
     } else {
-      alert(lang === 'en' ? "Geolocation is not supported by your browser." : "브라우저가 위치 정보를 지원하지 않습니다.");
+      alert(lang === 'en' ? "Geolocation is not supported by your browser." : lang === 'zh' ? "您的浏览器不支持地理定位。" : "브라우저가 위치 정보를 지원하지 않습니다.");
     }
   };
 
@@ -154,7 +155,9 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
             <h4 className="text-sm font-black text-zinc-900 tracking-tight">
               {lang === 'en'
                 ? `${region === '성수' ? 'Seongsu' : 'Hongdae'} Map`
-                : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
+                : lang === 'zh'
+                  ? `${region === '성수' ? '圣水洞' : '弘大'}地图`
+                  : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
               <span className={cn(
                 "ml-2 text-xs font-bold",
                 region === '홍대' ? "text-purple-400" : "text-emerald-400"
@@ -163,7 +166,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
               </span>
             </h4>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-              {lang === 'en' ? 'Tap markers for details' : '마커를 누르면 상세 정보를 확인합니다'}
+              {lang === 'en' ? 'Tap markers for details' : lang === 'zh' ? '点击标记查看详情' : '마커를 누르면 상세 정보를 확인합니다'}
             </p>
           </div>
         </div>
@@ -193,7 +196,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           <div className="flex flex-col items-center gap-4">
             <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs font-bold text-zinc-400 animate-pulse">
-              {lang === 'en' ? 'Syncing Map...' : '지도를 연동 중입니다...'}
+              {lang === 'en' ? 'Syncing Map...' : lang === 'zh' ? '地图同步中...' : '지도를 연동 중입니다...'}
             </p>
           </div>
         </div>
@@ -233,7 +236,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
               </button>
 
               <h3 className="text-base font-black text-zinc-900 leading-snug pr-8 mb-2">
-                {lang === 'en' ? (selectedPlace.title_en || selectedPlace.title) : selectedPlace.title}
+                {lang === 'en' ? (selectedPlace.title_en || selectedPlace.title) : lang === 'zh' ? (selectedPlace.title_zh || selectedPlace.title) : selectedPlace.title}
               </h3>
 
               {selectedPlace.location && (
@@ -251,13 +254,13 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
               )}
 
               <button
-                onClick={() => router.push(`/posts/${selectedPlace.id}?region=${encodeURIComponent(region)}`)}
+                onClick={() => router.push(`/posts/${selectedPlace.id}?region=${encodeURIComponent(region)}&lang=${lang}`)}
                 className={cn(
                   "w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2",
                   region === '홍대' ? "bg-purple-500" : "bg-emerald-500"
                 )}
               >
-                자세히 보기
+                {lang === 'en' ? 'View Details' : lang === 'zh' ? '查看详情' : '자세히 보기'}
                 <ChevronRight size={16} />
               </button>
             </div>

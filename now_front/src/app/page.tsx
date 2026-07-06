@@ -35,7 +35,7 @@ const PAGE_SIZE = 20;
 
 type Tab = 'rec' | 'map' | 'list' | 'theme' | 'tour' | 'chat';
 type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
-type Lang = 'ko' | 'en';
+type Lang = 'ko' | 'en' | 'zh';
 
 const dict = {
   ko: {
@@ -65,6 +65,20 @@ const dict = {
     my: 'My',
     footer: '© Nemone Co., Ltd. Make every moment count.',
     feedback: 'Feedback'
+  },
+  zh: {
+    title: 'NOW HERE',
+    desc: '为您完美规划3小时的本地向导',
+    totalRec: '综合实时排行',
+    regionGuide: '{region} 实时指南',
+    navRec: '排行',
+    navMap: '地图',
+    navList: '列表',
+    navTheme: '主题',
+    navTour: 'AI路线',
+    my: '我的',
+    footer: '© Nemone Co., Ltd. 让每一刻都有意义',
+    feedback: '反馈'
   }
 };
 
@@ -78,14 +92,16 @@ function Home() {
   const setRegion = (r: Region) => { setRegionState(r); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
 
+  const [lang, setLang] = useState<Lang>('ko');
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const r = params.get('region') as Region;
     const t = params.get('tab') as Tab;
+    const l = params.get('lang') as Lang;
     if (r) setRegionState(r);
     if (t) setActiveTab(t);
+    if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
   }, []);
-  const [lang, setLang] = useState<Lang>('ko');
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (성수/홍대만)
   const [allPlaces, setAllPlaces] = useState([]); // 통합 데이터 (랭킹용)
@@ -161,21 +177,13 @@ function Home() {
               <h1 className="text-2xl font-black font-display tracking-tight text-zinc-900 leading-none whitespace-nowrap">
                 {t.title} <span className="text-emerald-500">.</span>
               </h1>
-              <a 
-                href="https://nemoneai.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="px-2 py-0.5 bg-[#0c0c0c] border border-[#D4AF37] text-[#D4AF37] text-[8px] font-black italic rounded-md hover:bg-[#D4AF37] hover:text-[#0c0c0c] transition-all shadow-sm tracking-tighter"
-              >
-                NEMONEAI
-              </a>
             </div>
             <p className="text-[9px] text-zinc-400 font-bold mt-1 uppercase tracking-tighter italic">{t.desc}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
             <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 mr-1 shadow-inner">
-              {(['ko', 'en'] as Lang[]).map((l) => (
+              {(['ko', 'en', 'zh'] as Lang[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
@@ -239,7 +247,9 @@ function Home() {
                       >
                         {lang === 'en'
                           ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
-                          : r}
+                          : lang === 'zh'
+                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '공연' ? '演出' : '节庆')
+                            : r}
                       </button>
                     );
                   })}
@@ -264,7 +274,7 @@ function Home() {
                           : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                       )}
                     >
-                      {lang === 'en' ? 'Seoul' : '서울'}
+                      {lang === 'en' ? 'Seoul' : lang === 'zh' ? '首尔' : '서울'}
                     </button>
                     <button
                       onClick={() => setRegion('제주')}
@@ -275,7 +285,7 @@ function Home() {
                           : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                       )}
                     >
-                      {lang === 'en' ? 'Jeju' : '제주'}
+                      {lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : '제주'}
                     </button>
                   </motion.div>
                 )}
@@ -329,7 +339,7 @@ function Home() {
         <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
-              {lang === 'en' ? 'NOW HERE' : '지금여기'}
+              {lang === 'en' || lang === 'zh' ? 'NOW HERE' : '지금여기'}
             </span>
             <span className="text-[9px] font-bold text-zinc-300 tracking-widest uppercase">
               © NEMONE INC. ALL RIGHTS RESERVED.

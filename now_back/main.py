@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import engine, cleanup_expired_data
 from image_storage import rehost_image, delete_image, upload_bytes, get_storage_usage
-from gemini_service import get_embedding, generate_answer
+from gemini_service import get_embedding, generate_answer, ai_translate
 from apscheduler.schedulers.background import BackgroundScheduler
 import uvicorn
 import logging
@@ -21,6 +21,10 @@ import urllib.request
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def _lang_col(lang: str, base: str) -> str:
+    """lang(ko/en/zh)에 맞는 컬럼명 반환. 예: _lang_col('zh', 'title') -> 'title_zh'"""
+    return f"{base}_{lang}" if lang in ("en", "zh") else base
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
 
@@ -67,6 +71,7 @@ class PlaceUpdate(BaseModel):
     date_range: Optional[str] = None
     region: Optional[str] = None
     pinned: Optional[bool] = None
+    naver_place_id: Optional[str] = None
 
 class Question(BaseModel):
     user_query: str
@@ -392,8 +397,8 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
 
         # 2. 벡터 유사도 검색 (상위 5개)
         # 언어에 따라 검색 대상 필드를 다르게 하되, 영문이 비어있으면 한글로 Fallback
-        title_field = "COALESCE(title_en, title)" if lang == "en" else "title"
-        content_field = "COALESCE(content_en, content)" if lang == "en" else "content"
+        title_field = f"COALESCE({_lang_col(lang, 'title')}, title)"
+        content_field = f"COALESCE({_lang_col(lang, 'content')}, content)"
 
         search_query = text(f"""
             SELECT {title_field}, {content_field}, location
@@ -432,8 +437,8 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
         query_embedding = get_embedding(q)
         embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
-        title_field = "title_en" if lang == "en" else "title"
-        content_field = "content_en" if lang == "en" else "content"
+        title_field = _lang_col(lang, "title")
+        content_field = _lang_col(lang, "content")
 
         query = text(f"""
             SELECT id, {title_field} as title, {content_field} as content, image_url, video_url, location, date_range, latitude, longitude, region
@@ -451,29 +456,12 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places/popular")
-async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
-    # limit 미지정 시 기존 동작(전체 반환) 유지 — page.tsx의 fetchAllPlaces가 region 없이 전체를 사용함
-    where_clause = "WHERE region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
-    if region in ("공연", "제주"):
-        where_clause += " AND p.naver_place_id LIKE 'kopis_%'"
-    limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
-    query = text(f"""
-        SELECT p.id, p.title, p.title_en, p.content, p.content_en, p.image_url, p.location, p.region, COUNT(l.id) as like_count
-        FROM seongsu_places p
-        LEFT JOIN likes l ON p.id = l.place_id
-        {where_clause}
-        GROUP BY p.id
-        ORDER BY like_count DESC, p.created_at DESC
-        {limit_clause}
-    """)
-    with engine.connect() as conn:
-        params = {"offset": offset}
-        if limit is not None:
-            params["limit"] = min(limit, 500)
-        if region:
-            params["region"] = region
-        result = conn.execute(query, params)
-        return [dict(row._mapping) for row in result]
+async def get_popular_places(limit: Optional[int] = None, offset: int = 0):
+    """인기 랭킹 (조회수+좋아요*2 가중치, 하루 2회 갱신 캐시). 지역 무관 통합 랭킹."""
+    data = _place_popularity_cache[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
 
 @app.post("/itinerary")
 async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko"):
@@ -520,8 +508,8 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
                 return cached_result[0]
 
         # 2. 캐시 없으면 Gemini 호출 (언어에 맞는 필드 가져옴)
-        title_field = "title_en" if lang == "en" else "title"
-        content_field = "content_en" if lang == "en" else "content"
+        title_field = _lang_col(lang, "title")
+        content_field = _lang_col(lang, "content")
         
         search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) LIMIT 15")
         with engine.connect() as conn:
@@ -580,7 +568,7 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
         where_clause += " AND naver_place_id LIKE 'kopis_%'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
-        f"SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at, naver_place_id "
+        f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at, naver_place_id "
         f"FROM seongsu_places {where_clause} "
         f"ORDER BY pinned_at DESC NULLS LAST, RANDOM() {limit_clause}"
     )
@@ -595,7 +583,7 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, content, content_en, image_url, video_url, location, date_range, end_date, latitude, longitude, region, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
@@ -611,11 +599,12 @@ async def record_place_view(place_id: int):
         conn.commit()
     return {"ok": True}
 
-_weekly_ranking_cache: list = []
+_place_popularity_cache: list = []
 
-def refresh_weekly_ranking():
-    """주간 장소 조회수 TOP 10 재계산 — 매일 자정에 한 번만 실행 (실시간 집계 불필요)"""
-    global _weekly_ranking_cache
+def refresh_place_popularity():
+    """장소 인기 랭킹 재계산 — 조회수(최근7일, 부족시 30일 확장) + 좋아요*2. 하루 2회(한국시간 자정/낮12시)만 실행.
+    메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용."""
+    global _place_popularity_cache
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -626,22 +615,32 @@ def refresh_weekly_ranking():
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
         conn.commit()
-        result = conn.execute(text("""
-            SELECT p.id, p.title, p.image_url, p.region, p.naver_place_id,
-                   COUNT(v.id) AS view_count
-            FROM seongsu_places p
-            JOIN place_views v ON v.place_id = p.id
-            WHERE v.viewed_at >= NOW() - INTERVAL '7 days'
-            GROUP BY p.id, p.title, p.image_url, p.region, p.naver_place_id
-            ORDER BY view_count DESC
-            LIMIT 10
-        """))
-        _weekly_ranking_cache = [dict(row._mapping) for row in result]
+
+        def _query(interval_days: int):
+            return conn.execute(text(f"""
+                SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at,
+                       COUNT(DISTINCT l.id) AS like_count,
+                       COUNT(DISTINCT v.id) AS view_count,
+                       COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
+                FROM seongsu_places p
+                LEFT JOIN likes l ON p.id = l.place_id
+                LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
+                WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
+                  AND (p.region NOT IN ('공연', '제주') OR p.naver_place_id LIKE 'kopis_%')
+                GROUP BY p.id
+                ORDER BY score DESC, p.created_at DESC
+                LIMIT 100
+            """))
+
+        result = list(_query(7))
+        if len(result) < 25:
+            result = list(_query(30))
+        _place_popularity_cache = [dict(row._mapping) for row in result]
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
-    """주간 장소 조회수 TOP 10 (자정에 계산된 캐시 반환)"""
-    return _weekly_ranking_cache
+    """장소 인기 TOP 10 (하루 2회 계산된 캐시 반환, 메인 추천 랭킹과 동일 산식)"""
+    return _place_popularity_cache[:10]
 
 @app.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):
@@ -689,6 +688,34 @@ def _revalidate_place(place_id: int):
     except Exception:
         pass
 
+def _translate_and_save(place_id: int, new_title: Optional[str], new_content: Optional[str]):
+    """어드민 저장과 별개로 백그라운드에서 영문/중문 번역 후 DB에 반영 (저장 응답 지연 방지)."""
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT title, content FROM seongsu_places WHERE id = :id"),
+                {"id": place_id}
+            ).fetchone()
+            if not row:
+                return
+            title = new_title if new_title is not None else row.title
+            content = new_content if new_content is not None else row.content
+            title_en, content_en, title_zh, content_zh = ai_translate(title, content)
+            if title_en:
+                conn.execute(
+                    text("""
+                        UPDATE seongsu_places SET
+                            title_en = :title_en, content_en = :content_en,
+                            title_zh = :title_zh, content_zh = :content_zh
+                        WHERE id = :id
+                    """),
+                    {"title_en": title_en, "content_en": content_en,
+                     "title_zh": title_zh, "content_zh": content_zh, "id": place_id}
+                )
+                conn.commit()
+    except Exception as e:
+        logger.error(f"❌ 백그라운드 번역 실패 (place_id={place_id}): {e}")
+
 @app.put("/places/{place_id}")
 async def update_place(place_id: int, place: PlaceUpdate):
     try:
@@ -699,15 +726,32 @@ async def update_place(place_id: int, place: PlaceUpdate):
             update_data["image_url"] = rehost_image(update_data["image_url"])
         if "content" in update_data:
             update_data["embedding"] = f"[{','.join(map(str, get_embedding(update_data['content'])))}]"
+        # 어드민이 title/content를 직접 수정하면 영문 번역도 같이 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
+        # AI 호출(수 초 소요)로 저장 응답이 느려지지 않도록 백그라운드 스레드로 분리 — title/content 저장은 즉시 반영되고, 번역은 잠시 후 뒤따라 채워짐
+        if "title" in update_data or "content" in update_data:
+            _new_title = update_data.get("title")
+            _new_content = update_data.get("content")
+            threading.Thread(
+                target=_translate_and_save, args=(place_id, _new_title, _new_content), daemon=True
+            ).start()
         # date_range → end_date 자동 파싱 (어드민에서 운영일시만 수정해도 삭제 기준 동기화)
         if "date_range" in update_data and "end_date" not in update_data:
             dr = update_data["date_range"] or ""
-            m = _re.search(r"(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})", dr.split("~")[-1])
+            end_part = dr.split("~")[-1]
+            # 어드민은 보통 "26.06.09."처럼 2자리 연도로 입력하므로 2~4자리 모두 허용
+            m = _re.search(r"(\d{2,4})[.\-/](\d{1,2})[.\-/](\d{1,2})", end_part)
             if m:
                 try:
-                    update_data["end_date"] = _date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                    year = int(m.group(1))
+                    if year < 100:
+                        year += 2000
+                    update_data["end_date"] = _date(year, int(m.group(2)), int(m.group(3)))
                 except ValueError:
                     pass
+            else:
+                # "미정" 등 종료일을 특정할 수 없는 경우 — end_date를 비워 무기한(자동삭제 대상 아님)으로 처리
+                # (기존엔 여기서 아무것도 안 해서 스크래핑 당시의 임시 end_date가 그대로 남아있었음)
+                update_data["end_date"] = None
         # pinned bool → pinned_at timestamp
         if "pinned" in update_data:
             update_data["pinned_at"] = "NOW()" if update_data.pop("pinned") else None
@@ -719,6 +763,8 @@ async def update_place(place_id: int, place: PlaceUpdate):
                 set_parts.append(f"{k} = :{k}")
         if update_data.get("pinned_at") == "NOW()":
             del update_data["pinned_at"]
+        # 어드민 저장 시각 기록 — 리스트/랭킹에서 "블로그갱신됨" 표기용
+        set_parts.append("updated_at = NOW()")
         set_clause = ", ".join(set_parts)
         query = text(f"UPDATE seongsu_places SET {set_clause} WHERE id = :place_id")
         with engine.connect() as conn:
@@ -850,10 +896,10 @@ async def enrich_place_content(place_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini 생성 실패: {e}")
 
-    # 4. DB 저장 — content 업데이트 + blog_reviews 저장
+    # 4. DB 저장 — content 업데이트 + blog_reviews 저장 + 갱신 시각 기록
     with engine.connect() as conn:
         conn.execute(
-            text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews WHERE id = :id"),
+            text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, updated_at = NOW() WHERE id = :id"),
             {
                 "content": generated,
                 "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False) if blog_reviews else None,
@@ -861,6 +907,9 @@ async def enrich_place_content(place_id: int):
             }
         )
         conn.commit()
+
+    # content가 바뀌었으니 영문/중문 번역도 백그라운드로 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
+    threading.Thread(target=_translate_and_save, args=(place_id, None, generated), daemon=True).start()
 
     return {
         "content": generated,
@@ -949,7 +998,7 @@ async def admin_list_all_places(region: Optional[str] = None):
     where_clause = "WHERE region = :region" if region else ""
     params: dict = {"region": region} if region else {}
     query = text(
-        f"SELECT id, title, content, image_url, location, date_range, end_date, region, pinned_at, naver_place_id "
+        f"SELECT id, title, content, image_url, location, date_range, end_date, region, pinned_at, naver_place_id, created_at, updated_at "
         f"FROM seongsu_places {where_clause} "
         f"ORDER BY pinned_at DESC NULLS LAST, id DESC"
     )
@@ -991,13 +1040,13 @@ async def get_admin_stats():
         "storage_percent": storage["percent"],
     }
 
-refresh_weekly_ranking()
+refresh_place_popularity()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
 # 서버는 UTC 기준 — 한국시간(KST=UTC+9) 자정(00:00)/낮 12시(12:00)에 맞춰 UTC 15:00, 03:00에 실행
-scheduler.add_job(refresh_weekly_ranking, 'cron', hour=15, minute=5, id='ranking_kst_midnight')
-scheduler.add_job(refresh_weekly_ranking, 'cron', hour=3, minute=5, id='ranking_kst_noon')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_midnight')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_noon')
 scheduler.start()
 
 if __name__ == "__main__":

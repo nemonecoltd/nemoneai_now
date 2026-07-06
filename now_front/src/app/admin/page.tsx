@@ -49,6 +49,8 @@ interface Place {
   region?: string;
   pinned_at?: string | null;
   naver_place_id?: string;
+  created_at?: string;
+  updated_at?: string | null;
 }
 
 interface Theme {
@@ -92,7 +94,7 @@ export default function AdminPage() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
   const [placeSearch, setPlaceSearch] = useState('');
-  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number}[]>([]);
+  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number; updated_at?: string | null}[]>([]);
   const [enrichingRankId, setEnrichingRankId] = useState<number | null>(null);
   const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
   const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
@@ -473,7 +475,14 @@ export default function AdminPage() {
                       <div className="w-10 h-10 rounded-xl bg-zinc-200 flex-shrink-0" />
                     )}
                     <div className="flex-grow min-w-0">
-                      <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
+                        {item.updated_at && (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                            갱신됨
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
                     </div>
                     <button
@@ -733,6 +742,16 @@ export default function AdminPage() {
                           />
                         </div>
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">네이버 플레이스 ID</label>
+                        <input
+                          type="text"
+                          placeholder="네이버 지도 URL의 숫자 ID (예: 2025646860)"
+                          value={editForm.naver_place_id || ''}
+                          onChange={e => setEditForm({...editForm, naver_place_id: e.target.value})}
+                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
                       <div className="flex items-center justify-between pt-2">
                         <label className="flex items-center gap-2 cursor-pointer select-none">
                           <input
@@ -760,12 +779,22 @@ export default function AdminPage() {
                     </>
                   ) : (
                     <>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="text-lg font-bold text-zinc-900">{place.title}</h3>
                         <span className="text-[10px] font-medium text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {place.id}</span>
                         {place.pinned_at && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
                             <Pin size={10} /> 고정
+                          </span>
+                        )}
+                        {place.updated_at && (
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            갱신됨 {new Date(place.updated_at).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}
+                          </span>
+                        )}
+                        {place.created_at && (
+                          <span className="text-[10px] font-medium text-zinc-400">
+                            생성일 {new Date(place.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' })}
                           </span>
                         )}
                       </div>
@@ -780,7 +809,7 @@ export default function AdminPage() {
                         <button onClick={() => handleDelete(place.id)} className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-rose-500 transition-colors px-3 py-1.5">
                           <Trash2 size={14} /> 삭제
                         </button>
-                        <a href={`http://localhost:3000/posts/${place.id}`} target="_blank" className="ml-auto flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-zinc-900 transition-colors">
+                        <a href={`https://now.nemoneai.com/posts/${place.id}`} target="_blank" className="ml-auto flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-zinc-900 transition-colors">
                           <ExternalLink size={14} /> 실제 화면 보기
                         </a>
                       </div>

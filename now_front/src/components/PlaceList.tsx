@@ -19,8 +19,10 @@ interface Place {
   id: number;
   title: string;
   title_en?: string;
+  title_zh?: string;
   content: string;
   content_en?: string;
+  content_zh?: string;
   image_url?: string;
   video_url?: string;
   location?: string;
@@ -122,7 +124,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
 
   const displayRegion = lang === 'en'
     ? (region === '성수' ? 'Seongsu' : region === '홍대' ? 'Hongdae' : region === '공연' ? 'Concert' : region === '축제' ? 'Festival' : 'Jeju Culture')
-    : (region === '제주' ? '제주 문화' : region);
+    : lang === 'zh'
+      ? (region === '성수' ? '圣水洞' : region === '홍대' ? '弘大' : region === '공연' ? '演出' : region === '축제' ? '节庆' : '济州文化')
+      : (region === '제주' ? '제주 문화' : region);
 
   return (
     <div className="p-6 space-y-6 pb-24">
@@ -136,7 +140,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
             onBlur={() => handleSearch()}
             placeholder={lang === 'en'
               ? (region === '공연' ? 'Search for concerts...' : region === '축제' ? 'Search for festivals...' : 'Search for pop-ups...')
-              : (region === '공연' ? '공연 검색...' : region === '축제' ? '축제 검색...' : '팝업스토어 검색...')}
+              : lang === 'zh'
+                ? (region === '공연' ? '搜索演出...' : region === '축제' ? '搜索节庆...' : '搜索快闪店...')
+                : (region === '공연' ? '공연 검색...' : region === '축제' ? '축제 검색...' : '팝업스토어 검색...')}
             className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
@@ -175,7 +181,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
               <div className="absolute top-4 left-4 flex gap-2">
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-emerald-500 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  {lang === 'en' ? 'Live' : '운영 중'}
+                  {lang === 'en' ? 'Live' : lang === 'zh' ? '营业中' : '운영 중'}
                 </span>
               </div>
               
@@ -192,21 +198,21 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-zinc-900">
-                    {(lang === 'en' && place.title_en) ? place.title_en : place.title}
+                    {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
                   </h3>
                   <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{place.location}</p>
                 </div>
-                <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}`} className="p-2 rounded-full bg-zinc-50 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
+                <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}&lang=${lang}`} className="p-2 rounded-full bg-zinc-50 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
                   <ChevronRight size={20} />
                 </Link>
               </div>
               <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed">
-                {(lang === 'en' && place.content_en) ? place.content_en : place.content}
+                {(lang === 'en' && place.content_en) ? place.content_en : (lang === 'zh' && place.content_zh) ? place.content_zh : place.content}
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Clock size={12} className="text-zinc-400" />
                 <span className="text-[10px] font-medium text-zinc-400">
-                  {place.date_range || (lang === 'en' ? "Open Daily" : "상시 운영")}
+                  {place.date_range || (lang === 'en' ? "Open Daily" : lang === 'zh' ? "全年营业" : "상시 운영")}
                 </span>
               </div>
             </div>
@@ -216,7 +222,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
         ))}
         {places.length === 0 && (
           <div className="text-center py-20 text-zinc-400 italic">
-            {lang === 'en' ? 'No data available.' : '데이터가 없습니다.'}
+            {lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : '데이터가 없습니다.'}
           </div>
         )}
         {hasMore && !searchTerm && (

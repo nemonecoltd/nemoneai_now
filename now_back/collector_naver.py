@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from sqlalchemy import text
 from dotenv import load_dotenv
 from database import engine
-from gemini_service import get_embedding
+from gemini_service import get_embedding, ai_translate
 from scraper_naver_map_v2 import scrape_naver_map_popups
 from collector_base import cleanup_expired
 
@@ -33,6 +33,19 @@ def ai_generate_intro(title: str, location: str) -> str:
     except Exception as e:
         print(f"    ⚠️ AI 생성 실패: {e}")
         return ""
+
+
+def _existing_translation(naver_place_id: str) -> tuple[str, str, str, str]:
+    """DB에 이미 저장된 title_en/content_en/title_zh/content_zh 반환. 없으면 빈 문자열 튜플."""
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT title_en, content_en, title_zh, content_zh FROM seongsu_places WHERE naver_place_id = :id"),
+                {"id": naver_place_id}
+            ).fetchone()
+            return (row.title_en or "", row.content_en or "", row.title_zh or "", row.content_zh or "") if row else ("", "", "", "")
+    except Exception:
+        return "", "", "", ""
 
 
 def build_content(item: dict, intro: str) -> str:
@@ -65,6 +78,7 @@ def upsert_naver_items(items: list[dict], region: str):
         print(f"  ✨ [{region}] '{title}' 처리 중...")
 
         existing = _existing_content(naver_place_id)
+        regenerated = False
         if existing and "카테고리:" not in existing and "주소:" not in existing:
             print(f"    ⏭️ 기존 content 있음, AI 생성 건너뜀")
             intro = ""
@@ -72,8 +86,19 @@ def upsert_naver_items(items: list[dict], region: str):
         else:
             intro = ai_generate_intro(title, item.get("location", ""))
             content = build_content(item, intro)
+            regenerated = True
         if intro:
             print(f"    소개: {intro[:60]}...")
+
+        existing_title_en, existing_content_en, existing_title_zh, existing_content_zh = _existing_translation(naver_place_id)
+        if not regenerated and existing_title_en and existing_content_en and existing_title_zh and existing_content_zh:
+            title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+        else:
+            title_en, content_en, title_zh, content_zh = ai_translate(title, content)
+            if not title_en:
+                title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+            elif title_en:
+                print(f"    🌐 번역(EN/ZH): {title_en[:40]} / {title_zh[:20]}...")
 
         try:
             embedding = get_embedding(content)
@@ -88,9 +113,11 @@ def upsert_naver_items(items: list[dict], region: str):
 
             params = {
                 "title":          title,
-                "title_en":       item.get("title_en", title),
+                "title_en":       title_en or title,
+                "title_zh":       title_zh or title,
                 "content":        content,
-                "content_en":     "",
+                "content_en":     content_en,
+                "content_zh":     content_zh,
                 "location":       item.get("location", ""),
                 "latitude":       item.get("latitude"),
                 "longitude":      item.get("longitude"),
@@ -116,7 +143,10 @@ def upsert_naver_items(items: list[dict], region: str):
                         UPDATE seongsu_places SET
                             title          = :title,
                             title_en       = :title_en,
+                            title_zh       = :title_zh,
                             content        = :content,
+                            content_en     = :content_en,
+                            content_zh     = :content_zh,
                             location       = :location,
                             latitude       = COALESCE(:latitude, latitude),
                             longitude      = COALESCE(:longitude, longitude),
@@ -125,17 +155,16 @@ def upsert_naver_items(items: list[dict], region: str):
                             embedding      = :embedding,
                             region         = :region,
                             end_date       = COALESCE(:real_end_date, end_date),
-                            date_range     = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END,
-                            created_at     = CURRENT_TIMESTAMP
+                            date_range     = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END
                         WHERE id = :id
                     """), {**params, "id": existing_id})
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
-                        (title, title_en, content, content_en, location, latitude, longitude,
+                        (title, title_en, title_zh, content, content_en, content_zh, location, latitude, longitude,
                          naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
                         VALUES
-                        (:title, :title_en, :content, :content_en, :location, :latitude, :longitude,
+                        (:title, :title_en, :title_zh, :content, :content_en, :content_zh, :location, :latitude, :longitude,
                          :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
                     """), params)
                 conn.commit()
