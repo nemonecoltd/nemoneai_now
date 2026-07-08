@@ -6,6 +6,7 @@ AI 소개 자동 생성 후 DB upsert
 import asyncio
 import os
 from datetime import date, timedelta
+from typing import Optional
 from sqlalchemy import text
 from dotenv import load_dotenv
 from database import engine
@@ -16,14 +17,15 @@ from collector_base import cleanup_expired
 load_dotenv()
 
 
-def ai_generate_intro(title: str, location: str) -> str:
+def ai_generate_intro(title: str, location: str, category: Optional[str] = None) -> str:
+    kind = "원데이클래스/체험 공방" if category == "class" else "팝업스토어"
     try:
         from google import genai
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=(
-                f"다음 팝업스토어의 소개 문구를 정확히 2~3문장으로 작성해줘.\n"
+                f"다음 {kind}의 소개 문구를 정확히 2~3문장으로 작성해줘.\n"
                 f"장소명: {title}\n위치: {location}\n"
                 f"조건: 방문자 시각, 이모지 없이, 선택지/옵션 없이 소개 문구만 출력."
             ),
@@ -69,9 +71,11 @@ def _existing_content(naver_place_id: str) -> str:
         return ""
 
 
-def upsert_naver_items(items: list[dict], region: str):
-    """naver_place_id 기준 upsert. 기존 content 있으면 AI 생성 건너뜀."""
-    print(f"📋 [{region}] {len(items)}개 DB 반영 시작")
+def upsert_naver_items(items: list[dict], region: str, category: Optional[str] = None):
+    """naver_place_id 기준 upsert. 기존 content 있으면 AI 생성 건너뜀.
+    category: None=팝업스토어(기본), 'class'=원데이클래스/체험 — 지금은 region(성수/홍대) 리스트에 병합해 노출하되,
+    나중에 '체험' 메뉴로 분리하고 싶을 때 이 값으로 필터링할 수 있도록 태깅만 해둠."""
+    print(f"📋 [{region}/{category or '팝업'}] {len(items)}개 DB 반영 시작")
     for item in reversed(items):
         title = item["title"].strip()
         naver_place_id = item.get("naver_place_id", "")
@@ -84,7 +88,7 @@ def upsert_naver_items(items: list[dict], region: str):
             intro = ""
             content = existing
         else:
-            intro = ai_generate_intro(title, item.get("location", ""))
+            intro = ai_generate_intro(title, item.get("location", ""), category)
             content = build_content(item, intro)
             regenerated = True
         if intro:
@@ -129,6 +133,7 @@ def upsert_naver_items(items: list[dict], region: str):
                 "real_end_date":  item.get("end_date"),
                 "date_range":     date_range,
                 "region":         region,
+                "category":       category,
             }
 
             with engine.connect() as conn:
@@ -154,6 +159,7 @@ def upsert_naver_items(items: list[dict], region: str):
                             image_url      = COALESCE(:image_url, image_url),
                             embedding      = :embedding,
                             region         = :region,
+                            category       = COALESCE(:category, category),
                             end_date       = COALESCE(:real_end_date, end_date),
                             date_range     = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END
                         WHERE id = :id
@@ -162,10 +168,10 @@ def upsert_naver_items(items: list[dict], region: str):
                     conn.execute(text("""
                         INSERT INTO seongsu_places
                         (title, title_en, title_zh, content, content_en, content_zh, location, latitude, longitude,
-                         naver_place_id, video_url, image_url, embedding, end_date, date_range, region)
+                         naver_place_id, video_url, image_url, embedding, end_date, date_range, region, category)
                         VALUES
                         (:title, :title_en, :title_zh, :content, :content_en, :content_zh, :location, :latitude, :longitude,
-                         :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region)
+                         :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :category)
                     """), params)
                 conn.commit()
                 print(f"    ✅ 저장 완료")
@@ -196,12 +202,26 @@ async def run_hongdae():
     print("✅ [홍대] 완료")
 
 
+async def run_class(region: str, query: str):
+    print(f"\n🚀 [{region}/원데이클래스] 수집 시작 ('{query}')")
+    try:
+        result = await scrape_naver_map_popups(query)
+        if result:
+            upsert_naver_items(result, region, category="class")
+    except Exception as e:
+        print(f"  ⚠️ [{region}/원데이클래스] 실패: {e}")
+    print(f"✅ [{region}/원데이클래스] 완료")
+
+
 async def run_all():
     print("=" * 50)
     print("🗺️  네이버 팝업스토어 수집 시작")
     print("=" * 50)
     await run_seongsu()
     await run_hongdae()
+    await run_class("성수", "성수 원데이클래스")
+    await run_class("성수", "성수 공방 체험")
+    await run_class("홍대", "홍대 원데이클래스")
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")

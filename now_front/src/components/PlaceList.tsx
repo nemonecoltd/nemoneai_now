@@ -27,9 +27,10 @@ interface Place {
   video_url?: string;
   location?: string;
   date_range?: string;
+  category?: string | null;
 }
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }: { places: Place[], region: string, lang?: string }) {
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'all' }: { places: Place[], region: string, lang?: string, category?: 'all' | 'popup' | 'class' }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
@@ -48,7 +49,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
     if (isLoadingMore || !hasMore || searchTerm) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}`);
+      const categoryParam = category === 'all' ? '' : `&category=${category}`;
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}`);
       if (res.ok) {
         const data: Place[] = await res.json();
         setPlaces(prev => [...prev, ...data]);
@@ -59,7 +61,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko' }
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length]);
+  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length, category]);
 
   useEffect(() => {
     const el = sentinelRef.current;

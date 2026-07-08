@@ -69,7 +69,11 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
 
     results = []
     for key, item in apollo.items():
-        if not key.startswith("PopupstoreSearchBusinessItem:") or not isinstance(item, dict):
+        # PopupstoreSearchBusinessItem: 기간한정 팝업스토어(운영기간 있음)
+        # PlaceListBusinessesItem: 네이버가 '팝업스토어' 업종이 아닌 일반 업체로 분류한 경우
+        #   (원데이클래스/공방 체험 등 상시 운영 콘텐츠가 여기 해당 — 운영기간 필드 자체가 없음)
+        # 한 쿼리 결과엔 둘 중 하나만 존재함(확인됨) — 섞여서 오염될 우려 없음
+        if not (key.startswith("PopupstoreSearchBusinessItem:") or key.startswith("PlaceListBusinessesItem:")) or not isinstance(item, dict):
             continue
         name = (item.get("name") or "").strip()
         if not name:

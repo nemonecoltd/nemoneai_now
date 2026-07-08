@@ -462,7 +462,7 @@ export default function AdminPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {weeklyRanking.map((item, idx) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                  <div key={item.id} className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
                     <span className="text-lg font-black text-zinc-300 w-6 text-center">{idx + 1}</span>
                     {item.image_url ? (
                       <img
@@ -485,34 +485,36 @@ export default function AdminPage() {
                       </div>
                       <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
                     </div>
-                    <button
-                      onClick={async () => {
-                        setRegion(item.region as Region);
-                        setViewMode('spots');
-                        // 해당 리전 로드 후 편집 폼 열기
-                        const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
-                        if (res.ok) {
-                          const data = await res.json();
-                          setPlaces(data);
-                          const found = data.find((p: Place) => p.id === item.id);
-                          if (found) { setEditingId(found.id); setEditForm({ ...found }); }
-                        }
-                      }}
-                      className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 flex-shrink-0 transition-colors"
-                    >
-                      <Edit size={11} /> 편집
-                    </button>
-                    <button
-                      onClick={() => handleEnrichRanking(item.id)}
-                      disabled={enrichingRankId === item.id}
-                      className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
-                    >
-                      {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
-                      {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
-                    </button>
-                    <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0">
-                      <ExternalLink size={14} />
-                    </a>
+                    <div className="flex items-center gap-2 w-full sm:w-auto pl-8 sm:pl-0">
+                      <button
+                        onClick={async () => {
+                          setRegion(item.region as Region);
+                          setViewMode('spots');
+                          // 해당 리전 로드 후 편집 폼 열기
+                          const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
+                          if (res.ok) {
+                            const data = await res.json();
+                            setPlaces(data);
+                            const found = data.find((p: Place) => p.id === item.id);
+                            if (found) { setEditingId(found.id); setEditForm({ ...found }); }
+                          }
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 flex-shrink-0 transition-colors"
+                      >
+                        <Edit size={11} /> 편집
+                      </button>
+                      <button
+                        onClick={() => handleEnrichRanking(item.id)}
+                        disabled={enrichingRankId === item.id}
+                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
+                      >
+                        {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
+                        {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
+                      </button>
+                      <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0 ml-auto sm:ml-0">
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -802,7 +804,7 @@ export default function AdminPage() {
                         <MapPin size={12} /> {place.location || '위치 정보 없음'}
                       </div>
                       <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed font-medium">{place.content}</p>
-                      <div className="flex gap-4 pt-4">
+                      <div className="flex flex-wrap gap-3 sm:gap-4 pt-4">
                         <button onClick={() => handleEdit(place)} className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-emerald-600 transition-colors bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100">
                           <Edit size={14} /> 데이터 수정
                         </button>

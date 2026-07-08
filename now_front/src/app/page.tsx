@@ -40,7 +40,7 @@ type Lang = 'ko' | 'en' | 'zh';
 const dict = {
   ko: {
     title: '지금 여기',
-    desc: '당신의 3시간을 완벽하게 설계하는 로컬 가이드',
+    desc: '당신 3시간의 알찬 설계',
     totalRec: '통합 실시간 랭킹',
     regionGuide: '실시간 {region} 가이드',
     navRec: '랭킹',
@@ -54,7 +54,7 @@ const dict = {
   },
   en: {
     title: 'NOW HERE',
-    desc: 'Your local guide for the perfect 3 hours, right here right now',
+    desc: 'A fulfilling plan for your 3 hours',
     totalRec: 'Live Integrated Ranking',
     regionGuide: 'Live {region} Guide',
     navRec: 'Ranking',
@@ -68,7 +68,7 @@ const dict = {
   },
   zh: {
     title: 'NOW HERE',
-    desc: '为您完美规划3小时的本地向导',
+    desc: '为您3小时的充实安排',
     totalRec: '综合实时排行',
     regionGuide: '{region} 实时指南',
     navRec: '排行',
@@ -86,10 +86,11 @@ function Home() {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
   const mainRef = useRef<HTMLElement>(null);
-  const [activeTab, setActiveTabState] = useState<Tab>('list');
+  const [activeTab, setActiveTabState] = useState<Tab>('rec');
   const [region, setRegionState] = useState<Region>('성수');
+  const [placeCategory, setPlaceCategory] = useState<'all' | 'popup' | 'class'>('all');
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
-  const setRegion = (r: Region) => { setRegionState(r); scrollToTop(); };
+  const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('all'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
 
   const [lang, setLang] = useState<Lang>('ko');
@@ -98,9 +99,11 @@ function Home() {
     const r = params.get('region') as Region;
     const t = params.get('tab') as Tab;
     const l = params.get('lang') as Lang;
+    const c = params.get('category');
     if (r) setRegionState(r);
     if (t) setActiveTab(t);
     if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
+    if (c === 'popup' || c === 'class') setPlaceCategory(c);
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (성수/홍대만)
@@ -116,7 +119,7 @@ function Home() {
     } else {
       setMapPlaces([]);
     }
-  }, [region, lang]);
+  }, [region, lang, placeCategory]);
 
   useEffect(() => {
     // '공연'/'제주'/'축제' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
@@ -125,9 +128,11 @@ function Home() {
     }
   }, [region, activeTab]);
 
+  const categoryParam = placeCategory === 'all' ? '' : `&category=${placeCategory}`;
+
   const fetchPlaces = async () => {
     try {
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=0&t=${Date.now()}`);
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=0${categoryParam}&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setPlaces(data);
@@ -139,7 +144,7 @@ function Home() {
 
   const fetchMapPlaces = async () => {
     try {
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&t=${Date.now()}`);
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}${categoryParam}&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setMapPlaces(data);
@@ -166,19 +171,17 @@ function Home() {
       {/* Header */}
       <header className="px-6 pt-4 pb-1 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.close()}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </button>
-              <h1 className="text-2xl font-black font-display tracking-tight text-zinc-900 leading-none whitespace-nowrap">
-                {t.title} <span className="text-emerald-500">.</span>
-              </h1>
-            </div>
-            <p className="text-[9px] text-zinc-400 font-bold mt-1 uppercase tracking-tighter italic">{t.desc}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => window.close()}
+              className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
+            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
+              {t.title} <span className="text-emerald-500">.</span>
+            </h1>
+            <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter italic truncate">{t.desc}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
@@ -290,6 +293,38 @@ function Home() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* 성수/홍대 서브탭: 전체 | 팝업 | 클래스 */}
+              <AnimatePresence>
+                {(region === '성수' || region === '홍대') && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="flex items-center gap-2 mb-1 pl-1 mt-2"
+                  >
+                    <span className="text-[10px] text-zinc-300 font-bold">›</span>
+                    {(['all', 'popup', 'class'] as const).map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setPlaceCategory(c)}
+                        className={cn(
+                          "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
+                          placeCategory === c
+                            ? "bg-emerald-500 text-white border-emerald-500"
+                            : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
+                        )}
+                      >
+                        {lang === 'en'
+                          ? (c === 'all' ? 'All' : c === 'popup' ? 'Pop-up' : 'Class')
+                          : lang === 'zh'
+                            ? (c === 'all' ? '全部' : c === 'popup' ? '快闪店' : '体验课程')
+                            : (c === 'all' ? '전체' : c === 'popup' ? '팝업' : '클래스')}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
         </AnimatePresence>
@@ -312,7 +347,7 @@ function Home() {
 
           {activeTab === 'list' && (
             <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <PlaceList places={places} region={region} lang={lang} />
+              <PlaceList places={places} region={region} lang={lang} category={placeCategory} />
             </motion.div>
           )}
 

@@ -511,7 +511,7 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         title_field = _lang_col(lang, "title")
         content_field = _lang_col(lang, "content")
         
-        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) LIMIT 15")
+        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) ORDER BY RANDOM() LIMIT 15")
         with engine.connect() as conn:
             result = conn.execute(search_query, {"region": region})
             rows = result.fetchall()
@@ -560,15 +560,20 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places")
-async def list_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
     # 공연/제주는 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
     if region in ("공연", "제주"):
         where_clause += " AND naver_place_id LIKE 'kopis_%'"
+    # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존, category IS NULL)
+    if category == "class":
+        where_clause += " AND category = 'class'"
+    elif category == "popup":
+        where_clause += " AND category IS NULL"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     query = text(
-        f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, pinned_at, naver_place_id "
+        f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, pinned_at, naver_place_id "
         f"FROM seongsu_places {where_clause} "
         f"ORDER BY pinned_at DESC NULLS LAST, RANDOM() {limit_clause}"
     )
@@ -583,7 +588,7 @@ async def list_places(region: Optional[str] = None, limit: Optional[int] = None,
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
@@ -623,7 +628,7 @@ def refresh_place_popularity():
                        COUNT(DISTINCT v.id) AS view_count,
                        COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
                 FROM seongsu_places p
-                LEFT JOIN likes l ON p.id = l.place_id
+                LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '{interval_days} days'
                 LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
                 WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
                   AND (p.region NOT IN ('공연', '제주') OR p.naver_place_id LIKE 'kopis_%')
@@ -998,7 +1003,7 @@ async def admin_list_all_places(region: Optional[str] = None):
     where_clause = "WHERE region = :region" if region else ""
     params: dict = {"region": region} if region else {}
     query = text(
-        f"SELECT id, title, content, image_url, location, date_range, end_date, region, pinned_at, naver_place_id, created_at, updated_at "
+        f"SELECT id, title, content, image_url, location, date_range, end_date, region, category, pinned_at, naver_place_id, created_at, updated_at "
         f"FROM seongsu_places {where_clause} "
         f"ORDER BY pinned_at DESC NULLS LAST, id DESC"
     )
