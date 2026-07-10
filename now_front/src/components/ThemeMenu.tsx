@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Plus, X, Search, ChevronRight, Trash2, MapPin, Calendar, Clock, Video, Globe } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -197,7 +197,8 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
             <h2 className="text-lg font-black text-zinc-900 tracking-tight mb-4 flex items-center gap-2"><Heart className="text-rose-500" size={18} /> 인기 테마 TOP 5</h2>
             <div className="space-y-4">
               {top5.map((theme: any, idx: number) => (
-                <div key={theme.id} onClick={() => setSelectedTheme(theme)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-blue-200 transition-all group relative overflow-hidden">
+                <Fragment key={theme.id}>
+                <div onClick={() => setSelectedTheme(theme)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-blue-200 transition-all group relative overflow-hidden">
                   <div className="absolute -left-1 -top-1 w-8 h-8 bg-blue-500 text-white text-[10px] font-black rounded-br-2xl flex items-center justify-center shadow-lg z-10">
                     {idx + 1}
                   </div>
@@ -226,15 +227,16 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                     <p className="text-[11px] text-zinc-500 line-clamp-1">{theme.description}</p>
                   </div>
                 </div>
+                {idx === 2 && (
+                  <div className="border-y border-zinc-100 py-2">
+                    <AdUnit slotId="8058413094" />
+                  </div>
+                )}
+                </Fragment>
               ))}
             </div>
           </div>
         )}
-
-        {/* 인피드 광고 */}
-        {/* <div className="mb-10 border-y border-zinc-100 py-2">
-          <AdUnit slotId="8058413094" />
-        </div> */}
 
         {/* 최신 테마 */}
         {latest.length > 0 && (

@@ -119,8 +119,12 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       if (res.ok) {
         alert("내 마이페이지로 코스를 가져왔습니다!");
         setSelectedCourse(null);
+      } else {
+        alert("코스를 가져오는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
+        console.error("Fork course failed", res.status, await res.text());
       }
     } catch (e) {
+      alert("코스를 가져오는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
       console.error(e);
     }
   };
@@ -144,8 +148,12 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       if (res.ok) {
         alert("내 마이페이지로 테마를 가져왔습니다!");
         setSelectedTheme(null);
+      } else {
+        alert("테마를 가져오는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
+        console.error("Fork theme failed", res.status, await res.text());
       }
     } catch (e) {
+      alert("테마를 가져오는 데 실패했습니다. 잠시 후 다시 시도해주세요.");
       console.error(e);
     }
   };
@@ -191,15 +199,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <span className={cn(
                             "text-[7px] font-black px-1.5 py-0.5 rounded uppercase border",
                             course.region === '홍대' ? "bg-orange-50 text-orange-600 border-orange-100"
+                            : course.region === '용산' ? "bg-yellow-50 text-yellow-700 border-yellow-100"
                             : course.region === '공연' ? "bg-purple-50 text-purple-600 border-purple-100"
                             : course.region === '제주' ? "bg-cyan-50 text-cyan-600 border-cyan-100"
                             : course.region === '축제' ? "bg-amber-50 text-amber-600 border-amber-100"
                             : "bg-emerald-50 text-emerald-600 border-emerald-100"
                           )}>
                             {lang === 'en'
-                              ? (course.region === '홍대' ? 'Hongdae' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
+                              ? (course.region === '홍대' ? 'Hongdae' : course.region === '용산' ? 'Yongsan' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
                               : lang === 'zh'
-                                ? (course.region === '홍대' ? '弘大' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
+                                ? (course.region === '홍대' ? '弘大' : course.region === '용산' ? '龙山' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
                                 : (course.region || '성수')}
                           </span>
                         </div>
@@ -222,7 +231,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 2 && (
-                    <AdUnit slotId="8058413094" />
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
               ))}
@@ -265,7 +274,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 2 && (
-                    <AdUnit slotId="8058413094" />
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
               ))}
@@ -284,15 +293,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         <span className={cn(
                           "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
                           place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                          : place.region === '용산' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                           : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
                           : place.region === '제주' ? "bg-cyan-500 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
                           : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
                           {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '용산' ? 'YONGSAN' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
                             : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
+                              ? (place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
                               : (place.region || '성수')}
                         </span>
                       </div>
@@ -307,9 +317,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {lang === 'en'
-                            ? (place.region === '공연' ? 'Seoul Concert' : place.region === '제주' ? 'Jeju Culture' : place.region === '축제' ? 'Local Festival' : `Near ${place.region === '홍대' ? 'Hongdae' : 'Seongsu'}`)
+                            ? (place.region === '공연' ? 'Seoul Concert' : place.region === '제주' ? 'Jeju Culture' : place.region === '축제' ? 'Local Festival' : `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '용산' ? 'Yongsan' : 'Seongsu'}`)
                             : lang === 'zh'
-                              ? (place.region === '공연' ? '首尔演出' : place.region === '제주' ? '济州文化' : place.region === '축제' ? '全国节庆' : `${place.region === '홍대' ? '弘大' : '圣水洞'}附近`)
+                              ? (place.region === '공연' ? '首尔演出' : place.region === '제주' ? '济州文化' : place.region === '축제' ? '全国节庆' : `${place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : '圣水洞'}附近`)
                               : (place.region === '공연' ? '서울 공연' : place.region === '제주' ? '제주 공연·전시' : place.region === '축제' ? '전국 축제' : `${place.location?.split(' ')[2] || place.region} 근처`)}
                         </span>
                       </div>
@@ -320,7 +330,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 2 && (
-                    <AdUnit slotId="8058413094" />
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
               ))}

@@ -29,26 +29,6 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
 
                 embedding = get_embedding(item["content"])
 
-                upsert_query = text("""
-                    INSERT INTO seongsu_places
-                    (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url)
-                    VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url)
-                    ON CONFLICT (title)
-                    DO UPDATE SET
-                        title_en = EXCLUDED.title_en,
-                        content_en = EXCLUDED.content_en,
-                        location = EXCLUDED.location,
-                        latitude = COALESCE(EXCLUDED.latitude, seongsu_places.latitude),
-                        longitude = COALESCE(EXCLUDED.longitude, seongsu_places.longitude),
-                        content = EXCLUDED.content,
-                        image_url = COALESCE(EXCLUDED.image_url, seongsu_places.image_url),
-                        link_url = COALESCE(EXCLUDED.link_url, seongsu_places.link_url),
-                        region = EXCLUDED.region,
-                        end_date = COALESCE(:real_end_date, seongsu_places.end_date),
-                        date_range = CASE WHEN EXCLUDED.date_range != '' THEN EXCLUDED.date_range ELSE seongsu_places.date_range END,
-                        created_at = CURRENT_TIMESTAMP
-                """)
-
                 # end_date: 실제 행사 종료일(date 객체 또는 ISO 문자열) 우선, 못 구하면 +30일 임시값.
                 # 재수집 시에도 실제 값이 없으면 기존 end_date를 덮어쓰지 않음(real_end_date=None → COALESCE로 보존).
                 end_date_actual = item.get("end_date_actual")
@@ -62,7 +42,8 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                         real_end_date = None
                 end_date = real_end_date or (date.today() + timedelta(days=30))
 
-                conn.execute(upsert_query, {
+                naver_place_id = item.get("naver_place_id")
+                params = {
                     "title": title,
                     "title_en": item.get("title_en", title),
                     "content": item["content"],
@@ -70,7 +51,7 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                     "location": item["location"],
                     "latitude": item.get("latitude"),
                     "longitude": item.get("longitude"),
-                    "naver_place_id": item.get("naver_place_id"),
+                    "naver_place_id": naver_place_id,
                     "video_url": item.get("video_url", ""),
                     "image_url": item.get("image_url", ""),
                     "embedding": f"[{','.join(map(str, embedding))}]",
@@ -79,7 +60,41 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                     "date_range": item.get("date_range", ""),
                     "region": item_region,
                     "link_url": item.get("link_url"),
-                })
+                }
+
+                # naver_place_id가 같은데 title만 바뀐 경우(KOPIS가 공연명을 살짝 수정해 재게시하는 경우 등),
+                # ON CONFLICT (title)만으로는 감지가 안 돼 naver_place_id UNIQUE 제약에 걸려 실패하던 문제 방지 —
+                # naver_place_id 또는 title로 기존 행을 먼저 찾아 있으면 UPDATE(naver_place_id 갱신 포함), 없으면 INSERT.
+                existing_id = conn.execute(
+                    text("SELECT id FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
+                    {"naver_place_id": naver_place_id, "title": title}
+                ).scalar()
+
+                if existing_id:
+                    conn.execute(text("""
+                        UPDATE seongsu_places SET
+                            title = :title,
+                            title_en = :title_en,
+                            content = :content,
+                            content_en = :content_en,
+                            location = :location,
+                            latitude = COALESCE(:latitude, latitude),
+                            longitude = COALESCE(:longitude, longitude),
+                            naver_place_id = :naver_place_id,
+                            image_url = COALESCE(:image_url, image_url),
+                            link_url = COALESCE(:link_url, link_url),
+                            region = :region,
+                            end_date = COALESCE(:real_end_date, end_date),
+                            date_range = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END,
+                            created_at = CURRENT_TIMESTAMP
+                        WHERE id = :id
+                    """), {**params, "id": existing_id})
+                else:
+                    conn.execute(text("""
+                        INSERT INTO seongsu_places
+                        (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url)
+                        VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url)
+                    """), params)
                 conn.commit()
             except Exception as e:
                 conn.rollback()

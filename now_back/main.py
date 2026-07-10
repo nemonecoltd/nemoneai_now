@@ -623,7 +623,7 @@ def refresh_place_popularity():
 
         def _query(interval_days: int):
             return conn.execute(text(f"""
-                SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at,
+                SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at, p.date_range,
                        COUNT(DISTINCT l.id) AS like_count,
                        COUNT(DISTINCT v.id) AS view_count,
                        COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
@@ -645,7 +645,7 @@ def refresh_place_popularity():
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
     """장소 인기 TOP 10 (하루 2회 계산된 캐시 반환, 메인 추천 랭킹과 동일 산식)"""
-    return _place_popularity_cache[:10]
+    return _place_popularity_cache[:25]
 
 @app.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):
@@ -1010,6 +1010,45 @@ async def admin_list_all_places(region: Optional[str] = None):
     with engine.connect() as conn:
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
+
+@app.get("/banner")
+async def get_banner():
+    """플레이스 상세페이지 상단에 표시할 전역 공지/기사 배너 (공지사항 게시판 대체용, 수동 운영)."""
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS site_banner (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                text TEXT DEFAULT '',
+                url TEXT DEFAULT '',
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        """))
+        conn.commit()
+        row = conn.execute(text("SELECT text, url FROM site_banner WHERE id = 1")).fetchone()
+        if not row:
+            return {"text": "", "url": ""}
+        return {"text": row.text or "", "url": row.url or ""}
+
+@app.post("/admin/banner")
+async def update_banner(payload: dict):
+    """어드민에서 배너 텍스트/URL 갱신. 비우면 배너가 사라짐."""
+    text_val = (payload.get("text") or "").strip()
+    url_val = (payload.get("url") or "").strip()
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS site_banner (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                text TEXT DEFAULT '',
+                url TEXT DEFAULT '',
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        """))
+        conn.execute(text("""
+            INSERT INTO site_banner (id, text, url, updated_at) VALUES (1, :text, :url, NOW())
+            ON CONFLICT (id) DO UPDATE SET text = :text, url = :url, updated_at = NOW()
+        """), {"text": text_val, "url": url_val})
+        conn.commit()
+    return {"status": "success"}
 
 @app.get("/admin/stats")
 async def get_admin_stats():

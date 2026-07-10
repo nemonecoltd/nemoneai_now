@@ -7,10 +7,10 @@ import NaverAnalytics from "@/components/NaverAnalytics";
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
   title: {
-    default: "당신 3시간의 알찬 설계, 지금 여기 | 성수·홍대 팝업·공연·축제",
+    default: "당신 3시간의 알찬 설계, 지금 여기 | 성수·홍대·용산 팝업·공연·축제",
     template: "%s | 지금 여기"
   },
-  description: "지금 바로 이 시간 성수·홍대 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.",
+  description: "지금 바로 이 시간 성수·홍대·용산 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.",
   alternates: {
     canonical: 'https://now.nemoneai.com',
     languages: {
@@ -49,7 +49,7 @@ const websiteJsonLd = {
   '@type': 'WebSite',
   name: 'NOW HERE | 지금 여기',
   url: 'https://now.nemoneai.com',
-  description: '지금 바로 이 시간 성수·홍대 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
+  description: '지금 바로 이 시간 성수·홍대·용산 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {

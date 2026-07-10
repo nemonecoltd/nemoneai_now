@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart,
-  Users, TrendingUp, Map as MapIcon, List as ListIcon, Library, Route as RouteIcon, MessageCircle,
+  Users, TrendingUp, Map as MapIcon, List as ListIcon, Library, Route as RouteIcon, MessageCircle, Megaphone,
 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
@@ -86,6 +86,16 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   const [liked, setLiked] = React.useState(false);
   const [lang, setLang] = React.useState(initialLang);
   const t = T[(lang as keyof typeof T)] || T.ko;
+  const [banner, setBanner] = React.useState<{ text: string; url: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api-now/banner')
+      .then(res => res.json())
+      .then((data: { text: string; url: string }) => {
+        if (data?.text?.trim()) setBanner(data);
+      })
+      .catch(() => {});
+  }, []);
 
   React.useEffect(() => {
     if (user?.id && place?.id) {
@@ -321,9 +331,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         {/* 지역 탭 */}
         <div className="flex items-center gap-4 mb-1">
-          {(['성수', '홍대', '공연', '축제'] as const).map((r) => {
+          {(['성수', '홍대', '용산', '공연', '축제'] as const).map((r) => {
             const isConcertActive = r === '공연' && (place.region === '공연' || place.region === '제주');
             const isFestivalActive = r === '축제' && place.region === '축제';
+            const isYongsanActive = r === '용산' && place.region === '용산';
             return (
               <button
                 key={r}
@@ -332,15 +343,17 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
                   isFestivalActive
                     ? "text-amber-600 border-amber-500"
-                    : isConcertActive || place.region === r
-                      ? "text-emerald-600 border-emerald-500"
-                      : "text-zinc-300 border-transparent"
+                    : isYongsanActive
+                      ? "text-yellow-600 border-yellow-500"
+                      : isConcertActive || place.region === r
+                        ? "text-emerald-600 border-emerald-500"
+                        : "text-zinc-300 border-transparent"
                 )}
               >
                 {lang === 'en'
-                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                   : lang === 'zh'
-                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '공연' ? '演出' : '节庆')
+                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '공연' ? '演出' : '节庆')
                     : r}
               </button>
             );
@@ -376,8 +389,8 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        {/* 성수/홍대 서브탭: 전체 | 팝업 | 클래스 */}
-        {(place.region === '성수' || place.region === '홍대') && (
+        {/* 성수/홍대/용산 서브탭: 전체 | 팝업 | 클래스 */}
+        {(place.region === '성수' || place.region === '홍대' || place.region === '용산') && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
             {(['all', 'popup', 'class'] as const).map((c) => (
@@ -407,14 +420,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           <button
             onClick={() => goToSuggestion(-1)}
             aria-label={t.prevPlace}
-            className="absolute left-2 top-1/2 -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
+            className="absolute left-2 top-[62%] -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
           >
             <ChevronLeft size={22} />
           </button>
           <button
             onClick={() => goToSuggestion(1)}
             aria-label={t.nextPlace}
-            className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
+            className="absolute right-2 top-[62%] -translate-y-1/2 pointer-events-auto w-11 h-11 bg-white/90 backdrop-blur-md rounded-full shadow-lg border border-zinc-100 flex items-center justify-center text-zinc-700 active:scale-95 transition-transform"
           >
             <ChevronRight size={22} />
           </button>
@@ -433,6 +446,19 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+
+        {banner && (
+          <a
+            href={banner.url || undefined}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute top-3 left-4 right-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20 shadow-lg"
+          >
+            <Megaphone size={12} className="text-emerald-400 flex-shrink-0" />
+            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest flex-shrink-0">Notice</span>
+            <span className="text-[11px] font-medium text-white truncate">{banner.text}</span>
+          </a>
+        )}
 
         <div className="absolute bottom-10 left-8 right-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -696,16 +722,19 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        <footer className="mt-6 mb-10 pt-6 border-t border-zinc-100 space-y-3">
-          <div className="flex flex-col gap-0.5">
+        <footer className="mt-6 mb-10 pt-6 border-t border-zinc-100 space-y-4">
+          <div className="flex flex-col items-center text-center gap-1">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
               {t.nowHere}
             </span>
-            <span className="text-[9px] font-bold text-zinc-300 tracking-widest uppercase">
+            <span className="text-[10px] font-bold text-zinc-500 tracking-wide">
+              {t.tagline}
+            </span>
+            <span className="text-[9px] font-bold text-zinc-400 tracking-widest uppercase mt-1">
               © NEMONE INC. ALL RIGHTS RESERVED.
             </span>
           </div>
-          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {[
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
               { name: 'YOUTUBE', href: 'https://www.youtube.com/@MatMatch' },
@@ -717,7 +746,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 href={item.href}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-[9px] font-black text-zinc-400 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+                className="text-[9px] font-black text-zinc-500 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
               >
                 {item.name}
               </a>

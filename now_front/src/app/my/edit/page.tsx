@@ -24,6 +24,14 @@ export default function EditProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002';
@@ -166,7 +174,7 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto shadow-2xl border-x border-zinc-200 pb-20">
       <header className="sticky top-0 bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+        <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">프로필 수정</h1>

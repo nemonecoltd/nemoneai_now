@@ -219,7 +219,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               </div>
             </div>
           </motion.div>
-          {idx === 0 && <AdUnit slotId="8058413094" />}
+          {idx === 0 && <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />}
           </React.Fragment>
         ))}
         {places.length === 0 && (

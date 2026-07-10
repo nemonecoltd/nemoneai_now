@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive } from 'lucide-react';
+import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive, Download } from 'lucide-react';
 
 const compressPlaceImage = (file: File): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -75,14 +75,14 @@ interface AdminStats {
   storage_percent?: number;
 }
 
-type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '용산' | '공연' | '제주' | '축제';
 type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
   const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
-  const [viewMode, setViewMode] = useState<ViewMode>('spots');
+  const [viewMode, setViewMode] = useState<ViewMode>('ranking');
   const [places, setPlaces] = useState<Place[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -94,7 +94,22 @@ export default function AdminPage() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
   const [placeSearch, setPlaceSearch] = useState('');
-  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number; updated_at?: string | null}[]>([]);
+  const placeSamplePool = useMemo(() => {
+    const shuffled = [...places].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 10);
+  }, [places]);
+  const placesLastUpdated = useMemo(() => {
+    let latest: string | null = null;
+    for (const p of places) {
+      const d = p.updated_at || p.created_at;
+      if (d && (!latest || d > latest)) latest = d;
+    }
+    return latest;
+  }, [places]);
+  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number; updated_at?: string | null; date_range?: string | null}[]>([]);
+  const [bannerText, setBannerText] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [savingBanner, setSavingBanner] = useState(false);
   const [enrichingRankId, setEnrichingRankId] = useState<number | null>(null);
   const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
   const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
@@ -144,6 +159,7 @@ export default function AdminPage() {
     if (isLocalDev || user?.email === 'nemonecoltd@gmail.com') {
       fetchAdminStats();
       fetchWeeklyRanking();
+      fetchBanner();
       if (viewMode === 'spots') {
         fetchPlaces();
       } else if (viewMode === 'themes') {
@@ -151,6 +167,36 @@ export default function AdminPage() {
       }
     }
   }, [user, region, viewMode, isLocalDev]);
+
+  const fetchBanner = async () => {
+    const res = await fetch('/api-now/banner');
+    if (res.ok) {
+      const data = await res.json();
+      setBannerText(data.text || '');
+      setBannerUrl(data.url || '');
+    }
+  };
+
+  const handleSaveBanner = async () => {
+    setSavingBanner(true);
+    try {
+      const res = await fetch('/api-now/admin/banner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: bannerText, url: bannerUrl }),
+      });
+      if (res.ok) {
+        alert(bannerText.trim() ? '배너가 갱신되었습니다.' : '배너가 비워져 더 이상 노출되지 않습니다.');
+      } else {
+        alert('배너 저장 실패');
+      }
+    } catch (e) {
+      alert('배너 저장 실패');
+      console.error(e);
+    } finally {
+      setSavingBanner(false);
+    }
+  };
 
   const fetchAdminStats = async () => {
     const res = await fetch('/api-now/admin/stats');
@@ -163,6 +209,27 @@ export default function AdminPage() {
   const fetchWeeklyRanking = async () => {
     const res = await fetch('/api-now/admin/ranking/weekly');
     if (res.ok) setWeeklyRanking(await res.json());
+  };
+
+  const handleDownloadRanking = () => {
+    const escapeCsv = (v: string) => `"${(v || '').replace(/"/g, '""')}"`;
+    const rows = [
+      ['순위', '제목', 'URL', '썸네일URL', '운영기간'],
+      ...weeklyRanking.map((item, idx) => {
+        const img = item.image_url
+          ? (item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`)
+          : '';
+        return [String(idx + 1), item.title, `https://now.nemoneai.com/posts/${item.id}`, img, item.date_range || '상시 운영'];
+      }),
+    ];
+    const csv = '﻿' + rows.map(r => r.map(escapeCsv).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `now_ranking_top${weeklyRanking.length}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleEnrichRanking = async (placeId: number) => {
@@ -353,10 +420,10 @@ export default function AdminPage() {
                     viewMode === 'ranking' ? "text-amber-500 border-amber-400" : "text-zinc-400 border-transparent hover:text-zinc-600"
                   }`}
                 >
-                  📊 TOP 10
+                  📊 TOP 25
                 </button>
                 <div className="w-px h-4 bg-zinc-300 mb-1"></div>
-                {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map((r) => (
+                {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => {
@@ -367,7 +434,7 @@ export default function AdminPage() {
                       viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
+                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
                   </button>
                 ))}
               </div>
@@ -453,9 +520,46 @@ export default function AdminPage() {
 
         {viewMode === 'ranking' && (
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-base font-black text-zinc-900">📣 플레이스 페이지 상단 공지 배너</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">전체 페이지 공통 · 수동 운영</span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mb-3">텍스트를 비우고 갱신하면 배너가 사라집니다.</p>
+            <div className="flex flex-col sm:flex-row gap-2 mb-6">
+              <input
+                type="text"
+                value={bannerText}
+                onChange={(e) => setBannerText(e.target.value)}
+                placeholder="공지/기사 제목 (예: 성수 팝업 완전정복 가이드 — 맛매치에서 보기)"
+                className="flex-[2] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-emerald-400"
+              />
+              <input
+                type="text"
+                value={bannerUrl}
+                onChange={(e) => setBannerUrl(e.target.value)}
+                placeholder="https://nemoneai.com/posts/155"
+                className="flex-[1.5] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-emerald-400"
+              />
+              <button
+                onClick={handleSaveBanner}
+                disabled={savingBanner}
+                className="px-4 py-2 text-sm font-bold bg-zinc-900 text-white rounded-xl hover:bg-zinc-700 disabled:opacity-50 transition-colors flex-shrink-0"
+              >
+                {savingBanner ? '저장 중...' : '갱신'}
+              </button>
+            </div>
+
             <div className="flex items-center gap-2 mb-4">
               <span className="text-base font-black text-zinc-900">📊 주간 조회수 TOP {weeklyRanking.length}</span>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 7일</span>
+              {weeklyRanking.length > 0 && (
+                <button
+                  onClick={handleDownloadRanking}
+                  className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 transition-colors ml-auto"
+                >
+                  <Download size={12} /> CSV 다운로드
+                </button>
+              )}
             </div>
             {weeklyRanking.length === 0 ? (
               <p className="text-sm text-zinc-400 text-center py-8">아직 조회 데이터가 없습니다. 유저 방문이 쌓이면 표시됩니다.</p>
@@ -483,7 +587,7 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회</p>
+                      <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회 · {item.date_range || '상시 운영'}</p>
                     </div>
                     <div className="flex items-center gap-2 w-full sm:w-auto pl-8 sm:pl-0">
                       <button
@@ -572,7 +676,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
@@ -622,6 +726,13 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400 font-bold">
+              <span>
+                총 {places.length}개
+                {placesLastUpdated && ` · 최종 업데이트 ${new Date(placesLastUpdated).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+              </span>
+              {!placeSearch.trim() && places.length > 10 && <span>랜덤 10개만 표시 중 · 검색으로 찾아보세요</span>}
+            </div>
             <div className="flex items-center gap-3 bg-white border border-zinc-200 rounded-2xl px-4 py-2.5 shadow-sm">
               <svg className="text-zinc-400 flex-shrink-0" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
               <input
@@ -637,7 +748,7 @@ export default function AdminPage() {
                 </button>
               )}
             </div>
-            {places.filter(p => {
+            {(placeSearch.trim() ? places : placeSamplePool).filter(p => {
               if (!placeSearch.trim()) return true;
               const q = placeSearch.trim().toLowerCase().replace(/^#/, '');
               if (/^\d+$/.test(q)) return String(p.id) === q;
@@ -708,7 +819,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>

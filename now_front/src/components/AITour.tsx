@@ -15,7 +15,9 @@ type Companion = 'Solo' | 'Couple' | 'Friends';
 
 interface TourStep {
   time: string;
+  place_id?: number;
   place_name: string;
+  date_range?: string | null;
   activity: string;
   duration: number;
 }
@@ -76,7 +78,7 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
   const [usage, setUsage] = useState({ usage_count: 0, limit: 2 });
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : 'Hongdae') : region;
+  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : 'Hongdae') : region;
 
   useEffect(() => {
     if (user?.id) {
@@ -239,12 +241,28 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
                     <h4 className="font-bold text-zinc-900 tracking-tight">{step.place_name}</h4>
                     <p className="text-xs text-zinc-500 leading-relaxed font-medium">{step.activity}</p>
                     <div className="flex gap-2 pt-1">
-                      <button className="flex-1 py-2 bg-zinc-900 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1">
-                        <Ticket size={12} /> {t.book}
-                      </button>
-                      <button className="flex-1 py-2 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1">
+                      {step.place_id ? (
+                        <a
+                          href={`/posts/${step.place_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-2 bg-zinc-900 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
+                        >
+                          <Ticket size={12} /> {t.book}
+                        </a>
+                      ) : (
+                        <button disabled className="flex-1 py-2 bg-zinc-100 text-zinc-300 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 cursor-not-allowed">
+                          <Ticket size={12} /> {t.book}
+                        </button>
+                      )}
+                      <a
+                        href={`https://map.naver.com/p/search/${encodeURIComponent(step.place_name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 py-2 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded-lg flex items-center justify-center gap-1"
+                      >
                         <MapPin size={12} /> {t.direction}
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>

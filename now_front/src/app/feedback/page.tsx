@@ -23,6 +23,14 @@ export default function FeedbackPage() {
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
+
   useEffect(() => {
     fetchFeedbacks();
   }, []);
@@ -99,7 +107,7 @@ export default function FeedbackPage() {
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col pb-10">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4 shadow-sm">
-        <button onClick={() => router.back()} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+        <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
           <ChevronLeft size={24} />
         </button>
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>

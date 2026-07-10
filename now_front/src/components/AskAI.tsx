@@ -109,7 +109,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
   const inputRef = useRef<HTMLInputElement>(null);
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : 'Hongdae') : region;
+  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : 'Hongdae') : region;
   const currentExamples = t.examples[region as keyof typeof t.examples] || t.examples['성수'];
 
   useEffect(() => {

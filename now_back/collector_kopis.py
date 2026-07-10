@@ -1,9 +1,16 @@
 """
-collector_kopis.py — 공연/축제 수집 (월 1회 권장)
-대상: KOPIS 공연 (연극/뮤지컬/대중음악/서커스,마술 · 서울/제주), 문체부API 축제
-collector_culture.py 대체 — 공연 소스만 KOPIS로 교체, 축제는 추후 별도 업데이트 예정.
+collector_kopis.py — 공연/축제 수집
+대상: KOPIS 공연 (연극/뮤지컬/대중음악/서커스,마술 · 서울/제주) — 주 1회, 주말 기점 권장
+     문체부API 축제 — 월 1회 권장 (공연보다 갱신 빈도 낮음, 별도 스케줄로 분리 실행)
+collector_culture.py 대체 — 공연 소스만 KOPIS로 교체.
+
+실행:
+  python3 collector_kopis.py concert   # 공연만 (주 1회, 주말 기점)
+  python3 collector_kopis.py festival  # 축제만 (월 1회)
+  python3 collector_kopis.py          # 둘 다 (인자 없이 실행 시)
 """
 import asyncio
+import sys
 from collector_base import upsert_items, cleanup_expired
 from scraper_kopis_concert import scrape_kopis_concert
 from scraper_culture_api_festival import scrape_culture_api_festival
@@ -18,6 +25,7 @@ async def run_concert():
         return
     if items:
         upsert_items(items)
+    cleanup_expired()
     print("✅ [KOPIS] 공연 완료")
 
 
@@ -30,6 +38,7 @@ async def run_festival():
         return
     if items:
         upsert_items(items)
+    cleanup_expired()
     print("✅ [축제] 완료")
 
 
@@ -39,11 +48,16 @@ async def run_all():
     print("=" * 50)
     await run_concert()
     await run_festival()
-    cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 공연/축제 수집 완료")
     print("=" * 50)
 
 
 if __name__ == "__main__":
-    asyncio.run(run_all())
+    target = sys.argv[1] if len(sys.argv) > 1 else "all"
+    if target == "concert":
+        asyncio.run(run_concert())
+    elif target == "festival":
+        asyncio.run(run_festival())
+    else:
+        asyncio.run(run_all())

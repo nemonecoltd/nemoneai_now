@@ -34,7 +34,7 @@ function cn(...inputs: ClassValue[]) {
 const PAGE_SIZE = 20;
 
 type Tab = 'rec' | 'map' | 'list' | 'theme' | 'tour' | 'chat';
-type Region = '성수' | '홍대' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '용산' | '공연' | '제주' | '축제';
 type Lang = 'ko' | 'en' | 'zh';
 
 const dict = {
@@ -92,6 +92,13 @@ function Home() {
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('all'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
 
   const [lang, setLang] = useState<Lang>('ko');
   useEffect(() => {
@@ -114,7 +121,7 @@ function Home() {
   useEffect(() => {
     fetchPlaces();
     fetchAllPlaces();
-    if (region === '성수' || region === '홍대') {
+    if (region === '성수' || region === '홍대' || region === '용산') {
       fetchMapPlaces();
     } else {
       setMapPlaces([]);
@@ -173,7 +180,7 @@ function Home() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <button
-              onClick={() => window.close()}
+              onClick={handleBack}
               className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
             >
               <ChevronLeft size={20} strokeWidth={2.5} />
@@ -230,11 +237,12 @@ function Home() {
             >
               {/* 메인 지역 탭 */}
               <div className="flex items-center gap-4 mb-1">
-                {(['성수', '홍대', '공연', '축제'] as const)
+                {(['성수', '홍대', '용산', '공연', '축제'] as const)
                   .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
                   .map((r) => {
                     const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
                     const isFestivalActive = r === '축제' && region === '축제';
+                    const isYongsanActive = r === '용산' && region === '용산';
                     return (
                       <button
                         key={r}
@@ -243,15 +251,17 @@ function Home() {
                           "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
                           isFestivalActive
                             ? "text-amber-600 border-amber-500"
-                            : isConcertActive || region === r
-                              ? "text-emerald-600 border-emerald-500"
-                              : "text-zinc-300 border-transparent hover:text-zinc-500"
+                            : isYongsanActive
+                              ? "text-yellow-600 border-yellow-500"
+                              : isConcertActive || region === r
+                                ? "text-emerald-600 border-emerald-500"
+                                : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
                         {lang === 'en'
-                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                           : lang === 'zh'
-                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '공연' ? '演出' : '节庆')
+                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '공연' ? '演出' : '节庆')
                             : r}
                       </button>
                     );
@@ -294,9 +304,9 @@ function Home() {
                 )}
               </AnimatePresence>
 
-              {/* 성수/홍대 서브탭: 전체 | 팝업 | 클래스 */}
+              {/* 성수/홍대/용산 서브탭: 전체 | 팝업 | 클래스 */}
               <AnimatePresence>
-                {(region === '성수' || region === '홍대') && (
+                {(region === '성수' || region === '홍대' || region === '용산') && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -371,16 +381,19 @@ function Home() {
         </AnimatePresence>
 
         {/* Global Footer */}
-        <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-3">
-          <div className="flex flex-col gap-0.5">
+        <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-4">
+          <div className="flex flex-col items-center text-center gap-1">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
               {lang === 'en' || lang === 'zh' ? 'NOW HERE' : '지금여기'}
             </span>
-            <span className="text-[9px] font-bold text-zinc-300 tracking-widest uppercase">
+            <span className="text-[10px] font-bold text-zinc-500 tracking-wide">
+              {t.desc}
+            </span>
+            <span className="text-[9px] font-bold text-zinc-400 tracking-widest uppercase mt-1">
               © NEMONE INC. ALL RIGHTS RESERVED.
             </span>
           </div>
-          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+          <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {[
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
               { name: 'YOUTUBE', href: 'https://www.youtube.com/@MatMatch' },
@@ -392,7 +405,7 @@ function Home() {
                 href={item.href}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-[9px] font-black text-zinc-400 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+                className="text-[9px] font-black text-zinc-500 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
               >
                 {item.name}
               </Link>

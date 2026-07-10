@@ -56,7 +56,7 @@ export function InArticleAd() {
         data-ad-layout="in-article"
         data-ad-format="fluid"
         data-ad-client="ca-pub-4274957638983041"
-        data-ad-slot="7762192096"
+        data-ad-slot="7053776315"
       />
     </div>
   );

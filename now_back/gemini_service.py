@@ -104,10 +104,19 @@ def ai_translate(title: str, content: str) -> tuple[str, str, str, str]:
         return "", "", "", ""
 
 def get_embedding(text: str):
-    """텍스트 벡터화 (최신 다국어 모델 사용)"""
-    result = client.models.embed_content(
-        model="gemini-embedding-2-preview",
-        contents=text,
-        config=types.EmbedContentConfig(output_dimensionality=3072)
-    )
-    return result.embeddings[0].values
+    """텍스트 벡터화 (최신 다국어 모델 사용). 일시적 서버 과부하(503 등) 대비 짧은 재시도 포함."""
+    import time
+    last_error = None
+    for attempt in range(3):
+        try:
+            result = client.models.embed_content(
+                model="gemini-embedding-2-preview",
+                contents=text,
+                config=types.EmbedContentConfig(output_dimensionality=3072)
+            )
+            return result.embeddings[0].values
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                time.sleep(2 * (attempt + 1))
+    raise last_error

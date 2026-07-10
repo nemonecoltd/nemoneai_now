@@ -13,6 +13,7 @@ from database import engine
 from gemini_service import get_embedding, ai_translate
 from scraper_naver_map_v2 import scrape_naver_map_popups
 from collector_base import cleanup_expired
+from image_storage import rehost_image
 
 load_dotenv()
 
@@ -127,7 +128,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 "longitude":      item.get("longitude"),
                 "naver_place_id": naver_place_id,
                 "video_url":      item.get("video_url", ""),
-                "image_url":      item.get("image_url", ""),
+                "image_url":      rehost_image(item.get("image_url")) or "",
                 "embedding":      f"[{','.join(map(str, embedding))}]",
                 "end_date":       end_date,
                 "real_end_date":  item.get("end_date"),
@@ -202,6 +203,17 @@ async def run_hongdae():
     print("✅ [홍대] 완료")
 
 
+async def run_yongsan():
+    print("\n🚀 [용산] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("용산 팝업스토어")
+        if result:
+            upsert_naver_items(result, "용산")
+    except Exception as e:
+        print(f"  ⚠️ [용산] 실패: {e}")
+    print("✅ [용산] 완료")
+
+
 async def run_class(region: str, query: str):
     print(f"\n🚀 [{region}/원데이클래스] 수집 시작 ('{query}')")
     try:
@@ -219,9 +231,12 @@ async def run_all():
     print("=" * 50)
     await run_seongsu()
     await run_hongdae()
+    await run_yongsan()
     await run_class("성수", "성수 원데이클래스")
     await run_class("성수", "성수 공방 체험")
     await run_class("홍대", "홍대 원데이클래스")
+    await run_class("용산", "용산 원데이클래스")
+    await run_class("용산", "용산 공방 체험")
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")
