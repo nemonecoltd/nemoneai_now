@@ -14,6 +14,7 @@ import sys
 from collector_base import upsert_items, cleanup_expired
 from scraper_kopis_concert import scrape_kopis_concert
 from scraper_culture_api_festival import scrape_culture_api_festival
+from notification import send_alert
 
 
 async def run_concert():
@@ -22,11 +23,12 @@ async def run_concert():
         items = await scrape_kopis_concert()
     except Exception as e:
         print(f"  ⚠️ [KOPIS] 공연 수집 실패: {e}")
+        send_alert(f"KOPIS 공연 수집 실패\n{e}")
         return
-    if items:
-        upsert_items(items)
+    counts = upsert_items(items) if items else (0, 0, 0)
     cleanup_expired()
     print("✅ [KOPIS] 공연 완료")
+    send_alert(f"KOPIS 공연 수집 완료\n신규 {counts[0]} · 갱신 {counts[1]}" + (f" · 실패 {counts[2]}" if counts[2] else ""))
 
 
 async def run_festival():
@@ -35,11 +37,12 @@ async def run_festival():
         items = await scrape_culture_api_festival()
     except Exception as e:
         print(f"  ⚠️ [축제API] 수집 실패: {e}")
+        send_alert(f"축제 수집 실패\n{e}")
         return
-    if items:
-        upsert_items(items)
+    counts = upsert_items(items) if items else (0, 0, 0)
     cleanup_expired()
     print("✅ [축제] 완료")
+    send_alert(f"축제 수집 완료\n신규 {counts[0]} · 갱신 {counts[1]}" + (f" · 실패 {counts[2]}" if counts[2] else ""))
 
 
 async def run_all():

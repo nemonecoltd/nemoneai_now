@@ -36,7 +36,7 @@ let isApiLoading = false;
 const REGIONS = {
   '성수': { lat: 37.5445, lng: 127.0560, title: '성수 팝업 맵' },
   '홍대': { lat: 37.5575, lng: 126.9245, title: '홍대 팝업 맵' },
-  '용산': { lat: 37.5320, lng: 126.9906, title: '용산 팝업 맵' }
+  '용산': { lat: 37.5344, lng: 126.9947, title: '용산 팝업 맵' }  // 이태원역 기준(한남동 인접) — 수집 데이터가 용산구 전역에 퍼져있어 평균 좌표 대신 핵심 상권으로 고정
 };
 
 export default function MapView({ places = [], region = '성수', lang = 'ko' }: { places?: Place[], region?: string, lang?: string }) {

@@ -18,6 +18,9 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
     """region을 지정하면 모든 항목에 고정 적용, None이면 항목별 item['region']을 사용."""
     deduped = dedup_by_title(combined_data)
     print(f"📋 [{region or '항목별'}] 중복 제거 후 {len(deduped)}개 처리 (원본 {len(combined_data)}개)")
+    new_count = 0
+    updated_count = 0
+    fail_count = 0
 
     # 역순 INSERT: rank1이 마지막에 들어가 created_at이 가장 최신 → 서비스 최상단
     for item in reversed(deduped):
@@ -89,16 +92,21 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                             created_at = CURRENT_TIMESTAMP
                         WHERE id = :id
                     """), {**params, "id": existing_id})
+                    updated_count += 1
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
                         (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url)
                         VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url)
                     """), params)
+                    new_count += 1
                 conn.commit()
             except Exception as e:
                 conn.rollback()
+                fail_count += 1
                 print(f"  ❌ [{item_region}] '{item.get('title', '?')}' 반영 실패: {e}")
+
+    return new_count, updated_count, fail_count
 
 
 def cleanup_expired():

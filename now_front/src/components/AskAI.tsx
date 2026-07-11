@@ -2,17 +2,26 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User, Bot, Loader2 } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Loader2, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import StoreBanner from './StoreBanner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+interface PlaceRef {
+  id: number;
+  title: string;
+  location: string;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  places?: PlaceRef[];
 }
 
 const dict = {
@@ -136,7 +145,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
 
       if (res.ok) {
         const data = await res.json();
-        setMessages(prev => [...prev, { role: 'assistant', content: data.answer }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: data.answer, places: data.places || [] }]);
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: t.error }]);
       }
@@ -214,13 +223,32 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
             )}>
               {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
             </div>
-            <div className={cn(
-              "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-              msg.role === 'user'
-                ? "bg-zinc-900 text-white rounded-tr-none"
-                : "bg-white border border-zinc-100 rounded-tl-none text-zinc-800"
-            )}>
-              {msg.role === 'assistant' ? formatMessage(msg.content) : msg.content}
+            <div className={cn("flex flex-col gap-2", msg.role === 'user' ? "items-end" : "items-start", "max-w-[80%]")}>
+              <div className={cn(
+                "p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
+                msg.role === 'user'
+                  ? "bg-zinc-900 text-white rounded-tr-none"
+                  : "bg-white border border-zinc-100 rounded-tl-none text-zinc-800"
+              )}>
+                {msg.role === 'assistant' ? formatMessage(msg.content) : msg.content}
+              </div>
+              {msg.role === 'assistant' && msg.places && msg.places.length > 0 && (
+                <div className="flex flex-col gap-1.5 w-full">
+                  {msg.places.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/posts/${p.id}?region=${encodeURIComponent(region)}&lang=${lang}`}
+                      className="flex items-center justify-between gap-2 bg-white border border-zinc-100 rounded-xl px-3 py-2 text-xs hover:border-emerald-300 transition-colors"
+                    >
+                      <span className="min-w-0">
+                        <span className="font-bold text-zinc-800 truncate block">{p.title}</span>
+                        <span className="text-zinc-400 truncate block">{p.location}</span>
+                      </span>
+                      <ChevronRight size={14} className="text-zinc-300 flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </motion.div>
         ))}
@@ -235,6 +263,8 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
             </div>
           </div>
         )}
+
+        <StoreBanner />
       </div>
 
       {/* 메시지 있을 때만 하단 입력창 */}

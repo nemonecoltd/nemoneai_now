@@ -401,19 +401,18 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
         content_field = f"COALESCE({_lang_col(lang, 'content')}, content)"
 
         search_query = text(f"""
-            SELECT {title_field}, {content_field}, location
+            SELECT id, {title_field} AS title, {content_field} AS content, location
             FROM seongsu_places
             WHERE region = :region
             ORDER BY embedding <-> :embedding
             LIMIT 5
         """)
-        
+
         with engine.connect() as conn:
             result = conn.execute(search_query, {"region": region, "embedding": embedding_str})
-            context_list = []
-            for row in result:
-                context_list.append(f"[{row[0]}] {row[1]} (위치: {row[2]})")
-            
+            places_found = [dict(row._mapping) for row in result]
+            context_list = [f"[{p['title']}] {p['content']} (위치: {p['location']})" for p in places_found]
+
             context_text = "\n".join(context_list)
             
         logger.info(f"🧠 [AskAI Context] Region: {region}, Lang: {lang}, Found: {len(context_list)} places")
@@ -424,8 +423,8 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
 
         # 3. Gemini 답변 생성
         answer = generate_answer(question.user_query, context_text, region=region, lang=lang)
-        
-        return {"answer": answer, "context": context_list}
+
+        return {"answer": answer, "places": places_found}
     except Exception as e:
         logger.error(f"❌ Ask failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -606,9 +605,27 @@ async def record_place_view(place_id: int):
 
 _place_popularity_cache: list = []
 
+def _popularity_rows(conn, interval_days: int, limit: int = 100):
+    """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계."""
+    return conn.execute(text(f"""
+        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at, p.date_range,
+               COUNT(DISTINCT l.id) AS like_count,
+               COUNT(DISTINCT v.id) AS view_count,
+               COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
+        FROM seongsu_places p
+        LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '{interval_days} days'
+        LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
+        WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
+          AND (p.region NOT IN ('공연', '제주') OR p.naver_place_id LIKE 'kopis_%')
+        GROUP BY p.id
+        ORDER BY score DESC, p.created_at DESC
+        LIMIT {limit}
+    """))
+
 def refresh_place_popularity():
-    """장소 인기 랭킹 재계산 — 조회수(최근7일, 부족시 30일 확장) + 좋아요*2. 하루 2회(한국시간 자정/낮12시)만 실행.
-    메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용."""
+    """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 3회(한국시간 0/8/16시) 실행.
+    메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용.
+    48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화."""
     global _place_popularity_cache
     with engine.connect() as conn:
         conn.execute(text("""
@@ -621,31 +638,24 @@ def refresh_place_popularity():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
         conn.commit()
 
-        def _query(interval_days: int):
-            return conn.execute(text(f"""
-                SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at, p.date_range,
-                       COUNT(DISTINCT l.id) AS like_count,
-                       COUNT(DISTINCT v.id) AS view_count,
-                       COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
-                FROM seongsu_places p
-                LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '{interval_days} days'
-                LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
-                WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
-                  AND (p.region NOT IN ('공연', '제주') OR p.naver_place_id LIKE 'kopis_%')
-                GROUP BY p.id
-                ORDER BY score DESC, p.created_at DESC
-                LIMIT 100
-            """))
-
-        result = list(_query(7))
+        result = list(_popularity_rows(conn, 2))
         if len(result) < 25:
-            result = list(_query(30))
+            result = list(_popularity_rows(conn, 30))
         _place_popularity_cache = [dict(row._mapping) for row in result]
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
-    """장소 인기 TOP 10 (하루 2회 계산된 캐시 반환, 메인 추천 랭킹과 동일 산식)"""
+    """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식)"""
     return _place_popularity_cache[:25]
+
+@app.get("/admin/ranking/weekly7d")
+async def admin_weekly_ranking_7d():
+    """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산."""
+    with engine.connect() as conn:
+        result = list(_popularity_rows(conn, 7))
+        if len(result) < 25:
+            result = list(_popularity_rows(conn, 30))
+        return [dict(row._mapping) for row in result[:25]]
 
 @app.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):
@@ -1089,8 +1099,9 @@ refresh_place_popularity()
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
 # 서버는 UTC 기준 — 한국시간(KST=UTC+9) 자정(00:00)/낮 12시(12:00)에 맞춰 UTC 15:00, 03:00에 실행
-scheduler.add_job(refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_midnight')
-scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_noon')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_0000')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=23, minute=5, id='ranking_kst_0800')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600')
 scheduler.start()
 
 if __name__ == "__main__":

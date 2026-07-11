@@ -30,7 +30,7 @@ interface Place {
   category?: string | null;
 }
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'all' }: { places: Place[], region: string, lang?: string, category?: 'all' | 'popup' | 'class' }) {
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup' }: { places: Place[], region: string, lang?: string, category?: 'popup' | 'class' }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
@@ -49,7 +49,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     if (isLoadingMore || !hasMore || searchTerm) return;
     setIsLoadingMore(true);
     try {
-      const categoryParam = category === 'all' ? '' : `&category=${category}`;
+      const categoryParam = `&category=${category}`;
       const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}`);
       if (res.ok) {
         const data: Place[] = await res.json();

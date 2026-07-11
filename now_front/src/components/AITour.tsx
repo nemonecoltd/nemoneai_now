@@ -6,6 +6,7 @@ import { Sparkles, Users, Ticket, MapPin, Clock, RefreshCcw, Save, Check, Info }
 import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import StoreBanner from './StoreBanner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -298,6 +299,8 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
           </div>
         </motion.div>
       )}
+
+      <StoreBanner />
     </div>
   );
 }

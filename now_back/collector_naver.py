@@ -14,6 +14,7 @@ from gemini_service import get_embedding, ai_translate
 from scraper_naver_map_v2 import scrape_naver_map_popups
 from collector_base import cleanup_expired
 from image_storage import rehost_image
+from notification import send_alert
 
 load_dotenv()
 
@@ -77,6 +78,9 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
     category: None=팝업스토어(기본), 'class'=원데이클래스/체험 — 지금은 region(성수/홍대) 리스트에 병합해 노출하되,
     나중에 '체험' 메뉴로 분리하고 싶을 때 이 값으로 필터링할 수 있도록 태깅만 해둠."""
     print(f"📋 [{region}/{category or '팝업'}] {len(items)}개 DB 반영 시작")
+    new_count = 0
+    updated_count = 0
+    fail_count = 0
     for item in reversed(items):
         title = item["title"].strip()
         naver_place_id = item.get("naver_place_id", "")
@@ -165,6 +169,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                             date_range     = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END
                         WHERE id = :id
                     """), {**params, "id": existing_id})
+                    updated_count += 1
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
@@ -174,73 +179,92 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                         (:title, :title_en, :title_zh, :content, :content_en, :content_zh, :location, :latitude, :longitude,
                          :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :category)
                     """), params)
+                    new_count += 1
                 conn.commit()
                 print(f"    ✅ 저장 완료")
         except Exception as e:
             conn.rollback()
+            fail_count += 1
             print(f"    ❌ 저장 실패: {e}")
+
+    return new_count, updated_count, fail_count
 
 
 async def run_seongsu():
     print("\n🚀 [성수] 수집 시작")
     try:
         result = await scrape_naver_map_popups("성수 팝업스토어")
-        if result:
-            upsert_naver_items(result, "성수")
+        counts = upsert_naver_items(result, "성수") if result else (0, 0, 0)
     except Exception as e:
         print(f"  ⚠️ [성수] 실패: {e}")
+        return "성수", 0, 0, 1
     print("✅ [성수] 완료")
+    return ("성수", *counts)
 
 
 async def run_hongdae():
     print("\n🚀 [홍대] 수집 시작")
     try:
         result = await scrape_naver_map_popups("홍대 팝업스토어")
-        if result:
-            upsert_naver_items(result, "홍대")
+        counts = upsert_naver_items(result, "홍대") if result else (0, 0, 0)
     except Exception as e:
         print(f"  ⚠️ [홍대] 실패: {e}")
+        return "홍대", 0, 0, 1
     print("✅ [홍대] 완료")
+    return ("홍대", *counts)
 
 
 async def run_yongsan():
     print("\n🚀 [용산] 수집 시작")
     try:
         result = await scrape_naver_map_popups("용산 팝업스토어")
-        if result:
-            upsert_naver_items(result, "용산")
+        counts = upsert_naver_items(result, "용산") if result else (0, 0, 0)
     except Exception as e:
         print(f"  ⚠️ [용산] 실패: {e}")
+        return "용산", 0, 0, 1
     print("✅ [용산] 완료")
+    return ("용산", *counts)
 
 
 async def run_class(region: str, query: str):
     print(f"\n🚀 [{region}/원데이클래스] 수집 시작 ('{query}')")
     try:
         result = await scrape_naver_map_popups(query)
-        if result:
-            upsert_naver_items(result, region, category="class")
+        counts = upsert_naver_items(result, region, category="class") if result else (0, 0, 0)
     except Exception as e:
         print(f"  ⚠️ [{region}/원데이클래스] 실패: {e}")
+        return f"{region}/클래스", 0, 0, 1
     print(f"✅ [{region}/원데이클래스] 완료")
+    return (f"{region}/클래스", *counts)
 
 
 async def run_all():
     print("=" * 50)
     print("🗺️  네이버 팝업스토어 수집 시작")
     print("=" * 50)
-    await run_seongsu()
-    await run_hongdae()
-    await run_yongsan()
-    await run_class("성수", "성수 원데이클래스")
-    await run_class("성수", "성수 공방 체험")
-    await run_class("홍대", "홍대 원데이클래스")
-    await run_class("용산", "용산 원데이클래스")
-    await run_class("용산", "용산 공방 체험")
+    results = [
+        await run_seongsu(),
+        await run_hongdae(),
+        await run_yongsan(),
+        await run_class("성수", "성수 원데이클래스"),
+        await run_class("성수", "성수 공방 체험"),
+        await run_class("홍대", "홍대 원데이클래스"),
+        await run_class("용산", "용산 원데이클래스"),
+        await run_class("용산", "용산 공방 체험"),
+    ]
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")
     print("=" * 50)
+
+    total_new = sum(r[1] for r in results)
+    total_updated = sum(r[2] for r in results)
+    total_fail = sum(r[3] for r in results)
+    lines = [f"- {r[0]}: 신규 {r[1]} / 갱신 {r[2]}" + (f" / 실패 {r[3]}" if r[3] else "") for r in results]
+    send_alert(
+        f"네이버 팝업/클래스 수집 완료\n총 신규 {total_new} · 갱신 {total_updated}" + (f" · 실패 {total_fail}" if total_fail else "")
+        + "\n" + "\n".join(lines)
+    )
 
 
 if __name__ == "__main__":

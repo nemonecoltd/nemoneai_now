@@ -88,9 +88,9 @@ function Home() {
   const mainRef = useRef<HTMLElement>(null);
   const [activeTab, setActiveTabState] = useState<Tab>('rec');
   const [region, setRegionState] = useState<Region>('성수');
-  const [placeCategory, setPlaceCategory] = useState<'all' | 'popup' | 'class'>('all');
+  const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
-  const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('all'); scrollToTop(); };
+  const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -135,7 +135,7 @@ function Home() {
     }
   }, [region, activeTab]);
 
-  const categoryParam = placeCategory === 'all' ? '' : `&category=${placeCategory}`;
+  const categoryParam = `&category=${placeCategory}`;
 
   const fetchPlaces = async () => {
     try {
@@ -304,7 +304,7 @@ function Home() {
                 )}
               </AnimatePresence>
 
-              {/* 성수/홍대/용산 서브탭: 전체 | 팝업 | 클래스 */}
+              {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
               <AnimatePresence>
                 {(region === '성수' || region === '홍대' || region === '용산') && (
                   <motion.div
@@ -314,7 +314,7 @@ function Home() {
                     className="flex items-center gap-2 mb-1 pl-1 mt-2"
                   >
                     <span className="text-[10px] text-zinc-300 font-bold">›</span>
-                    {(['all', 'popup', 'class'] as const).map((c) => (
+                    {(['popup', 'class'] as const).map((c) => (
                       <button
                         key={c}
                         onClick={() => setPlaceCategory(c)}
@@ -326,10 +326,10 @@ function Home() {
                         )}
                       >
                         {lang === 'en'
-                          ? (c === 'all' ? 'All' : c === 'popup' ? 'Pop-up' : 'Class')
+                          ? (c === 'popup' ? 'Pop-up' : 'Class')
                           : lang === 'zh'
-                            ? (c === 'all' ? '全部' : c === 'popup' ? '快闪店' : '体验课程')
-                            : (c === 'all' ? '전체' : c === 'popup' ? '팝업' : '클래스')}
+                            ? (c === 'popup' ? '快闪店' : '体验课程')
+                            : (c === 'popup' ? '팝업' : '클래스')}
                       </button>
                     ))}
                   </motion.div>

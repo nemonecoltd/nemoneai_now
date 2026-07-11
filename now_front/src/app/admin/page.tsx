@@ -110,6 +110,7 @@ export default function AdminPage() {
   const [bannerText, setBannerText] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [savingBanner, setSavingBanner] = useState(false);
+  const [downloadingRanking, setDownloadingRanking] = useState(false);
   const [enrichingRankId, setEnrichingRankId] = useState<number | null>(null);
   const [expandedThemeId, setExpandedThemeId] = useState<number | null>(null);
   const [editingThemeId, setEditingThemeId] = useState<number | null>(null);
@@ -211,25 +212,34 @@ export default function AdminPage() {
     if (res.ok) setWeeklyRanking(await res.json());
   };
 
-  const handleDownloadRanking = () => {
-    const escapeCsv = (v: string) => `"${(v || '').replace(/"/g, '""')}"`;
-    const rows = [
-      ['순위', '제목', 'URL', '썸네일URL', '운영기간'],
-      ...weeklyRanking.map((item, idx) => {
-        const img = item.image_url
-          ? (item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`)
-          : '';
-        return [String(idx + 1), item.title, `https://now.nemoneai.com/posts/${item.id}`, img, item.date_range || '상시 운영'];
-      }),
-    ];
-    const csv = '﻿' + rows.map(r => r.map(escapeCsv).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `now_ranking_top${weeklyRanking.length}_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadRanking = async () => {
+    setDownloadingRanking(true);
+    try {
+      const res = await fetch('/api-now/admin/ranking/weekly7d');
+      if (!res.ok) { alert('7일 랭킹 조회 실패'); return; }
+      const data: typeof weeklyRanking = await res.json();
+
+      const escapeCsv = (v: string) => `"${(v || '').replace(/"/g, '""')}"`;
+      const rows = [
+        ['순위', '제목', 'URL', '썸네일URL', '운영기간'],
+        ...data.map((item, idx) => {
+          const img = item.image_url
+            ? (item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`)
+            : '';
+          return [String(idx + 1), item.title, `https://now.nemoneai.com/posts/${item.id}`, img, item.date_range || '상시 운영'];
+        }),
+      ];
+      const csv = '﻿' + rows.map(r => r.map(escapeCsv).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `now_ranking_weekly7d_top${data.length}_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingRanking(false);
+    }
   };
 
   const handleEnrichRanking = async (placeId: number) => {
@@ -550,16 +560,15 @@ export default function AdminPage() {
             </div>
 
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-base font-black text-zinc-900">📊 주간 조회수 TOP {weeklyRanking.length}</span>
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 7일</span>
-              {weeklyRanking.length > 0 && (
-                <button
-                  onClick={handleDownloadRanking}
-                  className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 transition-colors ml-auto"
-                >
-                  <Download size={12} /> CSV 다운로드
-                </button>
-              )}
+              <span className="text-base font-black text-zinc-900">📊 조회수 TOP {weeklyRanking.length}</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 48시간</span>
+              <button
+                onClick={handleDownloadRanking}
+                disabled={downloadingRanking}
+                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 disabled:opacity-50 transition-colors ml-auto"
+              >
+                <Download size={12} /> {downloadingRanking ? '조회 중...' : 'CSV 다운로드 (7일 기준)'}
+              </button>
             </div>
             {weeklyRanking.length === 0 ? (
               <p className="text-sm text-zinc-400 text-center py-8">아직 조회 데이터가 없습니다. 유저 방문이 쌓이면 표시됩니다.</p>

@@ -338,7 +338,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             return (
               <button
                 key={r}
-                onClick={() => router.push(`/?region=${encodeURIComponent(r === '공연' && place.region === '제주' ? '제주' : r)}&lang=${lang}`)}
+                onClick={() => router.push(`/?region=${encodeURIComponent(r === '공연' && place.region === '제주' ? '제주' : r)}&tab=list&lang=${lang}`)}
                 className={cn(
                   "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
                   isFestivalActive
@@ -365,7 +365,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
             <button
-              onClick={() => router.push(`/?region=${encodeURIComponent('공연')}&lang=${lang}`)}
+              onClick={() => router.push(`/?region=${encodeURIComponent('공연')}&tab=list&lang=${lang}`)}
               className={cn(
                 "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
                 place.region === '공연'
@@ -376,7 +376,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               {lang === 'en' ? 'Seoul' : lang === 'zh' ? '首尔' : '서울'}
             </button>
             <button
-              onClick={() => router.push(`/?region=${encodeURIComponent('제주')}&lang=${lang}`)}
+              onClick={() => router.push(`/?region=${encodeURIComponent('제주')}&tab=list&lang=${lang}`)}
               className={cn(
                 "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
                 place.region === '제주'
@@ -389,14 +389,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        {/* 성수/홍대/용산 서브탭: 전체 | 팝업 | 클래스 */}
+        {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
         {(place.region === '성수' || place.region === '홍대' || place.region === '용산') && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
-            {(['all', 'popup', 'class'] as const).map((c) => (
+            {(['popup', 'class'] as const).map((c) => (
               <button
                 key={c}
-                onClick={() => router.push(`/?region=${encodeURIComponent(place.region!)}&category=${c}&lang=${lang}`)}
+                onClick={() => router.push(`/?region=${encodeURIComponent(place.region!)}&category=${c}&tab=list&lang=${lang}`)}
                 className={cn(
                   "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
                   (place.category === 'class' ? 'class' : 'popup') === c
@@ -405,10 +405,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 )}
               >
                 {lang === 'en'
-                  ? (c === 'all' ? 'All' : c === 'popup' ? 'Pop-up' : 'Class')
+                  ? (c === 'popup' ? 'Pop-up' : 'Class')
                   : lang === 'zh'
-                    ? (c === 'all' ? '全部' : c === 'popup' ? '快闪店' : '体验课程')
-                    : (c === 'all' ? '전체' : c === 'popup' ? '팝업' : '클래스')}
+                    ? (c === 'popup' ? '快闪店' : '体验课程')
+                    : (c === 'popup' ? '팝업' : '클래스')}
               </button>
             ))}
           </div>
