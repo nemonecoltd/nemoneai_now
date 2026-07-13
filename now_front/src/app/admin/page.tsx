@@ -51,6 +51,9 @@ interface Place {
   naver_place_id?: string;
   created_at?: string;
   updated_at?: string | null;
+  link_url?: string | null;
+  link_title?: string | null;
+  blog_reviews?: { title: string; url: string; thumbnail?: string }[] | null;
 }
 
 interface Theme {
@@ -75,7 +78,7 @@ interface AdminStats {
   storage_percent?: number;
 }
 
-type Region = '성수' | '홍대' | '용산' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '용산' | '강남' | '공연' | '제주' | '축제';
 type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
@@ -333,6 +336,11 @@ export default function AdminPage() {
   const handleEdit = (place: Place) => {
     setEditingId(place.id);
     setEditForm({ ...place, pinned: !!place.pinned_at } as any);
+    if (place.blog_reviews && place.blog_reviews.length > 0) {
+      setEnriched({ placeId: place.id, reviews: place.blog_reviews });
+    } else {
+      setEnriched(null);
+    }
   };
 
   const handleUpdate = async () => {
@@ -433,7 +441,7 @@ export default function AdminPage() {
                   📊 TOP 25
                 </button>
                 <div className="w-px h-4 bg-zinc-300 mb-1"></div>
-                {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map((r) => (
+                {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => {
@@ -444,7 +452,7 @@ export default function AdminPage() {
                       viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
+                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
                   </button>
                 ))}
               </div>
@@ -609,7 +617,11 @@ export default function AdminPage() {
                             const data = await res.json();
                             setPlaces(data);
                             const found = data.find((p: Place) => p.id === item.id);
-                            if (found) { setEditingId(found.id); setEditForm({ ...found }); }
+                            if (found) {
+                              setEditingId(found.id);
+                              setEditForm({ ...found });
+                              setEnriched(found.blog_reviews && found.blog_reviews.length > 0 ? { placeId: found.id, reviews: found.blog_reviews } : null);
+                            }
                           }
                         }}
                         className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 flex-shrink-0 transition-colors"
@@ -685,7 +697,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
@@ -828,7 +840,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '용산', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
@@ -873,6 +885,28 @@ export default function AdminPage() {
                           onChange={e => setEditForm({...editForm, naver_place_id: e.target.value})}
                           className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">바로가기 제목</label>
+                          <input
+                            type="text"
+                            placeholder="예약하기 / 인스타 / 공식페이지"
+                            value={(editForm as any).link_title || ''}
+                            onChange={e => setEditForm({...editForm, link_title: e.target.value} as any)}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">바로가기 URL</label>
+                          <input
+                            type="text"
+                            placeholder="https://..."
+                            value={(editForm as any).link_url || ''}
+                            onChange={e => setEditForm({...editForm, link_url: e.target.value} as any)}
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
                       </div>
                       <div className="flex items-center justify-between pt-2">
                         <label className="flex items-center gap-2 cursor-pointer select-none">

@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart,
-  Users, TrendingUp, Map as MapIcon, List as ListIcon, Library, Route as RouteIcon, MessageCircle, Megaphone,
+  Users, TrendingUp, Map as MapIcon, Library, Route as RouteIcon, MessageCircle, Megaphone,
 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
@@ -41,6 +41,7 @@ export interface Place {
   naver_place_id?: string;
   blog_reviews?: BlogReview[] | string | null;
   link_url?: string | null;
+  link_title?: string | null;
 }
 
 interface Props {
@@ -52,29 +53,29 @@ interface Props {
 const T = {
   ko: {
     prevPlace: '이전 장소', nextPlace: '다음 장소', spotlight: '핫플레이스 상세',
-    duration: '운영 기간', openDaily: '상시 운영', status: '상태', active: '운영 중',
+    duration: '운영 기간', openDaily: '상시 운영', status: '상태', active: '운영 중', ended: '운영 종료',
     details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
     locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
     linkCopied: '링크가 복사되었습니다!',
-    navRec: '랭킹', navMap: '지도', navList: '리스트', navTheme: '테마', navTour: 'AI 코스', my: '마이',
+    navRec: '랭킹', navMap: '지도', navList: '장소', navTheme: '테마', navTour: 'AI 코스', my: '마이',
     tagline: '당신 3시간의 알찬 설계',
   },
   en: {
     prevPlace: 'Previous place', nextPlace: 'Next place', spotlight: 'Hotplace Spotlight',
-    duration: 'Duration', openDaily: 'Open Daily', status: 'Status', active: 'Active',
+    duration: 'Duration', openDaily: 'Open Daily', status: 'Status', active: 'Active', ended: 'Ended',
     details: 'Details', moreToExplore: 'More to explore', location: 'Location',
     locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
     linkCopied: 'Link copied!',
-    navRec: 'Ranking', navMap: 'Map', navList: 'List', navTheme: 'Theme', navTour: 'AI Tour', my: 'My',
+    navRec: 'Ranking', navMap: 'Map', navList: 'Spot', navTheme: 'Theme', navTour: 'AI Tour', my: 'My',
     tagline: 'A fulfilling plan for your 3 hours',
   },
   zh: {
     prevPlace: '上一个地点', nextPlace: '下一个地点', spotlight: '热门地点详情',
-    duration: '运营期间', openDaily: '全年营业', status: '状态', active: '营业中',
+    duration: '运营期间', openDaily: '全年营业', status: '状态', active: '营业中', ended: '已结束',
     details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
     locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
     linkCopied: '链接已复制！',
-    navRec: '排行', navMap: '地图', navList: '列表', navTheme: '主题', navTour: 'AI路线', my: '我的',
+    navRec: '排行', navMap: '地图', navList: '地点', navTheme: '主题', navTour: 'AI路线', my: '我的',
     tagline: '为您3小时的充实安排',
   },
 } as const;
@@ -244,6 +245,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
     return [start, end];
   })();
 
+  // 원데이클래스/체험은 상시 운영으로 취급해 종료 표기 대상에서 제외
+  const isEnded = place.category !== 'class' && !!endDate && endDate < new Date().toISOString().split('T')[0];
+
   const isPerformanceRegion = place.region === '공연' || place.region === '축제' || place.region === '제주';
   const hasValidNaverId = place.naver_place_id &&
     !place.naver_place_id.startsWith('raw_') &&
@@ -331,10 +335,11 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         {/* 지역 탭 */}
         <div className="flex items-center gap-4 mb-1">
-          {(['성수', '홍대', '용산', '공연', '축제'] as const).map((r) => {
+          {(['성수', '홍대', '용산', '강남', '공연', '축제'] as const).map((r) => {
             const isConcertActive = r === '공연' && (place.region === '공연' || place.region === '제주');
             const isFestivalActive = r === '축제' && place.region === '축제';
             const isYongsanActive = r === '용산' && place.region === '용산';
+            const isGangnamActive = r === '강남' && place.region === '강남';
             return (
               <button
                 key={r}
@@ -345,15 +350,17 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                     ? "text-amber-600 border-amber-500"
                     : isYongsanActive
                       ? "text-yellow-600 border-yellow-500"
-                      : isConcertActive || place.region === r
-                        ? "text-emerald-600 border-emerald-500"
-                        : "text-zinc-300 border-transparent"
+                      : isGangnamActive
+                        ? "text-pink-600 border-pink-500"
+                        : isConcertActive || place.region === r
+                          ? "text-emerald-600 border-emerald-500"
+                          : "text-zinc-300 border-transparent"
                 )}
               >
                 {lang === 'en'
-                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                   : lang === 'zh'
-                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '공연' ? '演出' : '节庆')
+                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
                     : r}
               </button>
             );
@@ -390,7 +397,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         )}
 
         {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
-        {(place.region === '성수' || place.region === '홍대' || place.region === '용산') && (
+        {(place.region === '성수' || place.region === '홍대' || place.region === '용산' || place.region === '강남') && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
             {(['popup', 'class'] as const).map((c) => (
@@ -509,14 +516,25 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             </p>
             <p className="text-xs font-bold text-zinc-900">{displayDateRange || t.openDaily}</p>
           </div>
-          <div className="flex-1 bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-3">
+          <div className={cn(
+            "flex-1 p-5 rounded-3xl border shadow-sm",
+            isEnded ? "bg-zinc-900 border-zinc-900" : "bg-white border-zinc-100"
+          )}>
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center mb-3",
+              isEnded ? "bg-white/10 text-white" : "bg-blue-50 text-blue-600"
+            )}>
               <Clock size={20} />
             </div>
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+            <p className={cn(
+              "text-[10px] font-bold uppercase tracking-widest mb-1",
+              isEnded ? "text-white/50" : "text-zinc-400"
+            )}>
               {t.status}
             </p>
-            <p className="text-xs font-bold text-zinc-900">{t.active}</p>
+            <p className={cn("text-xs font-bold", isEnded ? "text-white" : "text-zinc-900")}>
+              {isEnded ? t.ended : t.active}
+            </p>
           </div>
         </div>
 
@@ -574,6 +592,22 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             );
           })()}
 
+          {place.link_url && (
+            <a
+              href={place.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 no-underline hover:bg-emerald-100/70 transition-colors"
+            >
+              <Globe size={15} className="text-emerald-600 flex-shrink-0" />
+              <span className="text-sm font-bold text-emerald-800 truncate">
+                {place.link_title || (isPerformanceRegion ? '예매하기' : '공식 페이지')}
+              </span>
+              <span className="text-sm font-bold text-emerald-600 flex-shrink-0">: 바로가기</span>
+              <ChevronRight size={14} className="ml-auto text-emerald-400 flex-shrink-0" />
+            </a>
+          )}
+
           {Array.isArray(place.blog_reviews) && place.blog_reviews.length > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">블로그 후기</p>
@@ -612,29 +646,6 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             </a>
           )}
 
-          {isPerformanceRegion && place.link_url && (
-            <a
-              href={place.link_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-            >
-              <img
-                src={place.image_url || `https://picsum.photos/seed/link-${place.id}/200/200`}
-                alt={displayTitle}
-                className="w-20 h-20 object-cover flex-shrink-0"
-                referrerPolicy="no-referrer"
-                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/link-${place.id}/200/200`; }}
-              />
-              <div className="flex items-center gap-2 flex-1 pr-4">
-                <Globe size={16} className="text-emerald-500 flex-shrink-0" />
-                <span className="text-sm font-bold text-zinc-800">
-                  {place.region === '공연' || place.region === '제주' ? '예매하러 가기' : '공식 페이지 바로가기'}
-                </span>
-                <span className="ml-auto text-zinc-300 text-lg">›</span>
-              </div>
-            </a>
-          )}
         </div>
 
         <InArticleAd />
@@ -779,7 +790,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           />
           <NavButton
             onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=list&lang=${lang}`)}
-            icon={<ListIcon size={22} />}
+            icon={<MapPin size={22} />}
             label={t.navList}
           />
           <NavButton

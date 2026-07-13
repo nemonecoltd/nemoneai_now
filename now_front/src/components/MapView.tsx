@@ -36,7 +36,8 @@ let isApiLoading = false;
 const REGIONS = {
   '성수': { lat: 37.5445, lng: 127.0560, title: '성수 팝업 맵' },
   '홍대': { lat: 37.5575, lng: 126.9245, title: '홍대 팝업 맵' },
-  '용산': { lat: 37.5344, lng: 126.9947, title: '용산 팝업 맵' }  // 이태원역 기준(한남동 인접) — 수집 데이터가 용산구 전역에 퍼져있어 평균 좌표 대신 핵심 상권으로 고정
+  '용산': { lat: 37.5344, lng: 126.9947, title: '용산 팝업 맵' },  // 이태원역 기준(한남동 인접) — 수집 데이터가 용산구 전역에 퍼져있어 평균 좌표 대신 핵심 상권으로 고정
+  '강남': { lat: 37.4979, lng: 127.0276, title: '강남 팝업 맵' }  // 강남역 기준
 };
 
 export default function MapView({ places = [], region = '성수', lang = 'ko' }: { places?: Place[], region?: string, lang?: string }) {
@@ -95,7 +96,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           title: lang === 'en' ? (place.title_en || place.title) : lang === 'zh' ? (place.title_zh || place.title) : place.title,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: region === '홍대' ? '#8b5cf6' : region === '용산' ? '#eab308' : '#10b981',
+            fillColor: region === '홍대' ? '#8b5cf6' : region === '용산' ? '#eab308' : region === '강남' ? '#ec4899' : '#10b981',
             fillOpacity: 1,
             strokeColor: '#ffffff',
             strokeWeight: 2,
@@ -148,20 +149,20 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
         <div className="bg-white/90 backdrop-blur-xl p-4 rounded-3xl border border-white/40 shadow-2xl flex items-center gap-4 pointer-events-auto">
           <div className={cn(
             "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner flex-shrink-0",
-            region === '홍대' ? "bg-purple-500" : region === '용산' ? "bg-yellow-500" : "bg-emerald-500"
+            region === '홍대' ? "bg-purple-500" : region === '용산' ? "bg-yellow-500" : region === '강남' ? "bg-pink-500" : "bg-emerald-500"
           )}>
             <Calendar size={24} />
           </div>
           <div>
             <h4 className="text-sm font-black text-zinc-900 tracking-tight">
               {lang === 'en'
-                ? `${region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : 'Hongdae'} Map`
+                ? `${region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : region === '강남' ? 'Gangnam' : 'Hongdae'} Map`
                 : lang === 'zh'
-                  ? `${region === '성수' ? '圣水洞' : region === '용산' ? '龙山' : '弘大'}地图`
+                  ? `${region === '성수' ? '圣水洞' : region === '용산' ? '龙山' : region === '강남' ? '江南' : '弘大'}地图`
                   : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
               <span className={cn(
                 "ml-2 text-xs font-bold",
-                region === '홍대' ? "text-purple-400" : region === '용산' ? "text-yellow-500" : "text-emerald-400"
+                region === '홍대' ? "text-purple-400" : region === '용산' ? "text-yellow-500" : region === '강남' ? "text-pink-500" : "text-emerald-400"
               )}>
                 (지금 당장 {places.length}개)
               </span>
@@ -258,7 +259,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
                 onClick={() => router.push(`/posts/${selectedPlace.id}?region=${encodeURIComponent(region)}&lang=${lang}`)}
                 className={cn(
                   "w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2",
-                  region === '홍대' ? "bg-purple-500" : region === '용산' ? "bg-yellow-500" : "bg-emerald-500"
+                  region === '홍대' ? "bg-purple-500" : region === '용산' ? "bg-yellow-500" : region === '강남' ? "bg-pink-500" : "bg-emerald-500"
                 )}
               >
                 {lang === 'en' ? 'View Details' : lang === 'zh' ? '查看详情' : '자세히 보기'}

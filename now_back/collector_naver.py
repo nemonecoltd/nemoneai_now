@@ -226,10 +226,24 @@ async def run_yongsan():
     return ("용산", *counts)
 
 
-async def run_class(region: str, query: str):
+async def run_gangnam():
+    print("\n🚀 [강남] 수집 시작")
+    try:
+        # '강남 팝업스토어' 검색 결과가 실제로는 성동구(성수)/강동구 등이 대량 섞여있어
+        # commonAddress로 강남구/서초구/송파구만 필터링
+        result = await scrape_naver_map_popups("강남 팝업스토어", allowed_districts=["강남구", "서초구", "송파구"])
+        counts = upsert_naver_items(result, "강남") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [강남] 실패: {e}")
+        return "강남", 0, 0, 1
+    print("✅ [강남] 완료")
+    return ("강남", *counts)
+
+
+async def run_class(region: str, query: str, allowed_districts: Optional[list] = None):
     print(f"\n🚀 [{region}/원데이클래스] 수집 시작 ('{query}')")
     try:
-        result = await scrape_naver_map_popups(query)
+        result = await scrape_naver_map_popups(query, allowed_districts=allowed_districts)
         counts = upsert_naver_items(result, region, category="class") if result else (0, 0, 0)
     except Exception as e:
         print(f"  ⚠️ [{region}/원데이클래스] 실패: {e}")
@@ -246,11 +260,14 @@ async def run_all():
         await run_seongsu(),
         await run_hongdae(),
         await run_yongsan(),
+        await run_gangnam(),
         await run_class("성수", "성수 원데이클래스"),
         await run_class("성수", "성수 공방 체험"),
         await run_class("홍대", "홍대 원데이클래스"),
         await run_class("용산", "용산 원데이클래스"),
         await run_class("용산", "용산 공방 체험"),
+        await run_class("강남", "강남 원데이클래스", allowed_districts=["강남구"]),
+        await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
     ]
     cleanup_expired()
     print("\n" + "=" * 50)

@@ -35,7 +35,10 @@ def _safe_float(val):
         return None
 
 
-async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list[dict]:
+async def scrape_naver_map_popups(query: str = "성수 팝업스토어", allowed_districts: Optional[list[str]] = None) -> list[dict]:
+    """allowed_districts: 네이버 commonAddress(예: '서울 강남구')에 포함된 구 이름 리스트로 결과 필터링.
+    None이면 필터링 없이 전체 반환 (검색 관련도로 넓게 잡히는 지역명 오염 방지용 — 예: '강남 팝업스토어' 검색이
+    실제로는 성동구/강동구 결과를 대량 포함하는 경우)."""
     print(f"🗺️ [네이버지도] '{query}' 검색 시작 (popupstore/list)")
     encoded = query.replace(" ", "%20")
 
@@ -77,6 +80,9 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어") -> list
             continue
         name = (item.get("name") or "").strip()
         if not name:
+            continue
+        common_address = item.get("commonAddress") or ""
+        if allowed_districts and not any(d in common_address for d in allowed_districts):
             continue
         place_id = str(item.get("id") or f"nmap_{hash(name) % 100000}")
         results.append({

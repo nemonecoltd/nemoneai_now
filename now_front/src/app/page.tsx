@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Map as MapIcon,
-  List as ListIcon,
+  MapPin,
   Sparkles,
   Search,
   Users,
@@ -34,7 +34,7 @@ function cn(...inputs: ClassValue[]) {
 const PAGE_SIZE = 20;
 
 type Tab = 'rec' | 'map' | 'list' | 'theme' | 'tour' | 'chat';
-type Region = '성수' | '홍대' | '용산' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '용산' | '강남' | '공연' | '제주' | '축제';
 type Lang = 'ko' | 'en' | 'zh';
 
 const dict = {
@@ -45,7 +45,7 @@ const dict = {
     regionGuide: '실시간 {region} 가이드',
     navRec: '랭킹',
     navMap: '지도',
-    navList: '리스트',
+    navList: '장소',
     navTheme: '테마',
     navTour: 'AI 코스',
     my: '마이',
@@ -59,7 +59,7 @@ const dict = {
     regionGuide: 'Live {region} Guide',
     navRec: 'Ranking',
     navMap: 'Map',
-    navList: 'List',
+    navList: 'Spot',
     navTheme: 'Theme',
     navTour: 'AI Tour',
     my: 'My',
@@ -73,7 +73,7 @@ const dict = {
     regionGuide: '{region} 实时指南',
     navRec: '排行',
     navMap: '地图',
-    navList: '列表',
+    navList: '地点',
     navTheme: '主题',
     navTour: 'AI路线',
     my: '我的',
@@ -121,7 +121,7 @@ function Home() {
   useEffect(() => {
     fetchPlaces();
     fetchAllPlaces();
-    if (region === '성수' || region === '홍대' || region === '용산') {
+    if (region === '성수' || region === '홍대' || region === '용산' || region === '강남') {
       fetchMapPlaces();
     } else {
       setMapPlaces([]);
@@ -237,12 +237,13 @@ function Home() {
             >
               {/* 메인 지역 탭 */}
               <div className="flex items-center gap-4 mb-1">
-                {(['성수', '홍대', '용산', '공연', '축제'] as const)
+                {(['성수', '홍대', '용산', '강남', '공연', '축제'] as const)
                   .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
                   .map((r) => {
                     const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
                     const isFestivalActive = r === '축제' && region === '축제';
                     const isYongsanActive = r === '용산' && region === '용산';
+                    const isGangnamActive = r === '강남' && region === '강남';
                     return (
                       <button
                         key={r}
@@ -253,15 +254,17 @@ function Home() {
                             ? "text-amber-600 border-amber-500"
                             : isYongsanActive
                               ? "text-yellow-600 border-yellow-500"
-                              : isConcertActive || region === r
-                                ? "text-emerald-600 border-emerald-500"
-                                : "text-zinc-300 border-transparent hover:text-zinc-500"
+                              : isGangnamActive
+                                ? "text-pink-600 border-pink-500"
+                                : isConcertActive || region === r
+                                  ? "text-emerald-600 border-emerald-500"
+                                  : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
                         {lang === 'en'
-                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                           : lang === 'zh'
-                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '공연' ? '演出' : '节庆')
+                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
                             : r}
                       </button>
                     );
@@ -306,7 +309,7 @@ function Home() {
 
               {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
               <AnimatePresence>
-                {(region === '성수' || region === '홍대' || region === '용산') && (
+                {(region === '성수' || region === '홍대' || region === '용산' || region === '강남') && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -449,8 +452,8 @@ function Home() {
         <NavButton 
           active={activeTab === 'list'} 
           onClick={() => setActiveTab('list')} 
-          icon={<ListIcon size={22} />} 
-          label={t.navList} 
+          icon={<MapPin size={22} />}
+          label={t.navList}
         />
         <NavButton 
           active={activeTab === 'theme'} 

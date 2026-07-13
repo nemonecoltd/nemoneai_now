@@ -72,6 +72,8 @@ class PlaceUpdate(BaseModel):
     region: Optional[str] = None
     pinned: Optional[bool] = None
     naver_place_id: Optional[str] = None
+    link_url: Optional[str] = None
+    link_title: Optional[str] = None
 
 class Question(BaseModel):
     user_query: str
@@ -587,7 +589,7 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
@@ -1013,7 +1015,7 @@ async def admin_list_all_places(region: Optional[str] = None):
     where_clause = "WHERE region = :region" if region else ""
     params: dict = {"region": region} if region else {}
     query = text(
-        f"SELECT id, title, content, image_url, location, date_range, end_date, region, category, pinned_at, naver_place_id, created_at, updated_at "
+        f"SELECT id, title, content, image_url, location, date_range, end_date, region, category, pinned_at, naver_place_id, created_at, updated_at, link_url, link_title, blog_reviews "
         f"FROM seongsu_places {where_clause} "
         f"ORDER BY pinned_at DESC NULLS LAST, id DESC"
     )

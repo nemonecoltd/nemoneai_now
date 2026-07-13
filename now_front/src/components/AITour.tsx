@@ -79,7 +79,7 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
   const [usage, setUsage] = useState({ usage_count: 0, limit: 2 });
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : 'Hongdae') : region;
+  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '용산' ? 'Yongsan' : region === '강남' ? 'Gangnam' : 'Hongdae') : region;
 
   useEffect(() => {
     if (user?.id) {

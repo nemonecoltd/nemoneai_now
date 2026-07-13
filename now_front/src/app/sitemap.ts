@@ -26,9 +26,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
-  // 3. 고정 페이지 URL 생성 (홈 화면)
+  // 3. 고정 페이지 URL 생성 (홈 화면 + 랭킹 페이지)
   const staticUrls = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 1.0 },
+    { url: `${baseUrl}/ranking/course`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
+    { url: `${baseUrl}/ranking/theme`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
+    { url: `${baseUrl}/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
   ]
 
   return [...staticUrls, ...placeUrls]

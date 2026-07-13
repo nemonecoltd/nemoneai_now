@@ -200,15 +200,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                             "text-[7px] font-black px-1.5 py-0.5 rounded uppercase border",
                             course.region === '홍대' ? "bg-orange-50 text-orange-600 border-orange-100"
                             : course.region === '용산' ? "bg-yellow-50 text-yellow-700 border-yellow-100"
+                            : course.region === '강남' ? "bg-pink-50 text-pink-600 border-pink-100"
                             : course.region === '공연' ? "bg-purple-50 text-purple-600 border-purple-100"
                             : course.region === '제주' ? "bg-cyan-50 text-cyan-600 border-cyan-100"
                             : course.region === '축제' ? "bg-amber-50 text-amber-600 border-amber-100"
                             : "bg-emerald-50 text-emerald-600 border-emerald-100"
                           )}>
                             {lang === 'en'
-                              ? (course.region === '홍대' ? 'Hongdae' : course.region === '용산' ? 'Yongsan' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
+                              ? (course.region === '홍대' ? 'Hongdae' : course.region === '용산' ? 'Yongsan' : course.region === '강남' ? 'Gangnam' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
                               : lang === 'zh'
-                                ? (course.region === '홍대' ? '弘大' : course.region === '용산' ? '龙山' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
+                                ? (course.region === '홍대' ? '弘大' : course.region === '용산' ? '龙山' : course.region === '강남' ? '江南' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
                                 : (course.region || '성수')}
                           </span>
                         </div>
@@ -294,15 +295,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
                           place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                           : place.region === '용산' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
                           : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
                           : place.region === '제주' ? "bg-cyan-500 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
                           : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
                           {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '용산' ? 'YONGSAN' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '용산' ? 'YONGSAN' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
                             : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
+                              ? (place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
                               : (place.region || '성수')}
                         </span>
                       </div>
@@ -317,9 +319,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {lang === 'en'
-                            ? (place.region === '공연' ? 'Seoul Concert' : place.region === '제주' ? 'Jeju Culture' : place.region === '축제' ? 'Local Festival' : `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '용산' ? 'Yongsan' : 'Seongsu'}`)
+                            ? (place.region === '공연' ? 'Seoul Concert' : place.region === '제주' ? 'Jeju Culture' : place.region === '축제' ? 'Local Festival' : `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '용산' ? 'Yongsan' : place.region === '강남' ? 'Gangnam' : 'Seongsu'}`)
                             : lang === 'zh'
-                              ? (place.region === '공연' ? '首尔演出' : place.region === '제주' ? '济州文化' : place.region === '축제' ? '全国节庆' : `${place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : '圣水洞'}附近`)
+                              ? (place.region === '공연' ? '首尔演出' : place.region === '제주' ? '济州文化' : place.region === '축제' ? '全国节庆' : `${place.region === '홍대' ? '弘大' : place.region === '용산' ? '龙山' : place.region === '강남' ? '江南' : '圣水洞'}附近`)
                               : (place.region === '공연' ? '서울 공연' : place.region === '제주' ? '제주 공연·전시' : place.region === '축제' ? '전국 축제' : `${place.location?.split(' ')[2] || place.region} 근처`)}
                         </span>
                       </div>
