@@ -187,10 +187,10 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-100 flex-shrink-0 bg-zinc-50">
-                        <img 
-                          src={course.user_image || `https://ui-avatars.com/api/?name=${course.user_name || 'U'}&background=random`} 
-                          className="w-full h-full object-cover" 
-                          alt="" 
+                        <img
+                          src={course.user_image || `https://ui-avatars.com/api/?name=${course.user_name || 'U'}&background=random`}
+                          className="w-full h-full object-cover"
+                          alt={course.user_name || ''}
                         />
                       </div>
                       <div className="min-w-0 flex-1">
@@ -289,7 +289,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       {idx + 1}
                     </div>
                     <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt="" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
                       <div className="absolute -bottom-1 -right-1 shadow-lg">
                         <span className={cn(
                           "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
@@ -348,7 +348,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                  <img src={selectedCourse.user_image} className="w-10 h-10 rounded-full border border-zinc-100" alt="" />
+                  <img src={selectedCourse.user_image} className="w-10 h-10 rounded-full border border-zinc-100" alt={selectedCourse.user_name || ''} />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedCourse.title}</h3>
                     <p className="text-xs text-zinc-400 font-bold">
@@ -417,7 +417,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   <img
                     src={selectedTheme.user_image || `https://picsum.photos/seed/u${selectedTheme.id}/200`}
                     className="w-10 h-10 rounded-full border border-zinc-100 object-cover"
-                    alt=""
+                    alt={selectedTheme.user_name || ''}
                     onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${selectedTheme.id}/200`; }}
                   />
                   <div>
@@ -431,10 +431,10 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               <div className="space-y-4 mb-10">
                 {(Array.isArray(selectedTheme.places) ? selectedTheme.places : JSON.parse(selectedTheme.places)).map((place: any, idx: number) => (
                   <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-emerald-200 transition-colors">
-                    <img 
-                      src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`} 
-                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white" 
-                      alt="" 
+                    <img
+                      src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`}
+                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white"
+                      alt={place.title || ''}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = `https://picsum.photos/seed/theme-error-${idx}/400/300`;
                       }}
@@ -472,10 +472,10 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               
               <div className="space-y-6 flex-grow">
                 <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                  <img 
-                    src={selectedPlace.image_url || `https://picsum.photos/seed/theme-${selectedPlace.title}/800/600`} 
-                    className="w-full h-full object-cover" 
-                    alt="" 
+                  <img
+                    src={selectedPlace.image_url || `https://picsum.photos/seed/theme-${selectedPlace.title}/800/600`}
+                    className="w-full h-full object-cover"
+                    alt={selectedPlace.title || ''}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = `https://picsum.photos/seed/theme-error-place/800/600`;
                     }}

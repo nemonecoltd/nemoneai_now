@@ -207,7 +207,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                       <img
                         src={theme.user_image || `https://picsum.photos/seed/u${theme.id}/200`}
                         className="w-full h-full object-cover"
-                        alt=""
+                        alt={theme.user_name || ''}
                         onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${theme.id}/200`; }}
                       />
                     </div>
@@ -249,7 +249,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                     <img
                       src={theme.user_image || `https://picsum.photos/seed/u${theme.id}/200`}
                       className="w-full h-full object-cover"
-                      alt=""
+                      alt={theme.user_name || ''}
                       onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${theme.id}/200`; }}
                     />
                   </div>
@@ -282,7 +282,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                   <img
                     src={selectedTheme.user_image || `https://picsum.photos/seed/u${selectedTheme.id}/200`}
                     className="w-10 h-10 rounded-full border border-zinc-100 bg-zinc-50 object-cover"
-                    alt=""
+                    alt={selectedTheme.user_name || ''}
                     onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/u${selectedTheme.id}/200`; }}
                   />
                   <div>
@@ -309,10 +309,10 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
               <div className="space-y-4 mb-10">
                 {(Array.isArray(selectedTheme.places) ? selectedTheme.places : JSON.parse(selectedTheme.places)).map((place: any, idx: number) => (
                   <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-emerald-200 transition-colors">
-                    <img 
-                      src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`} 
-                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white" 
-                      alt="" 
+                    <img
+                      src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`}
+                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white"
+                      alt={place.title || ''}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = `https://picsum.photos/seed/theme-error-${idx}/400/300`;
                       }}
@@ -343,10 +343,10 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
               
               <div className="space-y-6 flex-grow">
                 <div className="w-full aspect-[4/3] rounded-3xl overflow-hidden bg-zinc-100 border border-zinc-200">
-                  <img 
-                    src={selectedPlace.image_url || `https://picsum.photos/seed/theme-${selectedPlace.title}/800/600`} 
-                    className="w-full h-full object-cover" 
-                    alt="" 
+                  <img
+                    src={selectedPlace.image_url || `https://picsum.photos/seed/theme-${selectedPlace.title}/800/600`}
+                    className="w-full h-full object-cover"
+                    alt={selectedPlace.title || ''}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = `https://picsum.photos/seed/theme-error-place/800/600`;
                     }}
