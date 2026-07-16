@@ -561,6 +561,12 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                             바로가기: 링크 열기
                           </a>
                         </p>
+                      ) : line.length > 60 ? (
+                        // 축제 등 외부 API에서 온 긴 설명은 줄바꿈 없이 한 문단으로 뭉쳐 있어 가독성이 떨어져
+                        // 문장 단위(마침표/느낌표/물음표 뒤 공백)로 나눠 각각 별도 문단으로 표시
+                        line.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0).map((sentence, j) => (
+                          <p key={`${i}-${j}`}>{sentence.trim()}</p>
+                        ))
                       ) : (
                         <p key={i}>{line}</p>
                       )
