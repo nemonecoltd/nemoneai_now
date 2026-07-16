@@ -30,7 +30,7 @@ interface Place {
   category?: string | null;
 }
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup' }: { places: Place[], region: string, lang?: string, category?: 'popup' | 'class' }) {
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sortLatest = false, onToggleSortLatest }: { places: Place[], region: string, lang?: string, category?: 'popup' | 'class', sortLatest?: boolean, onToggleSortLatest?: () => void }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
@@ -50,7 +50,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     setIsLoadingMore(true);
     try {
       const categoryParam = `&category=${category}`;
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}`);
+      const sortParam = sortLatest ? '&sort=latest' : '';
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}${sortParam}`);
       if (res.ok) {
         const data: Place[] = await res.json();
         setPlaces(prev => [...prev, ...data]);
@@ -61,7 +62,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length, category]);
+  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length, category, sortLatest]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -145,11 +146,24 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               : lang === 'zh'
                 ? (region === '공연' ? '搜索演出...' : region === '축제' ? '搜索节庆...' : '搜索快闪店...')
                 : (region === '공연' ? '공연 검색...' : region === '축제' ? '축제 검색...' : '팝업스토어 검색...')}
-            className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
+            className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-12 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
           />
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
             {isSearching ? <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> : <MapPin size={18} />}
           </div>
+          {onToggleSortLatest && (
+            <button
+              type="button"
+              onClick={onToggleSortLatest}
+              title={lang === 'en' ? 'Sort by latest' : lang === 'zh' ? '按最新排序' : '최신순'}
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
+                sortLatest ? "bg-emerald-500 text-white" : "bg-transparent text-zinc-400 hover:text-zinc-600"
+              )}
+            >
+              <Clock size={16} />
+            </button>
+          )}
         </form>
       </div>
 

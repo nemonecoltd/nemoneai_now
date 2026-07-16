@@ -569,7 +569,7 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places")
-async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0, sort: Optional[str] = None):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
     # 공연/제주는 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
@@ -581,10 +581,12 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     elif category == "popup":
         where_clause += " AND category IS NULL"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
+    # sort='latest' — 어드민이 이번에 새로 갱신/수집한 항목을 확인할 때 사용. 기본은 랜덤(같은 날짜 갱신은 랜덤과 동일하게 순서 무의미)
+    order_clause = "updated_at DESC NULLS LAST, created_at DESC" if sort == "latest" else "RANDOM()"
     query = text(
         f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, pinned_at, naver_place_id "
         f"FROM seongsu_places {where_clause} "
-        f"ORDER BY pinned_at DESC NULLS LAST, RANDOM() {limit_clause}"
+        f"ORDER BY pinned_at DESC NULLS LAST, {order_clause} {limit_clause}"
     )
     with engine.connect() as conn:
         params = {"offset": offset}

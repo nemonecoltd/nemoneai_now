@@ -89,6 +89,7 @@ function Home() {
   const [activeTab, setActiveTabState] = useState<Tab>('rec');
   const [region, setRegionState] = useState<Region>('성수');
   const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
+  const [sortLatest, setSortLatest] = useState(false);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
@@ -126,7 +127,7 @@ function Home() {
     } else {
       setMapPlaces([]);
     }
-  }, [region, lang, placeCategory]);
+  }, [region, lang, placeCategory, sortLatest]);
 
   useEffect(() => {
     // '공연'/'제주'/'축제' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
@@ -136,10 +137,11 @@ function Home() {
   }, [region, activeTab]);
 
   const categoryParam = `&category=${placeCategory}`;
+  const sortParam = sortLatest ? '&sort=latest' : '';
 
   const fetchPlaces = async () => {
     try {
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=0${categoryParam}&t=${Date.now()}`);
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=0${categoryParam}${sortParam}&t=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setPlaces(data);
@@ -360,7 +362,7 @@ function Home() {
 
           {activeTab === 'list' && (
             <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <PlaceList places={places} region={region} lang={lang} category={placeCategory} />
+              <PlaceList places={places} region={region} lang={lang} category={placeCategory} sortLatest={sortLatest} onToggleSortLatest={() => setSortLatest(v => !v)} />
             </motion.div>
           )}
 
