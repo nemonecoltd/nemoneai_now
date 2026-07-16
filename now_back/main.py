@@ -582,7 +582,10 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         where_clause += " AND category IS NULL"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     # sort='latest' — 어드민이 이번에 새로 갱신/수집한 항목을 확인할 때 사용. 기본은 랜덤(같은 날짜 갱신은 랜덤과 동일하게 순서 무의미)
-    order_clause = "updated_at DESC NULLS LAST, created_at DESC" if sort == "latest" else "RANDOM()"
+    # updated_at은 어드민 수동 편집 시에만 찍혀(스크래퍼 재수집은 안 건드림) 대부분 NULL이라,
+    # "updated_at DESC NULLS LAST"를 그대로 1순위로 쓰면 몇 달 전 수동 편집된 소수 항목이
+    # 오늘 새로 수집된 항목보다 항상 위로 올라가는 문제가 있었음 — GREATEST로 실제 최신 시점 비교
+    order_clause = "GREATEST(updated_at, created_at) DESC" if sort == "latest" else "RANDOM()"
     query = text(
         f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, pinned_at, naver_place_id "
         f"FROM seongsu_places {where_clause} "
