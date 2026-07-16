@@ -458,8 +458,16 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
 
 @app.get("/places/popular")
 async def get_popular_places(limit: Optional[int] = None, offset: int = 0):
-    """인기 랭킹 (조회수+좋아요*2 가중치, 하루 2회 갱신 캐시). 지역 무관 통합 랭킹."""
+    """인기 랭킹 (조회수+좋아요*2 가중치, 하루 2회 갱신 캐시). 지역 무관 통합 랭킹(공연 제외)."""
     data = _place_popularity_cache[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
+
+@app.get("/places/popular/performance")
+async def get_popular_performances(limit: Optional[int] = None, offset: int = 0):
+    """공연 전용 인기 랭킹 (플레이스 랭킹과 동일 산식/캐시 주기, 공연만 집계)."""
+    data = _performance_popularity_cache[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -606,9 +614,17 @@ async def record_place_view(place_id: int):
     return {"ok": True}
 
 _place_popularity_cache: list = []
+_performance_popularity_cache: list = []
 
-def _popularity_rows(conn, interval_days: int, limit: int = 100):
-    """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계."""
+def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False):
+    """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
+    only_performance=False(기본, 플레이스 랭킹): 공연은 완전히 제외(장기적으로 메뉴별 랭킹 분리 예정, 우선 공연만 분리).
+    only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계."""
+    region_clause = (
+        "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
+        if only_performance
+        else "AND p.region != '공연' AND (p.region != '제주' OR p.naver_place_id LIKE 'kopis_%')"
+    )
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at, p.date_range,
                COUNT(DISTINCT l.id) AS like_count,
@@ -618,7 +634,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100):
         LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '{interval_days} days'
         LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
         WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
-          AND (p.region NOT IN ('공연', '제주') OR p.naver_place_id LIKE 'kopis_%')
+          {region_clause}
         GROUP BY p.id
         ORDER BY score DESC, p.created_at DESC
         LIMIT {limit}
@@ -628,7 +644,7 @@ def refresh_place_popularity():
     """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 3회(한국시간 0/8/16시) 실행.
     메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용.
     48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화."""
-    global _place_popularity_cache
+    global _place_popularity_cache, _performance_popularity_cache
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -645,9 +661,14 @@ def refresh_place_popularity():
             result = list(_popularity_rows(conn, 30))
         _place_popularity_cache = [dict(row._mapping) for row in result]
 
+        perf_result = list(_popularity_rows(conn, 2, only_performance=True))
+        if len(perf_result) < 25:
+            perf_result = list(_popularity_rows(conn, 30, only_performance=True))
+        _performance_popularity_cache = [dict(row._mapping) for row in perf_result]
+
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
-    """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식)"""
+    """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식). 공연 제외."""
     return _place_popularity_cache[:25]
 
 @app.get("/admin/ranking/weekly7d")

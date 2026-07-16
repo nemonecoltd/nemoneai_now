@@ -13,7 +13,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'course' | 'theme' | 'place';
+type Tab = 'course' | 'theme' | 'place' | 'concert';
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
   const { user, signInWithGoogle } = useAuth();
@@ -21,6 +21,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [courses, setCourses] = useState([]);
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);
+  const [concerts, setConcerts] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
@@ -35,8 +36,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       fetchCourses();
     } else if (activeTab === 'theme') {
       fetchThemes();
+    } else if (activeTab === 'concert') {
+      fetchConcerts();
     }
   }, [activeTab, lang]);
+
+  const fetchConcerts = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular/performance?t=${Date.now()}`);
+      if (res.ok) setConcerts(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchCourses = async () => {
     setIsLoading(true);
@@ -171,6 +184,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
           <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Places' : lang === 'zh' ? '地点排行' : '플레이스 랭킹'}
           </button>
+          <button onClick={() => setActiveTab('concert')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出排行' : '공연 랭킹'}
+          </button>
         </div>
       </div>
 
@@ -280,7 +296,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 </div>
               ))}
             </motion.div>
-          ) : (
+          ) : activeTab === 'place' ? (
             <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
               {places.slice(0, 25).map((place: any, idx: number) => (
                 <div key={place.id}>
@@ -327,6 +343,51 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                     </div>
                     <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
+
+                  {idx === 2 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+              {concerts.length === 0 && !isLoading && (
+                <p className="text-center text-xs text-zinc-400 py-10">
+                  {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : '아직 공연 랭킹 데이터가 없습니다.'}
+                </p>
+              )}
+              {concerts.slice(0, 25).map((place: any, idx: number) => (
+                <div key={place.id}>
+                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                      {idx + 1}
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                      <div className="absolute -bottom-1 -right-1 shadow-lg">
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
+                          {lang === 'en' ? 'CONCERT' : lang === 'zh' ? '演出' : '공연'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                        {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                      </h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                        </span>
+                        <span className="text-[9px] text-zinc-400 font-medium truncate">
+                          {lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연'}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/posts/${place.id}?region=공연&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
