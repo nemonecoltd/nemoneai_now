@@ -648,12 +648,13 @@ _popularity_last_refreshed: Optional[str] = None
 
 def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
-    only_performance=False(기본, 플레이스 랭킹): 공연은 완전히 제외(장기적으로 메뉴별 랭킹 분리 예정, 우선 공연만 분리).
+    only_performance=False(기본, 플레이스 랭킹): 공연은 완전히 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
+    (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
     only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계."""
     region_clause = (
         "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
         if only_performance
-        else "AND p.region != '공연' AND (p.region != '제주' OR p.naver_place_id LIKE 'kopis_%')"
+        else "AND p.region != '공연' AND (p.region != '제주' OR p.naver_place_id LIKE 'kopis_%') AND p.category IS NULL"
     )
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range,
