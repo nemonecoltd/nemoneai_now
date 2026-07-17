@@ -19,7 +19,7 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import MapView from '@/components/MapView';
-import PlaceList from '@/components/PlaceList';
+import PlaceList, { PlaceSort } from '@/components/PlaceList';
 import AskAI from '@/components/AskAI';
 import AITour from '@/components/AITour';
 import ThemeMenu from '@/components/ThemeMenu';
@@ -90,7 +90,7 @@ function Home() {
   const [region, setRegionState] = useState<Region>('성수');
   const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
-  const [sortLatest, setSortLatest] = useState(false);
+  const [placeSort, setPlaceSort] = useState<PlaceSort>('popular');
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
@@ -129,7 +129,7 @@ function Home() {
     } else {
       setMapPlaces([]);
     }
-  }, [region, lang, placeCategory, concertGenre, sortLatest]);
+  }, [region, lang, placeCategory, concertGenre, placeSort]);
 
   useEffect(() => {
     // '공연'/'제주'/'축제' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
@@ -139,7 +139,7 @@ function Home() {
   }, [region, activeTab]);
 
   const categoryParam = `&category=${region === '공연' ? concertGenre : placeCategory}`;
-  const sortParam = sortLatest ? '&sort=latest' : '';
+  const sortParam = `&sort=${placeSort}`;
 
   const fetchPlaces = async () => {
     try {
@@ -367,7 +367,7 @@ function Home() {
 
           {activeTab === 'list' && (
             <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <PlaceList places={places} region={region} lang={lang} category={region === '공연' ? concertGenre : placeCategory} sortLatest={sortLatest} onToggleSortLatest={() => setSortLatest(v => !v)} />
+              <PlaceList places={places} region={region} lang={lang} category={region === '공연' ? concertGenre : placeCategory} sort={placeSort} onSortChange={setPlaceSort} />
             </motion.div>
           )}
 

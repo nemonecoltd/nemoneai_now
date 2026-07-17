@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { MapPin, Clock, ChevronRight, Heart } from 'lucide-react';
+import { Clock, ChevronRight, Heart } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import React, { useState, useEffect } from 'react';
@@ -30,12 +30,12 @@ interface Place {
   category?: string | null;
 }
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sortLatest = false, onToggleSortLatest }: { places: Place[], region: string, lang?: string, category?: string, sortLatest?: boolean, onToggleSortLatest?: () => void }) {
+export type PlaceSort = 'popular' | 'latest' | 'closing';
+
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sort = 'popular', onSortChange }: { places: Place[], region: string, lang?: string, category?: string, sort?: PlaceSort, onSortChange?: (sort: PlaceSort) => void }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
   const [hasMore, setHasMore] = useState(initialPlaces.length >= PAGE_SIZE);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement>(null);
@@ -46,12 +46,11 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
   }, [initialPlaces]);
 
   const loadMore = React.useCallback(async () => {
-    if (isLoadingMore || !hasMore || searchTerm) return;
+    if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
       const categoryParam = `&category=${category}`;
-      const sortParam = sortLatest ? '&sort=latest' : '';
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}${sortParam}`);
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}&sort=${sort}`);
       if (res.ok) {
         const data: Place[] = await res.json();
         setPlaces(prev => [...prev, ...data]);
@@ -62,7 +61,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, searchTerm, region, lang, places.length, category, sortLatest]);
+  }, [isLoadingMore, hasMore, region, lang, places.length, category, sort]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -73,29 +72,6 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     observer.observe(el);
     return () => observer.disconnect();
   }, [loadMore]);
-
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!searchTerm.trim()) {
-      setPlaces(initialPlaces);
-      setHasMore(initialPlaces.length >= PAGE_SIZE);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      const res = await fetch(`/api-now/search?q=${encodeURIComponent(searchTerm)}&region=${encodeURIComponent(region)}&lang=${lang}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlaces(data);
-        setHasMore(false);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   useEffect(() => {
     if (user?.id) {
@@ -131,41 +107,32 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
       ? (region === '성수' ? '圣水洞' : region === '홍대' ? '弘大' : region === '공연' ? '演出' : region === '축제' ? '节庆' : '济州文化')
       : (region === '제주' ? '제주 문화' : region);
 
+  const sortOptions: { key: PlaceSort; ko: string; en: string; zh: string }[] = [
+    { key: 'popular', ko: '인기순', en: 'Popular', zh: '人气排序' },
+    { key: 'latest', ko: '최신순', en: 'Latest', zh: '最新排序' },
+    { key: 'closing', ko: '마감임박순', en: 'Closing Soon', zh: '即将结束' },
+  ];
+
   return (
     <div className="p-6 space-y-6 pb-24">
-      <div className="flex flex-col gap-4">
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onBlur={() => handleSearch()}
-            placeholder={lang === 'en'
-              ? (region === '공연' ? 'Search for concerts...' : region === '축제' ? 'Search for festivals...' : 'Search for pop-ups...')
-              : lang === 'zh'
-                ? (region === '공연' ? '搜索演出...' : region === '축제' ? '搜索节庆...' : '搜索快闪店...')
-                : (region === '공연' ? '공연 검색...' : region === '축제' ? '축제 검색...' : '팝업스토어 검색...')}
-            className="w-full bg-zinc-100/50 border border-zinc-200 rounded-2xl pl-12 pr-12 py-3 text-sm focus:outline-none focus:border-emerald-500/50 transition-all text-zinc-900"
-          />
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400">
-            {isSearching ? <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" /> : <MapPin size={18} />}
-          </div>
-          {onToggleSortLatest && (
+      {onSortChange && (
+        <div className="flex items-center gap-2">
+          {sortOptions.map((opt) => (
             <button
-              type="button"
-              onClick={onToggleSortLatest}
-              title={lang === 'en' ? 'Sort by latest' : lang === 'zh' ? '按最新排序' : '최신순'}
+              key={opt.key}
+              onClick={() => onSortChange(opt.key)}
               className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
-                sortLatest ? "bg-emerald-500 text-white" : "bg-transparent text-zinc-400 hover:text-zinc-600"
+                "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border",
+                sort === opt.key
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-white text-zinc-400 border-zinc-200 hover:border-zinc-300"
               )}
             >
-              <Clock size={16} />
+              {lang === 'en' ? opt.en : lang === 'zh' ? opt.zh : opt.ko}
             </button>
-          )}
-        </form>
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-4">
         {places.map((place, idx) => (
@@ -241,7 +208,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
             {lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : '데이터가 없습니다.'}
           </div>
         )}
-        {hasMore && !searchTerm && (
+        {hasMore && (
           <div ref={sentinelRef} className="flex justify-center py-6">
             {isLoadingMore && (
               <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />

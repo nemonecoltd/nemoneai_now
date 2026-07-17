@@ -571,29 +571,45 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
 @app.get("/places")
 async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0, sort: Optional[str] = None):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
-    where_clause = "WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)" if region else "WHERE (end_date IS NULL OR end_date >= CURRENT_DATE)"
+    where_clause = "WHERE p.region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
     # 공연/제주는 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
     if region in ("공연", "제주"):
-        where_clause += " AND naver_place_id LIKE 'kopis_%'"
+        where_clause += " AND p.naver_place_id LIKE 'kopis_%'"
     # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존, category IS NULL)
     # 공연(서울)은 장르 서브탭: 연극/뮤지컬/음악(대중음악)/종합(그 외 클래식·국악·무용·서커스마술·복합)
     if category == "class":
-        where_clause += " AND category = 'class'"
+        where_clause += " AND p.category = 'class'"
     elif category == "popup":
-        where_clause += " AND category IS NULL"
+        where_clause += " AND p.category IS NULL"
     elif category in ("연극", "뮤지컬", "음악", "종합"):
-        where_clause += f" AND category = '{category}'"
+        where_clause += f" AND p.category = '{category}'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
-    # sort='latest' — 어드민이 이번에 새로 갱신/수집한 항목을 확인할 때 사용. 기본은 랜덤(같은 날짜 갱신은 랜덤과 동일하게 순서 무의미)
+    base_cols = "p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id"
+    # sort 옵션: 'latest'(최신 갱신/수집순), 'popular'(최근 30일 조회+좋아요 인기순), 'closing'(마감임박순), 기본은 랜덤
     # updated_at은 어드민 수동 편집 시에만 찍혀(스크래퍼 재수집은 안 건드림) 대부분 NULL이라,
     # "updated_at DESC NULLS LAST"를 그대로 1순위로 쓰면 몇 달 전 수동 편집된 소수 항목이
     # 오늘 새로 수집된 항목보다 항상 위로 올라가는 문제가 있었음 — GREATEST로 실제 최신 시점 비교
-    order_clause = "GREATEST(updated_at, created_at) DESC" if sort == "latest" else "RANDOM()"
-    query = text(
-        f"SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, pinned_at, naver_place_id "
-        f"FROM seongsu_places {where_clause} "
-        f"ORDER BY pinned_at DESC NULLS LAST, {order_clause} {limit_clause}"
-    )
+    if sort == "popular":
+        query = text(
+            f"SELECT {base_cols}, COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score "
+            f"FROM seongsu_places p "
+            f"LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '30 days' "
+            f"LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '30 days' "
+            f"{where_clause} "
+            f"GROUP BY p.id "
+            f"ORDER BY p.pinned_at DESC NULLS LAST, score DESC, p.created_at DESC {limit_clause}"
+        )
+    else:
+        order_clause = (
+            "GREATEST(p.updated_at, p.created_at) DESC" if sort == "latest"
+            else "p.end_date ASC NULLS LAST" if sort == "closing"
+            else "RANDOM()"
+        )
+        query = text(
+            f"SELECT {base_cols} "
+            f"FROM seongsu_places p {where_clause} "
+            f"ORDER BY p.pinned_at DESC NULLS LAST, {order_clause} {limit_clause}"
+        )
     with engine.connect() as conn:
         params = {"offset": offset}
         if limit is not None:
