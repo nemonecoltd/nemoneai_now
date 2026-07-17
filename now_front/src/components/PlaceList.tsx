@@ -30,7 +30,7 @@ interface Place {
   category?: string | null;
 }
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sortLatest = false, onToggleSortLatest }: { places: Place[], region: string, lang?: string, category?: 'popup' | 'class', sortLatest?: boolean, onToggleSortLatest?: () => void }) {
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sortLatest = false, onToggleSortLatest }: { places: Place[], region: string, lang?: string, category?: string, sortLatest?: boolean, onToggleSortLatest?: () => void }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);

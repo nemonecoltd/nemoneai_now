@@ -89,6 +89,7 @@ function Home() {
   const [activeTab, setActiveTabState] = useState<Tab>('rec');
   const [region, setRegionState] = useState<Region>('성수');
   const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
+  const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [sortLatest, setSortLatest] = useState(false);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
@@ -112,6 +113,7 @@ function Home() {
     if (t) setActiveTab(t);
     if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
     if (c === 'popup' || c === 'class') setPlaceCategory(c);
+    if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (성수/홍대만)
@@ -127,7 +129,7 @@ function Home() {
     } else {
       setMapPlaces([]);
     }
-  }, [region, lang, placeCategory, sortLatest]);
+  }, [region, lang, placeCategory, concertGenre, sortLatest]);
 
   useEffect(() => {
     // '공연'/'제주'/'축제' 탭에서는 지도나 AI코스가 없으므로 리스트로 강제 이동
@@ -136,7 +138,7 @@ function Home() {
     }
   }, [region, activeTab]);
 
-  const categoryParam = `&category=${placeCategory}`;
+  const categoryParam = `&category=${region === '공연' ? concertGenre : placeCategory}`;
   const sortParam = sortLatest ? '&sort=latest' : '';
 
   const fetchPlaces = async () => {
@@ -309,6 +311,38 @@ function Home() {
                 )}
               </AnimatePresence>
 
+              {/* 공연(서울) 서브탭: 연극 | 뮤지컬 | 음악 | 종합 */}
+              <AnimatePresence>
+                {region === '공연' && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="flex items-center gap-2 mb-1 pl-1 mt-2"
+                  >
+                    <span className="text-[10px] text-zinc-300 font-bold">›</span>
+                    {(['연극', '뮤지컬', '음악', '종합'] as const).map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => setConcertGenre(c)}
+                        className={cn(
+                          "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
+                          concertGenre === c
+                            ? "bg-emerald-500 text-white border-emerald-500"
+                            : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
+                        )}
+                      >
+                        {lang === 'en'
+                          ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
+                          : lang === 'zh'
+                            ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
+                            : c}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
               <AnimatePresence>
                 {(region === '성수' || region === '홍대' || region === '용산' || region === '강남') && (
@@ -362,7 +396,7 @@ function Home() {
 
           {activeTab === 'list' && (
             <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <PlaceList places={places} region={region} lang={lang} category={placeCategory} sortLatest={sortLatest} onToggleSortLatest={() => setSortLatest(v => !v)} />
+              <PlaceList places={places} region={region} lang={lang} category={region === '공연' ? concertGenre : placeCategory} sortLatest={sortLatest} onToggleSortLatest={() => setSortLatest(v => !v)} />
             </motion.div>
           )}
 

@@ -63,6 +63,7 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                     "date_range": item.get("date_range", ""),
                     "region": item_region,
                     "link_url": item.get("link_url"),
+                    "category": item.get("category"),
                 }
 
                 # naver_place_id가 같은데 title만 바뀐 경우(KOPIS가 공연명을 살짝 수정해 재게시하는 경우 등),
@@ -87,6 +88,7 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                             image_url = COALESCE(:image_url, image_url),
                             link_url = COALESCE(:link_url, link_url),
                             region = :region,
+                            category = :category,
                             end_date = COALESCE(:real_end_date, end_date),
                             date_range = CASE WHEN :date_range != '' THEN :date_range ELSE date_range END,
                             created_at = CURRENT_TIMESTAMP
@@ -96,8 +98,8 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
-                        (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url)
-                        VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url)
+                        (title, title_en, content, content_en, location, latitude, longitude, naver_place_id, video_url, image_url, embedding, end_date, date_range, region, link_url, category)
+                        VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url, :category)
                     """), params)
                     new_count += 1
                 conn.commit()

@@ -576,10 +576,13 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     if region in ("공연", "제주"):
         where_clause += " AND naver_place_id LIKE 'kopis_%'"
     # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존, category IS NULL)
+    # 공연(서울)은 장르 서브탭: 연극/뮤지컬/음악(대중음악)/종합(그 외 클래식·국악·무용·서커스마술·복합)
     if category == "class":
         where_clause += " AND category = 'class'"
     elif category == "popup":
         where_clause += " AND category IS NULL"
+    elif category in ("연극", "뮤지컬", "음악", "종합"):
+        where_clause += f" AND category = '{category}'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     # sort='latest' — 어드민이 이번에 새로 갱신/수집한 항목을 확인할 때 사용. 기본은 랜덤(같은 날짜 갱신은 랜덤과 동일하게 순서 무의미)
     # updated_at은 어드민 수동 편집 시에만 찍혀(스크래퍼 재수집은 안 건드림) 대부분 NULL이라,

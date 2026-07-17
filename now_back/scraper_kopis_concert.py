@@ -15,10 +15,8 @@ KOPIS_SERVICE_KEY = os.getenv("KOPIS_SERVICE_KEY")
 LIST_URL = "http://www.kopis.or.kr/openApi/restful/pblprfr"
 DETAIL_URL = "http://www.kopis.or.kr/openApi/restful/pblprfr/{mt20id}"
 
-# shcate(장르코드) -> 참고용 (region 구분에는 안 씀)
+# shcate(장르코드) — 제주 전용 조회에만 사용 (서울은 전체 장르 조회 후 genrenm으로 분류)
 GENRE_CODES = ["AAAA", "GGGA", "CCCD", "EEEB"]  # 연극, 뮤지컬, 대중음악, 서커스/마술
-# signgucode(지역코드) -> region 매핑
-REGION_CODES = {"11": "공연", "50": "제주"}
 
 WINDOW_DAYS = 31
 WINDOW_COUNT = 3  # 오늘부터 약 93일
@@ -34,7 +32,7 @@ def _date_windows():
     return windows
 
 
-def _fetch_list(genre: str, signgucode: str, stdate: str, eddate: str) -> list[ET.Element]:
+def _fetch_list(genre: str | None, signgucode: str, stdate: str, eddate: str) -> list[ET.Element]:
     items = []
     cpage = 1
     while True:
@@ -44,9 +42,10 @@ def _fetch_list(genre: str, signgucode: str, stdate: str, eddate: str) -> list[E
             "eddate": eddate,
             "cpage": cpage,
             "rows": 100,
-            "shcate": genre,
             "signgucode": signgucode,
         }
+        if genre:
+            params["shcate"] = genre
         try:
             r = requests.get(LIST_URL, params=params, timeout=15)
             if r.status_code != 200:
@@ -90,26 +89,50 @@ def _parse_kopis_date(s: str) -> date | None:
         return None
 
 
+def _classify_genre(genrenm: str) -> str:
+    """서울 공연 메뉴 서브탭 분류. 코피스 장르 3가지(연극/뮤지컬/대중음악→음악)만 별도 분류하고
+    나머지(클래식/국악/무용/서커스마술/복합 등)는 모두 '종합'으로 묶는다."""
+    if genrenm == "연극":
+        return "연극"
+    if genrenm == "뮤지컬":
+        return "뮤지컬"
+    if genrenm == "대중음악":
+        return "음악"
+    return "종합"
+
+
 async def scrape_kopis_concert() -> list[dict]:
     if not KOPIS_SERVICE_KEY:
         print("⚠️ KOPIS_SERVICE_KEY가 설정되지 않았습니다.")
         return []
 
-    print("🎭 [KOPIS] 공연 목록 수집 중 (연극/뮤지컬/대중음악/서커스,마술 · 서울/제주)...")
+    print("🎭 [KOPIS] 공연 목록 수집 중 (서울: 전체 장르/연극·뮤지컬·음악·종합 분류, 제주: 기존 4개 장르)...")
     today = date.today()
-    found: dict[str, dict] = {}  # mt20id -> {"region": ...}
+    found: dict[str, dict] = {}  # mt20id -> {"region": ..., "category": ...}
 
-    for signgucode, region in REGION_CODES.items():
-        for genre in GENRE_CODES:
-            for stdate, eddate in _date_windows():
-                for el in _fetch_list(genre, signgucode, stdate, eddate):
-                    mt20id = el.findtext("mt20id", "").strip()
-                    if not mt20id or mt20id in found:
-                        continue
-                    end = _parse_kopis_date(el.findtext("prfpdto", ""))
-                    if end and end < today:
-                        continue  # 공연완료 제외
-                    found[mt20id] = {"region": region}
+    # 서울 — shcate(장르코드) 필터 없이 전체 조회, 리스트 응답의 genrenm으로 4분류
+    for stdate, eddate in _date_windows():
+        for el in _fetch_list(None, "11", stdate, eddate):
+            mt20id = el.findtext("mt20id", "").strip()
+            if not mt20id or mt20id in found:
+                continue
+            end = _parse_kopis_date(el.findtext("prfpdto", ""))
+            if end and end < today:
+                continue  # 공연완료 제외
+            genrenm = el.findtext("genrenm", "").strip()
+            found[mt20id] = {"region": "공연", "category": _classify_genre(genrenm)}
+
+    # 제주 — 기존 4개 장르코드 유지, 분류 없이 그대로 (당분간 별도 지역으로 운영)
+    for genre in GENRE_CODES:
+        for stdate, eddate in _date_windows():
+            for el in _fetch_list(genre, "50", stdate, eddate):
+                mt20id = el.findtext("mt20id", "").strip()
+                if not mt20id or mt20id in found:
+                    continue
+                end = _parse_kopis_date(el.findtext("prfpdto", ""))
+                if end and end < today:
+                    continue  # 공연완료 제외
+                found[mt20id] = {"region": "제주", "category": None}
 
     print(f"📦 [KOPIS] 공연 {len(found)}건 발견. 상세 정보 조회 중...")
 
@@ -174,6 +197,7 @@ async def scrape_kopis_concert() -> list[dict]:
             "naver_place_id": f"kopis_{mt20id}",
             "image_url": poster,
             "region": meta["region"],
+            "category": meta.get("category"),
             "end_date_actual": end_date_actual,
             "link_url": link_url,
         })
