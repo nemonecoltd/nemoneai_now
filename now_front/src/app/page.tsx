@@ -239,48 +239,80 @@ function Home() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              {/* 메인 지역 탭 — 공연은 서울/제주 구분 대신 코피스 장르(연극/뮤지컬/음악/종합)로 직접 노출, 제주는 별도 지역으로 승격 */}
-              <div className="flex items-center gap-3 mb-1 overflow-x-auto no-scrollbar">
-                {(['성수', '홍대', '용산', '강남', '연극', '뮤지컬', '음악', '종합', '제주', '축제'] as const)
-                  .filter(r => !['연극', '뮤지컬', '음악', '종합', '제주', '축제'].includes(r) || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
+              {/* 메인 지역 탭 */}
+              <div className="flex items-center gap-4 mb-1">
+                {(['성수', '홍대', '용산', '강남', '공연', '축제'] as const)
+                  .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
                   .map((r) => {
-                    const isGenreTab = r === '연극' || r === '뮤지컬' || r === '음악' || r === '종합';
-                    const isGenreActive = isGenreTab && region === '공연' && concertGenre === r;
-                    const isJejuActive = r === '제주' && region === '제주';
+                    const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
                     const isFestivalActive = r === '축제' && region === '축제';
                     const isYongsanActive = r === '용산' && region === '용산';
                     const isGangnamActive = r === '강남' && region === '강남';
                     return (
                       <button
                         key={r}
-                        onClick={() => {
-                          if (isGenreTab) { setRegion('공연'); setConcertGenre(r); }
-                          else { setRegion(r); }
-                        }}
+                        onClick={() => setRegion(r === '공연' && region === '제주' ? '제주' : r)}
                         className={cn(
-                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 flex-shrink-0 whitespace-nowrap",
+                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
                           isFestivalActive
                             ? "text-amber-600 border-amber-500"
                             : isYongsanActive
                               ? "text-yellow-600 border-yellow-500"
                               : isGangnamActive
                                 ? "text-pink-600 border-pink-500"
-                                : isJejuActive
-                                  ? "text-[#0369a1] border-[#0369a1]"
-                                  : isGenreActive || region === r
-                                    ? "text-emerald-600 border-emerald-500"
-                                    : "text-zinc-300 border-transparent hover:text-zinc-500"
+                                : isConcertActive || region === r
+                                  ? "text-emerald-600 border-emerald-500"
+                                  : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
                         {lang === 'en'
-                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '연극' ? 'PLAY' : r === '뮤지컬' ? 'MUSICAL' : r === '음악' ? 'MUSIC' : r === '종합' ? 'OTHERS' : r === '제주' ? 'JEJU' : 'FESTIVAL')
+                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                           : lang === 'zh'
-                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '연극' ? '话剧' : r === '뮤지컬' ? '音乐剧' : r === '음악' ? '音乐' : r === '종합' ? '综合' : r === '제주' ? '济州' : '节庆')
+                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
                             : r}
                       </button>
                     );
                   })}
               </div>
+
+              {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 | 제주 (제주만 기존 블루 유지, 나머지는 예전 '서울' 색상) */}
+              <AnimatePresence>
+                {(region === '공연' || region === '제주') && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="flex items-center gap-2 mb-1 pl-1 mt-2 overflow-x-auto no-scrollbar"
+                  >
+                    <span className="text-[10px] text-zinc-300 font-bold flex-shrink-0">›</span>
+                    {(['연극', '뮤지컬', '음악', '종합', '제주'] as const).map((c) => {
+                      const isJeju = c === '제주';
+                      const isActive = isJeju ? region === '제주' : (region === '공연' && concertGenre === c);
+                      return (
+                        <button
+                          key={c}
+                          onClick={() => {
+                            if (isJeju) { setRegion('제주'); }
+                            else { setRegion('공연'); setConcertGenre(c); }
+                          }}
+                          className={cn(
+                            "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
+                            isActive
+                              ? (isJeju ? "bg-[#0369a1] text-white border-[#0369a1]" : "bg-emerald-500 text-white border-emerald-500")
+                              : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
+                          )}
+                        >
+                          {lang === 'en'
+                            ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : c === '종합' ? 'Others' : 'Jeju')
+                            : lang === 'zh'
+                              ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : c === '종합' ? '综合' : '济州')
+                              : c}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
               <AnimatePresence>
