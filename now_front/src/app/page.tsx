@@ -90,7 +90,7 @@ function Home() {
   const [region, setRegionState] = useState<Region>('성수');
   const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
-  const [placeSort, setPlaceSort] = useState<PlaceSort>('popular');
+  const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
@@ -139,7 +139,7 @@ function Home() {
   }, [region, activeTab]);
 
   const categoryParam = `&category=${region === '공연' ? concertGenre : placeCategory}`;
-  const sortParam = `&sort=${placeSort}`;
+  const sortParam = placeSort ? `&sort=${placeSort}` : '';
 
   const fetchPlaces = async () => {
     try {

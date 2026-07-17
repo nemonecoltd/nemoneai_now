@@ -32,7 +32,7 @@ interface Place {
 
 export type PlaceSort = 'popular' | 'latest' | 'closing';
 
-export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sort = 'popular', onSortChange }: { places: Place[], region: string, lang?: string, category?: string, sort?: PlaceSort, onSortChange?: (sort: PlaceSort) => void }) {
+export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sort = null, onSortChange }: { places: Place[], region: string, lang?: string, category?: string, sort?: PlaceSort | null, onSortChange?: (sort: PlaceSort) => void }) {
   const { user, signInWithGoogle } = useAuth();
   const [userLikes, setUserLikes] = useState<number[]>([]);
   const [places, setPlaces] = useState(initialPlaces);
@@ -50,7 +50,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     setIsLoadingMore(true);
     try {
       const categoryParam = `&category=${category}`;
-      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}&sort=${sort}`);
+      const sortParam = sort ? `&sort=${sort}` : '';
+      const res = await fetch(`/api-now/places?region=${encodeURIComponent(region)}&lang=${lang}&limit=${PAGE_SIZE}&offset=${places.length}${categoryParam}${sortParam}`);
       if (res.ok) {
         const data: Place[] = await res.json();
         setPlaces(prev => [...prev, ...data]);
