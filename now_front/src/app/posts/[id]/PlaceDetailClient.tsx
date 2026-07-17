@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart,
-  Users, TrendingUp, Map as MapIcon, Library, Route as RouteIcon, MessageCircle, Megaphone,
+  Users, TrendingUp, Map as MapIcon, Library, Route as RouteIcon, MessageCircle, Megaphone, Flame, Sparkles,
 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import { motion } from 'framer-motion';
@@ -42,6 +42,9 @@ export interface Place {
   blog_reviews?: BlogReview[] | string | null;
   link_url?: string | null;
   link_title?: string | null;
+  created_at?: string | null;
+  hot_rank?: number | null;
+  hot_rank_updated_at?: string | null;
 }
 
 interface Props {
@@ -53,6 +56,7 @@ interface Props {
 const T = {
   ko: {
     prevPlace: '이전 장소', nextPlace: '다음 장소', spotlight: '핫플레이스 상세',
+    hotVerified: '핫플인증', closingSoon: '마감임박', new: 'NEW', updatedAt: '기준',
     duration: '운영 기간', openDaily: '상시 운영', status: '상태', active: '운영 중', ended: '운영 종료',
     details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
     locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
@@ -62,6 +66,7 @@ const T = {
   },
   en: {
     prevPlace: 'Previous place', nextPlace: 'Next place', spotlight: 'Hotplace Spotlight',
+    hotVerified: 'Hot Pick', closingSoon: 'Closing Soon', new: 'NEW', updatedAt: 'as of',
     duration: 'Duration', openDaily: 'Open Daily', status: 'Status', active: 'Active', ended: 'Ended',
     details: 'Details', moreToExplore: 'More to explore', location: 'Location',
     locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
@@ -71,6 +76,7 @@ const T = {
   },
   zh: {
     prevPlace: '上一个地点', nextPlace: '下一个地点', spotlight: '热门地点详情',
+    hotVerified: '认证热门', closingSoon: '即将结束', new: 'NEW', updatedAt: '更新于',
     duration: '运营期间', openDaily: '全年营业', status: '状态', active: '营业中', ended: '已结束',
     details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
     locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
@@ -247,6 +253,15 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
   // 원데이클래스/체험은 상시 운영으로 취급해 종료 표기 대상에서 제외
   const isEnded = place.category !== 'class' && !!endDate && endDate < new Date().toISOString().split('T')[0];
+
+  // 마감임박(D-3 이내) — 종료된 곳/상시 클래스는 대상에서 제외
+  const daysUntilClose = (place.category !== 'class' && !!endDate && !isEnded)
+    ? Math.ceil((new Date(endDate + 'T00:00:00Z').getTime() - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z').getTime()) / 86400000)
+    : null;
+  const isClosingSoon = daysUntilClose !== null && daysUntilClose >= 0 && daysUntilClose <= 3;
+
+  // 신규 등록(7일 이내)
+  const isNew = !!place.created_at && (Date.now() - new Date(place.created_at).getTime()) <= 7 * 24 * 60 * 60 * 1000;
 
   const isPerformanceRegion = place.region === '공연' || place.region === '축제' || place.region === '제주';
   const hasValidNaverId = place.naver_place_id &&
@@ -469,9 +484,34 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         <div className="absolute bottom-10 left-8 right-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-2 block">
-              {t.spotlight}
-            </span>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                {t.spotlight}
+              </span>
+              {place.hot_rank && (
+                <span className="flex items-center gap-1 text-[9px] font-black text-rose-300 bg-rose-500/20 border border-rose-400/30 rounded-full px-2 py-0.5">
+                  <Flame size={9} fill="currentColor" />
+                  {t.hotVerified} TOP {place.hot_rank}
+                  {place.hot_rank_updated_at && (
+                    <span className="text-rose-300/70 font-medium">
+                      · {new Date(place.hot_rank_updated_at).toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })} {t.updatedAt}
+                    </span>
+                  )}
+                </span>
+              )}
+              {isClosingSoon && (
+                <span className="flex items-center gap-1 text-[9px] font-black text-amber-300 bg-amber-500/20 border border-amber-400/30 rounded-full px-2 py-0.5">
+                  <Clock size={9} />
+                  {t.closingSoon} D-{daysUntilClose}
+                </span>
+              )}
+              {isNew && (
+                <span className="flex items-center gap-1 text-[9px] font-black text-sky-300 bg-sky-500/20 border border-sky-400/30 rounded-full px-2 py-0.5">
+                  <Sparkles size={9} />
+                  {t.new}
+                </span>
+              )}
+            </div>
             <div className="flex items-end justify-between gap-3">
               <h1 className="flex-1 text-3xl font-black text-white tracking-tighter leading-tight">{displayTitle}</h1>
               <div className="flex items-center gap-1.5 flex-shrink-0 mb-1">

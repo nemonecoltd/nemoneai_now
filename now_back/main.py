@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import engine, cleanup_expired_data
@@ -621,13 +621,18 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
 
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Place not found")
-        return dict(row._mapping)
+        place = dict(row._mapping)
+        # 핫플인증 배지 — 현재 TOP25 인기 랭킹에 들어있는지 + 랭킹 갱신 시각
+        hot_rank = next((i + 1 for i, r in enumerate(_place_popularity_cache[:25]) if r["id"] == place_id), None)
+        place["hot_rank"] = hot_rank
+        place["hot_rank_updated_at"] = _popularity_last_refreshed if hot_rank else None
+        return place
 
 @app.post("/places/{place_id}/view")
 async def record_place_view(place_id: int):
@@ -639,6 +644,7 @@ async def record_place_view(place_id: int):
 
 _place_popularity_cache: list = []
 _performance_popularity_cache: list = []
+_popularity_last_refreshed: Optional[str] = None
 
 def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
@@ -665,10 +671,10 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     """))
 
 def refresh_place_popularity():
-    """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 3회(한국시간 0/8/16시) 실행.
+    """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 6회(한국시간 4시간 간격) 실행.
     메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용.
     48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화."""
-    global _place_popularity_cache, _performance_popularity_cache
+    global _place_popularity_cache, _performance_popularity_cache, _popularity_last_refreshed
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -689,6 +695,8 @@ def refresh_place_popularity():
         if len(perf_result) < 25:
             perf_result = list(_popularity_rows(conn, 30, only_performance=True))
         _performance_popularity_cache = [dict(row._mapping) for row in perf_result]
+
+    _popularity_last_refreshed = datetime.now(timezone.utc).isoformat()
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
@@ -1145,10 +1153,13 @@ refresh_place_popularity()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
-# 서버는 UTC 기준 — 한국시간(KST=UTC+9) 자정(00:00)/낮 12시(12:00)에 맞춰 UTC 15:00, 03:00에 실행
+# 서버는 UTC 기준 — 한국시간(KST=UTC+9) 4시간 간격(0/4/8/12/16/20시)에 맞춰 UTC 15/19/23/03/07/11시에 실행
 scheduler.add_job(refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_0000')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=19, minute=5, id='ranking_kst_0400')
 scheduler.add_job(refresh_place_popularity, 'cron', hour=23, minute=5, id='ranking_kst_0800')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_1200')
 scheduler.add_job(refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600')
+scheduler.add_job(refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000')
 scheduler.start()
 
 if __name__ == "__main__":
