@@ -11,6 +11,8 @@ interface PopularPlace {
   title: string;
   region: string;
   location?: string;
+  date_range?: string;
+  category?: string | null;
   view_count?: number;
   like_count?: number;
   score?: number;
@@ -29,8 +31,8 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title).join(', ');
-  const title = '실시간 인기 플레이스 랭킹 TOP 25 | 지금여기';
-  const description = `성수·홍대·용산·공연·축제 통합 실시간 인기 랭킹. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const title = '실시간 인기 핫플 TOP 25 | 지금여기';
+  const description = `성수·홍대·용산·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -48,7 +50,7 @@ export default async function PlaceRankingPage() {
         <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
           <ChevronLeft size={24} />
         </Link>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 플레이스 랭킹</h1>
+        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 인기 핫플</h1>
       </header>
 
       <main className="px-6 pt-6 space-y-3">
@@ -70,8 +72,13 @@ export default async function PlaceRankingPage() {
               {idx + 1}
             </span>
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
-              <p className="text-[10px] text-zinc-400">{place.region}{place.location ? ` · ${place.location}` : ''}</p>
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
+                {place.category === 'class' && (
+                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">클래스</span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-400">{place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
             </div>
             <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
               <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count ?? 0}

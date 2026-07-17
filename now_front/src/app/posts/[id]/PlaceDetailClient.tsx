@@ -57,7 +57,7 @@ const T = {
     details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
     locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
     linkCopied: '링크가 복사되었습니다!',
-    navRec: '랭킹', navMap: '지도', navList: '장소', navTheme: '테마', navTour: 'AI 코스', my: '마이',
+    navRec: '핫플', navMap: '지도', navList: '장소', navTheme: '테마', navTour: 'AI 코스', my: '마이',
     tagline: '당신 3시간의 알찬 설계',
   },
   en: {
@@ -66,7 +66,7 @@ const T = {
     details: 'Details', moreToExplore: 'More to explore', location: 'Location',
     locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
     linkCopied: 'Link copied!',
-    navRec: 'Ranking', navMap: 'Map', navList: 'Spot', navTheme: 'Theme', navTour: 'AI Tour', my: 'My',
+    navRec: 'Hot', navMap: 'Map', navList: 'Spot', navTheme: 'Theme', navTour: 'AI Tour', my: 'My',
     tagline: 'A fulfilling plan for your 3 hours',
   },
   zh: {
@@ -75,7 +75,7 @@ const T = {
     details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
     locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
     linkCopied: '链接已复制！',
-    navRec: '排行', navMap: '地图', navList: '地点', navTheme: '主题', navTour: 'AI路线', my: '我的',
+    navRec: '热门', navMap: '地图', navList: '地点', navTheme: '主题', navTour: 'AI路线', my: '我的',
     tagline: '为您3小时的充实安排',
   },
 } as const;

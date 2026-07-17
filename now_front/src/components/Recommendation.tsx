@@ -326,9 +326,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                        {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                        </h4>
+                        {place.category === 'class' && (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
+                            {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                           <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}

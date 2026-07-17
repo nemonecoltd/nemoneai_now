@@ -634,7 +634,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
         else "AND p.region != '공연' AND (p.region != '제주' OR p.naver_place_id LIKE 'kopis_%')"
     )
     return conn.execute(text(f"""
-        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.naver_place_id, p.updated_at, p.date_range,
+        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range,
                COUNT(DISTINCT l.id) AS like_count,
                COUNT(DISTINCT v.id) AS view_count,
                COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
