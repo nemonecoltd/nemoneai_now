@@ -239,109 +239,48 @@ function Home() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              {/* 메인 지역 탭 */}
-              <div className="flex items-center gap-4 mb-1">
-                {(['성수', '홍대', '용산', '강남', '공연', '축제'] as const)
-                  .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
+              {/* 메인 지역 탭 — 공연은 서울/제주 구분 대신 코피스 장르(연극/뮤지컬/음악/종합)로 직접 노출, 제주는 별도 지역으로 승격 */}
+              <div className="flex items-center gap-3 mb-1 overflow-x-auto no-scrollbar">
+                {(['성수', '홍대', '용산', '강남', '연극', '뮤지컬', '음악', '종합', '제주', '축제'] as const)
+                  .filter(r => !['연극', '뮤지컬', '음악', '종합', '제주', '축제'].includes(r) || (activeTab !== 'map' && activeTab !== 'tour' && activeTab !== 'chat'))
                   .map((r) => {
-                    const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
+                    const isGenreTab = r === '연극' || r === '뮤지컬' || r === '음악' || r === '종합';
+                    const isGenreActive = isGenreTab && region === '공연' && concertGenre === r;
+                    const isJejuActive = r === '제주' && region === '제주';
                     const isFestivalActive = r === '축제' && region === '축제';
                     const isYongsanActive = r === '용산' && region === '용산';
                     const isGangnamActive = r === '강남' && region === '강남';
                     return (
                       <button
                         key={r}
-                        onClick={() => setRegion(r === '공연' && region === '제주' ? '제주' : r)}
+                        onClick={() => {
+                          if (isGenreTab) { setRegion('공연'); setConcertGenre(r); }
+                          else { setRegion(r); }
+                        }}
                         className={cn(
-                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
+                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 flex-shrink-0 whitespace-nowrap",
                           isFestivalActive
                             ? "text-amber-600 border-amber-500"
                             : isYongsanActive
                               ? "text-yellow-600 border-yellow-500"
                               : isGangnamActive
                                 ? "text-pink-600 border-pink-500"
-                                : isConcertActive || region === r
-                                  ? "text-emerald-600 border-emerald-500"
-                                  : "text-zinc-300 border-transparent hover:text-zinc-500"
+                                : isJejuActive
+                                  ? "text-[#0369a1] border-[#0369a1]"
+                                  : isGenreActive || region === r
+                                    ? "text-emerald-600 border-emerald-500"
+                                    : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
                         {lang === 'en'
-                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '연극' ? 'PLAY' : r === '뮤지컬' ? 'MUSICAL' : r === '음악' ? 'MUSIC' : r === '종합' ? 'OTHERS' : r === '제주' ? 'JEJU' : 'FESTIVAL')
                           : lang === 'zh'
-                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
+                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '연극' ? '话剧' : r === '뮤지컬' ? '音乐剧' : r === '음악' ? '音乐' : r === '종합' ? '综合' : r === '제주' ? '济州' : '节庆')
                             : r}
                       </button>
                     );
                   })}
               </div>
-
-              {/* 공연 서브탭: 서울 | 제주 */}
-              <AnimatePresence>
-                {(region === '공연' || region === '제주') && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center gap-2 mb-1 pl-1 mt-2"
-                  >
-                    <span className="text-[10px] text-zinc-300 font-bold">›</span>
-                    <button
-                      onClick={() => setRegion('공연')}
-                      className={cn(
-                        "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                        region === '공연'
-                          ? "bg-emerald-500 text-white border-emerald-500"
-                          : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
-                      )}
-                    >
-                      {lang === 'en' ? 'Seoul' : lang === 'zh' ? '首尔' : '서울'}
-                    </button>
-                    <button
-                      onClick={() => setRegion('제주')}
-                      className={cn(
-                        "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                        region === '제주'
-                          ? "bg-[#0369a1] text-white border-[#0369a1]"
-                          : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
-                      )}
-                    >
-                      {lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : '제주'}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* 공연(서울) 서브탭: 연극 | 뮤지컬 | 음악 | 종합 */}
-              <AnimatePresence>
-                {region === '공연' && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="flex items-center gap-2 mb-1 pl-1 mt-2"
-                  >
-                    <span className="text-[10px] text-zinc-300 font-bold">›</span>
-                    {(['연극', '뮤지컬', '음악', '종합'] as const).map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => setConcertGenre(c)}
-                        className={cn(
-                          "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                          concertGenre === c
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
-                        )}
-                      >
-                        {lang === 'en'
-                          ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
-                          : lang === 'zh'
-                            ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
-                            : c}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
               <AnimatePresence>
