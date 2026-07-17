@@ -382,32 +382,36 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           })}
         </div>
 
-        {/* 공연 서브탭: 서울 | 제주 */}
+        {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 | 제주 (제주만 기존 블루, 나머지는 예전 '서울' 색상) */}
         {(place.region === '공연' || place.region === '제주') && (
-          <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
-            <span className="text-[10px] text-zinc-300 font-bold">›</span>
-            <button
-              onClick={() => router.push(`/?region=${encodeURIComponent('공연')}&tab=list&lang=${lang}`)}
-              className={cn(
-                "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                place.region === '공연'
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
-              )}
-            >
-              {lang === 'en' ? 'Seoul' : lang === 'zh' ? '首尔' : '서울'}
-            </button>
-            <button
-              onClick={() => router.push(`/?region=${encodeURIComponent('제주')}&tab=list&lang=${lang}`)}
-              className={cn(
-                "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                place.region === '제주'
-                  ? "bg-[#0369a1] text-white border-[#0369a1]"
-                  : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
-              )}
-            >
-              {lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : '제주'}
-            </button>
+          <div className="flex items-center gap-2 mb-1 pl-1 mt-2 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] text-zinc-300 font-bold flex-shrink-0">›</span>
+            {(['연극', '뮤지컬', '음악', '종합', '제주'] as const).map((c) => {
+              const isJeju = c === '제주';
+              const isActive = isJeju ? place.region === '제주' : (place.region === '공연' && place.category === c);
+              return (
+                <button
+                  key={c}
+                  onClick={() => router.push(
+                    isJeju
+                      ? `/?region=${encodeURIComponent('제주')}&tab=list&lang=${lang}`
+                      : `/?region=${encodeURIComponent('공연')}&category=${encodeURIComponent(c)}&tab=list&lang=${lang}`
+                  )}
+                  className={cn(
+                    "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
+                    isActive
+                      ? (isJeju ? "bg-[#0369a1] text-white border-[#0369a1]" : "bg-emerald-500 text-white border-emerald-500")
+                      : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
+                  )}
+                >
+                  {lang === 'en'
+                    ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : c === '종합' ? 'Others' : 'Jeju')
+                    : lang === 'zh'
+                      ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : c === '종합' ? '综合' : '济州')
+                      : c}
+                </button>
+              );
+            })}
           </div>
         )}
 
