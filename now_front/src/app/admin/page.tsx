@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive, Download } from 'lucide-react';
+import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive, Download, Sparkles } from 'lucide-react';
 
 const compressPlaceImage = (file: File): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -67,6 +67,7 @@ interface Theme {
   user_image?: string;
   like_count: number;
   created_at: string;
+  pinned_at?: string | null;
 }
 
 interface AdminStats {
@@ -94,6 +95,7 @@ export default function AdminPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Place> & { region?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingTheme, setIsGeneratingTheme] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
   const [placeSearch, setPlaceSearch] = useState('');
@@ -270,6 +272,21 @@ export default function AdminPage() {
   const fetchThemes = async () => {
     const res = await fetch('/api-now/admin/themes');
     if (res.ok) setThemes(await res.json());
+  };
+
+  const handleGenerateWeeklyTheme = async () => {
+    if (!confirm('최근 7일 인기 팝업 TOP10으로 "이번주 TOP10" 테마를 생성/갱신할까요? (있으면 덮어씀)')) return;
+    setIsGeneratingTheme(true);
+    try {
+      const res = await fetch('/api-now/admin/themes/generate-weekly', { method: 'POST' });
+      if (res.ok) {
+        await fetchThemes();
+      } else {
+        alert('생성 실패');
+      }
+    } finally {
+      setIsGeneratingTheme(false);
+    }
   };
 
   const openAddPlace = (themeId: number) => {
@@ -1002,6 +1019,14 @@ export default function AdminPage() {
               <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
                 <Palette size={20} className="text-emerald-500" /> 전체 테마 ({themes.length}개)
               </h3>
+              <button
+                onClick={handleGenerateWeeklyTheme}
+                disabled={isGeneratingTheme}
+                className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+              >
+                {isGeneratingTheme ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                주간 TOP10 생성
+              </button>
             </div>
             {themes.length === 0 && (
               <div className="bg-white border border-zinc-200 rounded-3xl p-12 text-center text-zinc-400 font-medium">
@@ -1061,6 +1086,11 @@ export default function AdminPage() {
                         <>
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold text-zinc-900 text-sm">{theme.title}</h4>
+                            {theme.pinned_at && (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                <Pin size={10} /> 고정
+                              </span>
+                            )}
                             <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {theme.id}</span>
                             <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">{theme.region}</span>
                             <span className="text-[10px] text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">❤️ {theme.like_count}</span>

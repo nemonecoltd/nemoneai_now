@@ -267,7 +267,7 @@ async def get_all_themes():
         LEFT JOIN theme_likes tl ON t.id = tl.theme_id
         WHERE t.title NOT LIKE '[퍼감]%'
         GROUP BY t.id
-        ORDER BY computed_like_count DESC, t.created_at DESC
+        ORDER BY t.pinned_at DESC NULLS LAST, computed_like_count DESC, t.created_at DESC
     """)
     with engine.connect() as conn:
         result = conn.execute(query)
@@ -336,9 +336,55 @@ async def admin_get_all_themes():
             LEFT JOIN theme_likes tl ON t.id = tl.theme_id
             WHERE t.title NOT LIKE '[퍼감]%'
             GROUP BY t.id
-            ORDER BY t.created_at DESC
+            ORDER BY t.pinned_at DESC NULLS LAST, t.created_at DESC
         """)).fetchall()
         return [dict(row._mapping) for row in rows]
+
+@app.post("/admin/themes/generate-weekly")
+async def admin_generate_weekly_theme():
+    """어드민 전용 — 최근 7일 인기 팝업 TOP10으로 '주간 TOP10' 테마 자동 생성.
+    같은 목적의 테마 하나(pinned_at IS NOT NULL)를 매주 덮어써서 테마 목록 최상단에 고정 노출."""
+    with engine.connect() as conn:
+        rows = list(_popularity_rows(conn, 7, limit=10))
+        if len(rows) < 10:
+            rows = list(_popularity_rows(conn, 30, limit=10))
+
+        today = date.today()
+        week_start = today - timedelta(days=7)
+        title = f"이번주 TOP10 핫플 ({week_start.strftime('%m/%d')}~{today.strftime('%m/%d')})"
+        top_names = ", ".join(r.title for r in rows[:3])
+        description = f"최근 7일간 조회수·좋아요 기준 인기 팝업 TOP10. {top_names} 등이 포함되어 있어요."
+        places = [
+            {
+                "place_id": r.id,
+                "title": r.title,
+                "content": r.content,
+                "location": r.location,
+                "image_url": r.image_url,
+                "video_url": "",
+                "date_range": r.date_range,
+            }
+            for r in rows
+        ]
+        places_json = json.dumps(places, ensure_ascii=False)
+
+        existing_id = conn.execute(text("SELECT id FROM themes WHERE pinned_at IS NOT NULL LIMIT 1")).scalar()
+        if existing_id:
+            conn.execute(text("""
+                UPDATE themes SET title = :title, description = :description,
+                       places = cast(:places as jsonb), pinned_at = NOW(), created_at = NOW()
+                WHERE id = :id
+            """), {"title": title, "description": description, "places": places_json, "id": existing_id})
+            theme_id = existing_id
+        else:
+            result = conn.execute(text("""
+                INSERT INTO themes (user_id, user_name, title, description, places, region, pinned_at)
+                VALUES (NULL, '지금여기 AI', :title, :description, cast(:places as jsonb), '성수', NOW())
+                RETURNING id
+            """), {"title": title, "description": description, "places": places_json})
+            theme_id = result.scalar()
+        conn.commit()
+        return {"status": "success", "id": theme_id}
 
 @app.put("/admin/themes/{theme_id}")
 async def admin_update_theme(theme_id: int, body: dict):
