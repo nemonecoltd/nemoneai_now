@@ -41,13 +41,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Tailscale IP 등으로 로컬 원격 접속 시엔 auth.nemoneai.com을 거치는 중앙 SSO 리다이렉트를 타면
+  // 세션 쿠키가 .nemoneai.com에만 저장돼 이 origin으로 넘어오지 못해 로그인 무한루프가 생김 —
+  // 그 경우 이 origin 안에서 자체적으로 OAuth를 완결(현재 origin의 /auth/callback으로 복귀)
+  const isProdDomain = () => window.location.hostname.endsWith('nemoneai.com')
+
   const signInWithGoogle = async () => {
+    if (!isProdDomain()) {
+      const returnTo = window.location.pathname + window.location.search
+      await supabaseRef.current!.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}` },
+      })
+      return
+    }
     const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
     const currentUrl = window.location.origin
     window.location.href = `${authUrl}/login?next=${encodeURIComponent(currentUrl)}`
   }
 
   const signInWithKakao = async () => {
+    if (!isProdDomain()) {
+      const returnTo = window.location.pathname + window.location.search
+      await supabaseRef.current!.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}` },
+      })
+      return
+    }
     const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
     const currentUrl = window.location.origin
     window.location.href = `${authUrl}/login?provider=kakao&next=${encodeURIComponent(currentUrl)}`
@@ -72,6 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabaseRef.current?.auth.signOut()
+    if (!isProdDomain()) {
+      window.location.reload()
+      return
+    }
     const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
     window.location.href = `${authUrl}/login?next=${encodeURIComponent(window.location.origin)}`
   }
