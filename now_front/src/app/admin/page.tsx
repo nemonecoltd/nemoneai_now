@@ -146,8 +146,13 @@ export default function AdminPage() {
     }
   };
 
+  // localhost뿐 아니라 Tailscale(사설망, 100.64.0.0/10)/루프백으로 접속한 경우도
+  // 로컬 신뢰 접속으로 보고 로그인 검사를 건너뜀 — 어차피 외부에 노출 안 되는 사설 접속
   const [isLocalDev, setIsLocalDev] = useState(false);
-  useEffect(() => { setIsLocalDev(window.location.hostname === 'localhost'); }, []);
+  useEffect(() => {
+    const host = window.location.hostname;
+    setIsLocalDev(host === 'localhost' || host === '127.0.0.1' || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host));
+  }, []);
 
   useEffect(() => {
     if (isLocalDev) return;
