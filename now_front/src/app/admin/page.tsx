@@ -79,7 +79,7 @@ interface AdminStats {
   storage_percent?: number;
 }
 
-type Region = '성수' | '홍대' | '용산' | '강남' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | '축제';
 type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
@@ -463,7 +463,7 @@ export default function AdminPage() {
                   📊 TOP 25
                 </button>
                 <div className="w-px h-4 bg-zinc-300 mb-1"></div>
-                {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map((r) => (
+                {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => {
@@ -474,7 +474,7 @@ export default function AdminPage() {
                       viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
+                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
                   </button>
                 ))}
               </div>
@@ -719,7 +719,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
@@ -862,7 +862,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
                           >
-                            {(['성수', '홍대', '용산', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>

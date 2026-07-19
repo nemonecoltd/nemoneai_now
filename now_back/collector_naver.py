@@ -214,16 +214,31 @@ async def run_hongdae():
     return ("홍대", *counts)
 
 
-async def run_yongsan():
-    print("\n🚀 [용산] 수집 시작")
+async def run_gangbuk():
+    # '강북'은 표시용 라벨일 뿐 — 실제 네이버 검색어는 그대로 '용산 팝업스토어' 유지
+    # (강북구로 실제 검색하면 결과가 완전히 달라짐/급감하므로 검색어는 바꾸지 않음)
+    print("\n🚀 [강북] 수집 시작")
     try:
         result = await scrape_naver_map_popups("용산 팝업스토어")
-        counts = upsert_naver_items(result, "용산") if result else (0, 0, 0)
+        counts = upsert_naver_items(result, "강북") if result else (0, 0, 0)
     except Exception as e:
-        print(f"  ⚠️ [용산] 실패: {e}")
-        return "용산", 0, 0, 1
-    print("✅ [용산] 완료")
-    return ("용산", *counts)
+        print(f"  ⚠️ [강북] 실패: {e}")
+        return "강북", 0, 0, 1
+    print("✅ [강북] 완료")
+    return ("강북", *counts)
+
+
+async def run_deohyundai():
+    # 더현대 서울(여의도) — 지리적으로는 강북/용산과 무관하지만 팝업이 많아 예외적으로 강북 버킷에 포함
+    print("\n🚀 [더현대서울] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("더현대서울 팝업스토어")
+        counts = upsert_naver_items(result, "강북") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [더현대서울] 실패: {e}")
+        return "더현대서울", 0, 0, 1
+    print("✅ [더현대서울] 완료")
+    return ("더현대서울", *counts)
 
 
 async def run_gangnam():
@@ -259,13 +274,14 @@ async def run_all():
     results = [
         await run_seongsu(),
         await run_hongdae(),
-        await run_yongsan(),
+        await run_gangbuk(),
+        await run_deohyundai(),
         await run_gangnam(),
         await run_class("성수", "성수 원데이클래스"),
         await run_class("성수", "성수 공방 체험"),
         await run_class("홍대", "홍대 원데이클래스"),
-        await run_class("용산", "용산 원데이클래스"),
-        await run_class("용산", "용산 공방 체험"),
+        await run_class("강북", "용산 원데이클래스"),
+        await run_class("강북", "용산 공방 체험"),
         await run_class("강남", "강남 원데이클래스", allowed_districts=["강남구"]),
         await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
     ]

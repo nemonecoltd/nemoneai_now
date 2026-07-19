@@ -350,10 +350,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         {/* 지역 탭 */}
         <div className="flex items-center gap-4 mb-1">
-          {(['성수', '홍대', '용산', '강남', '공연', '축제'] as const).map((r) => {
+          {(['성수', '홍대', '강북', '강남', '공연', '축제'] as const).map((r) => {
             const isConcertActive = r === '공연' && (place.region === '공연' || place.region === '제주');
             const isFestivalActive = r === '축제' && place.region === '축제';
-            const isYongsanActive = r === '용산' && place.region === '용산';
+            const isGangbukActive = r === '강북' && place.region === '강북';
             const isGangnamActive = r === '강남' && place.region === '강남';
             return (
               <button
@@ -363,7 +363,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
                   isFestivalActive
                     ? "text-amber-600 border-amber-500"
-                    : isYongsanActive
+                    : isGangbukActive
                       ? "text-yellow-600 border-yellow-500"
                       : isGangnamActive
                         ? "text-pink-600 border-pink-500"
@@ -373,9 +373,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 )}
               >
                 {lang === 'en'
-                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '용산' ? 'YONGSAN' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
+                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
                   : lang === 'zh'
-                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '용산' ? '龙山' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
+                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '강북' ? '江北' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
                     : r}
               </button>
             );
@@ -415,8 +415,8 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        {/* 성수/홍대/용산 서브탭: 팝업 | 클래스 */}
-        {(place.region === '성수' || place.region === '홍대' || place.region === '용산' || place.region === '강남') && (
+        {/* 성수/홍대/강북 서브탭: 팝업 | 클래스 */}
+        {(place.region === '성수' || place.region === '홍대' || place.region === '강북' || place.region === '강남') && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
             {(['popup', 'class'] as const).map((c) => (

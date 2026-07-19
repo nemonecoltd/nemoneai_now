@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const themes = await getThemes();
   const top = themes.slice(0, 5).map(t => t.title).join(', ');
   const title = '이번 주 인기 테마 랭킹 | 지금여기';
-  const description = `유저들이 직접 큐레이션한 성수·홍대·용산·제주 테마 랭킹. ${top || '지금 인기 있는 테마를 확인해보세요.'}`;
+  const description = `유저들이 직접 큐레이션한 성수·홍대·강북·제주 테마 랭킹. ${top || '지금 인기 있는 테마를 확인해보세요.'}`;
   return {
     title,
     description,

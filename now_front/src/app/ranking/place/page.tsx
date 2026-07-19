@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title).join(', ');
   const title = '실시간 인기 핫플 TOP 25 | 지금여기';
-  const description = `성수·홍대·용산·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const description = `성수·홍대·강북·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -55,7 +55,7 @@ export default async function PlaceRankingPage() {
 
       <main className="px-6 pt-6 space-y-3">
         <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·용산·공연·축제 통합 실시간 TOP 25입니다.
+          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·공연·축제 통합 실시간 TOP 25입니다.
         </p>
 
         {places.length === 0 && (
