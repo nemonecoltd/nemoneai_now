@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, File, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -19,6 +19,7 @@ import threading
 import urllib.request
 import urllib.error
 import re
+import asyncio
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -44,14 +45,38 @@ app.add_middleware(
 )
 
 # --- Pydantic 모델 ---
+ADMIN_EMAIL = "nemonecoltd@gmail.com"
+
+def _verify_supabase_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Authorization: Bearer <access_token>을 Supabase에 검증해 실제 로그인 사용자 정보(id/email)를 반환.
+    클라이언트가 보내는 user_id/admin_email을 그대로 신뢰하던 기존 방식(스팸/봇에 뚫렸던 원인)을 대체."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="로그인이 필요합니다")
+    token = authorization.split(" ", 1)[1]
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    try:
+        import httpx
+        res = httpx.get(
+            f"{supabase_url}/auth/v1/user",
+            headers={"Authorization": f"Bearer {token}", "apikey": service_key},
+            timeout=5,
+        )
+        if res.status_code != 200:
+            raise HTTPException(status_code=401, detail="유효하지 않은 로그인입니다")
+        data = res.json()
+        return {"id": data["id"], "email": data.get("email", "")}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="로그인 확인에 실패했습니다")
+
 class FeedbackCreate(BaseModel):
-    user_id: str
     user_name: str
     content: str
 
-class FeedbackReply(BaseModel):
-    admin_email: str # 관리자 인증용 유지
-    reply: str
+class FeedbackUpdate(BaseModel):
+    content: str
 
 class PlaceCollect(BaseModel):
     title: str
@@ -487,9 +512,11 @@ async def toggle_theme_like(req: ThemeLikeToggle):
 @app.post("/ask")
 async def ask_question(question: Question, region: str = "성수", lang: str = "ko"):
     """[핵심] RAG 기반 다국어 질문 답변"""
+    if lang not in ("ko", "en", "zh"):
+        lang = "ko"
     try:
-        # 1. 질문 벡터화
-        query_embedding = get_embedding(question.user_query)
+        # 1. 질문 벡터화 (동기 함수라 스레드로 오프로딩 — 안 그러면 이 호출 하나가 이벤트 루프 전체를 막아 다른 모든 요청이 같이 느려짐)
+        query_embedding = await asyncio.to_thread(get_embedding, question.user_query)
         embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
         # 2. 벡터 유사도 검색 (상위 5개)
@@ -519,7 +546,7 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
             logger.warning("⚠️ 벡터 검색 결과가 비어있습니다. Gemini가 답변을 거부할 가능성이 높습니다.")
 
         # 3. Gemini 답변 생성
-        answer = generate_answer(question.user_query, context_text, region=region, lang=lang)
+        answer = await asyncio.to_thread(generate_answer, question.user_query, context_text, region=region, lang=lang)
 
         return {"answer": answer, "places": places_found}
     except Exception as e:
@@ -529,8 +556,10 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
 @app.get("/search")
 async def search_places(q: str, region: str = "성수", lang: str = "ko"):
     """[핵심] 다국어 검색 (벡터 기반)"""
+    if lang not in ("ko", "en", "zh"):
+        lang = "ko"
     try:
-        query_embedding = get_embedding(q)
+        query_embedding = await asyncio.to_thread(get_embedding, q)
         embedding_str = f"[{','.join(map(str, query_embedding))}]"
 
         title_field = _lang_col(lang, "title")
@@ -571,6 +600,8 @@ async def get_popular_performances(limit: Optional[int] = None, offset: int = 0)
 async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko"):
     import json
     from datetime import date
+    if lang not in ("ko", "en", "zh"):
+        lang = "ko"
     try:
         today = date.today()
         
@@ -622,8 +653,8 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
             context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
         
         from gemini_service import generate_walking_tour
-        # 프롬프트에 지역 및 언어 정보 전달
-        itinerary = generate_walking_tour(req.companion, context_text, region=region, lang=lang)
+        # 프롬프트에 지역 및 언어 정보 전달 (동기 함수라 스레드로 오프로딩)
+        itinerary = await asyncio.to_thread(generate_walking_tour, req.companion, context_text, region=region, lang=lang)
 
         # 3. 결과 캐싱
         try:
@@ -1122,39 +1153,52 @@ async def get_user_itinerary_usage(user_id: str):
         return {"usage_count": 0, "limit": 2}
 
 @app.get("/feedbacks")
-async def get_feedbacks():
+async def get_feedbacks(viewer: dict = Depends(_verify_supabase_user)):
     query = text("SELECT * FROM feedbacks ORDER BY created_at DESC")
     with engine.connect() as conn:
         result = conn.execute(query)
         return [dict(row._mapping) for row in result]
 
 @app.post("/feedbacks")
-async def create_feedback(req: FeedbackCreate):
+async def create_feedback(req: FeedbackCreate, viewer: dict = Depends(_verify_supabase_user)):
     query = text("INSERT INTO feedbacks (user_id, user_name, content) VALUES (:user_id, :name, :content)")
     with engine.connect() as conn:
-        conn.execute(query, {"user_id": req.user_id, "name": req.user_name, "content": req.content})
+        conn.execute(query, {"user_id": viewer["id"], "name": req.user_name, "content": req.content})
         conn.commit()
     return {"status": "success"}
 
-@app.delete("/feedbacks/{feedback_id}")
-async def delete_feedback(feedback_id: int, user_id: str):
+@app.put("/feedbacks/{feedback_id}")
+async def update_feedback(feedback_id: int, req: FeedbackUpdate, viewer: dict = Depends(_verify_supabase_user)):
     with engine.connect() as conn:
         feedback = conn.execute(text("SELECT user_id FROM feedbacks WHERE id = :id"), {"id": feedback_id}).fetchone()
         if not feedback:
             raise HTTPException(status_code=404, detail="Not Found")
-        if feedback[0] != user_id and user_id != 'admin_uuid_placeholder':
+        if feedback[0] != viewer["id"] and viewer["email"] != ADMIN_EMAIL:
             raise HTTPException(status_code=403, detail="Unauthorized")
-        
+
+        conn.execute(text("UPDATE feedbacks SET content = :content WHERE id = :id"), {"content": req.content, "id": feedback_id})
+        conn.commit()
+    return {"status": "success"}
+
+@app.delete("/feedbacks/{feedback_id}")
+async def delete_feedback(feedback_id: int, viewer: dict = Depends(_verify_supabase_user)):
+    with engine.connect() as conn:
+        feedback = conn.execute(text("SELECT user_id FROM feedbacks WHERE id = :id"), {"id": feedback_id}).fetchone()
+        if not feedback:
+            raise HTTPException(status_code=404, detail="Not Found")
+        if feedback[0] != viewer["id"] and viewer["email"] != ADMIN_EMAIL:
+            raise HTTPException(status_code=403, detail="Unauthorized")
+
         conn.execute(text("DELETE FROM feedbacks WHERE id = :id"), {"id": feedback_id})
         conn.commit()
     return {"status": "success"}
 
 @app.post("/feedbacks/{feedback_id}/reply")
-async def reply_feedback(feedback_id: int, req: FeedbackReply):
-    if req.admin_email != 'nemonecoltd@gmail.com':
+async def reply_feedback(feedback_id: int, req: dict, viewer: dict = Depends(_verify_supabase_user)):
+    if viewer["email"] != ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Admin only")
     with engine.connect() as conn:
-        conn.execute(text("UPDATE feedbacks SET admin_reply = :reply WHERE id = :id"), {"reply": req.reply, "id": feedback_id})
+        conn.execute(text("UPDATE feedbacks SET admin_reply = :reply WHERE id = :id"), {"reply": req.get("reply", ""), "id": feedback_id})
         conn.commit()
     return {"status": "success"}
 

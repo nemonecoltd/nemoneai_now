@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronLeft, MessageSquare, Trash2, Send, ShieldCheck, Loader2 } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Trash2, Pencil, Send, ShieldCheck, Loader2, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import AdUnit from '@/components/AdUnit';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,14 +15,21 @@ function cn(...inputs: ClassValue[]) {
 const ADMIN_EMAIL = 'nemonecoltd@gmail.com';
 
 export default function FeedbackPage() {
-  const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
+  const { user, session, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [feedbacks, setFeedbacks] = useState([]);
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [replyInputs, setReplyInputs] = useState<{[key: number]: string}>({});
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
 
   const isAdmin = user?.email === ADMIN_EMAIL;
+
+  const authHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session?.access_token || ''}`,
+  });
 
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -32,13 +40,13 @@ export default function FeedbackPage() {
   };
 
   useEffect(() => {
-    fetchFeedbacks();
-  }, []);
+    if (session?.access_token) fetchFeedbacks();
+  }, [session?.access_token]);
 
   const fetchFeedbacks = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api-now/feedbacks');
+      const res = await fetch('/api-now/feedbacks', { headers: authHeaders() });
       if (res.ok) setFeedbacks(await res.json());
     } finally {
       setIsLoading(false);
@@ -53,9 +61,8 @@ export default function FeedbackPage() {
     try {
       const res = await fetch('/api-now/feedbacks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify({
-          user_id: user.id,
           user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           content: content.trim()
         })
@@ -72,10 +79,33 @@ export default function FeedbackPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('정말로 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api-now/feedbacks/${id}?user_id=${user?.id}`, {
-        method: 'DELETE'
+      const res = await fetch(`/api-now/feedbacks/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
       });
       if (res.ok) fetchFeedbacks();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const startEdit = (fb: any) => {
+    setEditingId(fb.id);
+    setEditContent(fb.content);
+  };
+
+  const handleEditSave = async (id: number) => {
+    if (!editContent.trim()) return;
+    try {
+      const res = await fetch(`/api-now/feedbacks/${id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ content: editContent.trim() })
+      });
+      if (res.ok) {
+        setEditingId(null);
+        fetchFeedbacks();
+      }
     } catch (e) {
       console.error(e);
     }
@@ -88,11 +118,8 @@ export default function FeedbackPage() {
     try {
       const res = await fetch(`/api-now/feedbacks/${id}/reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          admin_email: user?.email,
-          reply: replyText.trim()
-        })
+        headers: authHeaders(),
+        body: JSON.stringify({ reply: replyText.trim() })
       });
       if (res.ok) {
         setReplyInputs(prev => ({...prev, [id]: ''}));
@@ -102,6 +129,28 @@ export default function FeedbackPage() {
       console.error(e);
     }
   };
+
+  if (!authLoading && !user) {
+    return (
+      <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col">
+        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4 shadow-sm">
+          <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+        </header>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+          <div className="w-14 h-14 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400">
+            <Lock size={24} />
+          </div>
+          <p className="text-sm font-bold text-zinc-600">로그인 후 이용할 수 있는 게시판입니다.</p>
+          <button onClick={() => signInWithGoogle()} className="px-6 py-2.5 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-md">
+            로그인하기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col pb-10">
@@ -129,22 +178,17 @@ export default function FeedbackPage() {
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder={user ? "여기에 의견을 작성해주세요..." : "로그인 후 의견을 남길 수 있습니다."}
-            disabled={!user}
+            placeholder="여기에 의견을 작성해주세요..."
             className="w-full h-24 bg-zinc-50/50 border-none rounded-2xl p-4 text-sm resize-none focus:outline-none focus:bg-white disabled:opacity-50 text-zinc-800 placeholder:text-zinc-400 font-medium"
           />
           <div className="flex justify-end">
-            {user ? (
-              <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
-                <Send size={14} /> 의견 남기기
-              </button>
-            ) : (
-              <button type="button" onClick={() => signInWithGoogle()} className="px-6 py-2.5 bg-emerald-50 text-emerald-600 border border-emerald-100 text-[11px] font-bold rounded-xl hover:bg-emerald-100 transition-all shadow-sm">
-                로그인하기
-              </button>
-            )}
+            <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
+              <Send size={14} /> 의견 남기기
+            </button>
           </div>
         </form>
+
+        <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />
 
         {/* List */}
         <div className="space-y-5 pt-4">
@@ -166,13 +210,33 @@ export default function FeedbackPage() {
                         <p className="text-[10px] font-medium text-zinc-400 mt-0.5">{new Date(fb.created_at).toLocaleString()}</p>
                       </div>
                     </div>
-                    {(isAdmin || user?.id === fb.user_id) && (
-                      <button onClick={() => handleDelete(fb.id)} className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
-                        <Trash2 size={16} />
-                      </button>
+                    {(isAdmin || user?.id === fb.user_id) && editingId !== fb.id && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEdit(fb)} className="p-2 text-zinc-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors">
+                          <Pencil size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(fb.id)} className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm text-zinc-700 whitespace-pre-line leading-relaxed font-medium">{fb.content}</p>
+
+                  {editingId === fb.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={editContent}
+                        onChange={e => setEditContent(e.target.value)}
+                        className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-sm resize-none focus:outline-none focus:border-emerald-400 text-zinc-800"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-zinc-600">취소</button>
+                        <button onClick={() => handleEditSave(fb.id)} className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-emerald-600">저장</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-700 whitespace-pre-line leading-relaxed font-medium">{fb.content}</p>
+                  )}
                 </div>
 
                 {/* Admin Reply Content */}

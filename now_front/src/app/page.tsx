@@ -262,6 +262,7 @@ function Home() {
                   .map((r) => {
                     const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
                     const isFestivalActive = r === '축제' && region === '축제';
+                    const isHongdaeActive = r === '홍대' && region === '홍대';
                     const isGangbukActive = r === '강북' && region === '강북';
                     const isGangnamActive = r === '강남' && region === '강남';
                     return (
@@ -272,13 +273,15 @@ function Home() {
                           "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
                           isFestivalActive
                             ? "text-amber-600 border-amber-500"
-                            : isGangbukActive
-                              ? "text-yellow-600 border-yellow-500"
-                              : isGangnamActive
-                                ? "text-pink-600 border-pink-500"
-                                : isConcertActive || region === r
-                                  ? "text-emerald-600 border-emerald-500"
-                                  : "text-zinc-300 border-transparent hover:text-zinc-500"
+                            : isHongdaeActive
+                              ? "text-orange-600 border-orange-500"
+                              : isGangbukActive
+                                ? "text-yellow-600 border-yellow-500"
+                                : isGangnamActive
+                                  ? "text-pink-600 border-pink-500"
+                                  : isConcertActive || region === r
+                                    ? "text-emerald-600 border-emerald-500"
+                                    : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
                         {lang === 'en'

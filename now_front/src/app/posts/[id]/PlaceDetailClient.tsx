@@ -353,6 +353,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           {(['성수', '홍대', '강북', '강남', '공연', '축제'] as const).map((r) => {
             const isConcertActive = r === '공연' && (place.region === '공연' || place.region === '제주');
             const isFestivalActive = r === '축제' && place.region === '축제';
+            const isHongdaeActive = r === '홍대' && place.region === '홍대';
             const isGangbukActive = r === '강북' && place.region === '강북';
             const isGangnamActive = r === '강남' && place.region === '강남';
             return (
@@ -363,13 +364,15 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
                   isFestivalActive
                     ? "text-amber-600 border-amber-500"
-                    : isGangbukActive
-                      ? "text-yellow-600 border-yellow-500"
-                      : isGangnamActive
-                        ? "text-pink-600 border-pink-500"
-                        : isConcertActive || place.region === r
-                          ? "text-emerald-600 border-emerald-500"
-                          : "text-zinc-300 border-transparent"
+                    : isHongdaeActive
+                      ? "text-orange-600 border-orange-500"
+                      : isGangbukActive
+                        ? "text-yellow-600 border-yellow-500"
+                        : isGangnamActive
+                          ? "text-pink-600 border-pink-500"
+                          : isConcertActive || place.region === r
+                            ? "text-emerald-600 border-emerald-500"
+                            : "text-zinc-300 border-transparent"
                 )}
               >
                 {lang === 'en'
