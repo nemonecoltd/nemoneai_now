@@ -17,6 +17,7 @@ interface PopularPlace {
   view_count?: number;
   like_count?: number;
   score?: number;
+  is_new?: boolean;
 }
 
 async function getPopularPlaces(): Promise<PopularPlace[]> {
@@ -80,6 +81,9 @@ export default async function PlaceRankingPage() {
                 <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
                 {place.category === 'class' && (
                   <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">클래스</span>
+                )}
+                {place.is_new && (
+                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
                 )}
               </div>
               <p className="text-[10px] text-zinc-400">{place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>

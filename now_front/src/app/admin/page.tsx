@@ -111,7 +111,7 @@ export default function AdminPage() {
     }
     return latest;
   }, [places]);
-  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number; updated_at?: string | null; date_range?: string | null}[]>([]);
+  const [weeklyRanking, setWeeklyRanking] = useState<{id: number; title: string; image_url: string; region: string; naver_place_id: string; view_count: number; updated_at?: string | null; date_range?: string | null; blog_reviews?: unknown[] | null}[]>([]);
   const [bannerText, setBannerText] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [savingBanner, setSavingBanner] = useState(false);
@@ -259,6 +259,7 @@ export default function AdminPage() {
       if (res.ok) {
         const data = await res.json();
         alert(`✅ ${data.blog_reviews?.length ?? 0}개 블로그 후기 업데이트 완료`);
+        setWeeklyRanking(prev => prev.map(item => item.id === placeId ? { ...item, blog_reviews: data.blog_reviews || [] } : item));
       } else {
         alert('실패');
       }
@@ -622,9 +623,13 @@ export default function AdminPage() {
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
-                        {item.updated_at && (
+                        {item.blog_reviews && item.blog_reviews.length > 0 ? (
                           <span className="flex-shrink-0 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
                             갱신됨
+                          </span>
+                        ) : (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">
+                            미갱신
                           </span>
                         )}
                       </div>

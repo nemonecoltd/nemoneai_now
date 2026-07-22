@@ -353,6 +353,11 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                             {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
                           </span>
                         )}
+                        {place.is_new && (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                            NEW
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">

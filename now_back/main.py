@@ -833,7 +833,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
             region_clause += " AND p.region != '제주'"
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
-        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range,
+        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews,
                COUNT(DISTINCT l.id) AS like_count,
                COUNT(DISTINCT v.id) AS view_count,
                COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
@@ -865,12 +865,33 @@ def refresh_place_popularity():
             )
         """))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
+        # 톱25 'NEW' 배지용 — 프로세스 재시작에도 이전 톱25 목록이 유지되도록 DB에 스냅샷 저장(메모리 캐시만 쓰면 재배포할 때마다 전부 NEW로 오탐)
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS ranking_snapshot (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                top25_ids JSONB NOT NULL,
+                CHECK (id = 1)
+            )
+        """))
         conn.commit()
+
+        prev_snapshot = conn.execute(text("SELECT top25_ids FROM ranking_snapshot WHERE id = 1")).fetchone()
+        prev_top25_ids = set(prev_snapshot[0]) if prev_snapshot else set()
 
         result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE))
         if len(result) < 25:
             result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE))
         _place_popularity_cache = [dict(row._mapping) for row in result]
+
+        current_top25_ids = [item["id"] for item in _place_popularity_cache[:25]]
+        new_ids = set(current_top25_ids) - prev_top25_ids
+        for item in _place_popularity_cache:
+            item["is_new"] = item["id"] in new_ids
+        conn.execute(
+            text("INSERT INTO ranking_snapshot (id, top25_ids) VALUES (1, CAST(:ids AS jsonb)) ON CONFLICT (id) DO UPDATE SET top25_ids = CAST(:ids AS jsonb)"),
+            {"ids": json.dumps(current_top25_ids)},
+        )
+        conn.commit()
 
         perf_result = list(_popularity_rows(conn, 2, only_performance=True, min_score=_MIN_RANKING_SCORE))
         if len(perf_result) < 25:
