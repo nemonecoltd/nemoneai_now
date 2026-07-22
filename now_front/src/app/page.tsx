@@ -329,13 +329,13 @@ function Home() {
               className="overflow-hidden"
             >
               {/* 메인 지역 탭 — 장소형(성수/홍대/강북/강남/제주) | 이벤트형(공연/축제), '|'로 시각적 구분 */}
-              <div className="flex items-center gap-4 mb-1">
+              <div className="flex items-center gap-3 mb-1 overflow-x-auto no-scrollbar flex-nowrap">
                 {PLACE_REGIONS.map((r) => (
                   <button
                     key={r}
                     onClick={() => setRegion(r)}
                     className={cn(
-                      "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
+                      "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 shrink-0 whitespace-nowrap",
                       region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
                     )}
                   >
@@ -344,13 +344,13 @@ function Home() {
                 ))}
                 {(activeTab !== 'map' && activeTab !== 'chat' && !(activeTab === 'course' && courseSub === 'ai')) && (
                   <>
-                    <span className="text-zinc-200 font-bold select-none">|</span>
+                    <span className="text-zinc-200 font-bold select-none shrink-0">|</span>
                     {EVENT_REGIONS.map((r) => (
                       <button
                         key={r}
                         onClick={() => setRegion(r)}
                         className={cn(
-                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
+                          "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 shrink-0 whitespace-nowrap",
                           region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
@@ -481,7 +481,7 @@ function Home() {
           )}
 
           {activeTab === 'magazine' && (
-            <motion.div key="magazine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
+            <motion.div key="magazine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <MagazineList lang={lang} />
             </motion.div>
           )}

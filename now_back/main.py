@@ -510,8 +510,8 @@ async def toggle_theme_like(req: ThemeLikeToggle):
         return {"liked": liked}
 
 @app.post("/ask")
-async def ask_question(question: Question, region: str = "성수", lang: str = "ko"):
-    """[핵심] RAG 기반 다국어 질문 답변"""
+async def ask_question(question: Question, region: str = "성수", lang: str = "ko", viewer: dict = Depends(_verify_supabase_user)):
+    """[핵심] RAG 기반 다국어 질문 답변 — 로그인 필요(스팸/트래픽 공격 방지, 과거 무인증 남용 이력 있음)"""
     if lang not in ("ko", "en", "zh"):
         lang = "ko"
     try:
@@ -614,7 +614,7 @@ async def get_closing_soon():
     return _closing_soon_cache
 
 @app.post("/itinerary")
-async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko"):
+async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko", viewer: dict = Depends(_verify_supabase_user)):
     import json
     from datetime import date
     if lang not in ("ko", "en", "zh"):
@@ -1257,7 +1257,7 @@ async def get_user_itinerary_usage(user_id: str):
         return {"usage_count": 0, "limit": 2}
 
 @app.get("/feedbacks")
-async def get_feedbacks(viewer: dict = Depends(_verify_supabase_user)):
+async def get_feedbacks():
     query = text("SELECT * FROM feedbacks ORDER BY created_at DESC")
     with engine.connect() as conn:
         result = conn.execute(query)

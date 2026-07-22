@@ -71,7 +71,7 @@ const dict = {
 };
 
 export default function AITour({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, session, signInWithGoogle } = useAuth();
   const [selectedCompanion, setSelectedCompanion] = useState<Companion>('Solo');
   const [tour, setTour] = useState<Tour | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -106,10 +106,13 @@ export default function AITour({ region = '성수', lang = 'ko' }: { region?: st
     try {
       const res = await fetch(`/api-now/itinerary?region=${encodeURIComponent(region)}&lang=${lang}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
+        body: JSON.stringify({
           companion: selectedCompanion,
-          user_id: user?.id 
+          user_id: user?.id
         }),
       });
       if (res.ok) {

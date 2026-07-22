@@ -421,26 +421,26 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         <BrandTagline lang={lang} />
 
         {/* 지역 탭 — 장소형(성수/홍대/강북/강남/제주) | 이벤트형(공연/축제) */}
-        <div className="flex items-center gap-4 mb-1">
+        <div className="flex items-center gap-3 mb-1 overflow-x-auto no-scrollbar flex-nowrap">
           {PLACE_REGIONS.map((r) => (
             <button
               key={r}
               onClick={() => router.push(`/?region=${encodeURIComponent(r)}&tab=list&lang=${lang}`)}
               className={cn(
-                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
+                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 shrink-0 whitespace-nowrap",
                 place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
               )}
             >
               {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
             </button>
           ))}
-          <span className="text-zinc-200 font-bold select-none">|</span>
+          <span className="text-zinc-200 font-bold select-none shrink-0">|</span>
           {EVENT_REGIONS.map((r) => (
             <button
               key={r}
               onClick={() => router.push(`/?region=${encodeURIComponent(r)}&tab=list&lang=${lang}`)}
               className={cn(
-                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
+                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 shrink-0 whitespace-nowrap",
                 place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
               )}
             >

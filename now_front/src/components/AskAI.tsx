@@ -76,11 +76,39 @@ const dict = {
         '"Recommend a good shopping spot in Jeju city"'
       ]
     }
+  },
+  zh: {
+    title: '向AI导游提问',
+    subtitle: '关于{region}的实时信息和热门场所，请随时提问。',
+    placeholder: '请随意提问...',
+    error: '抱歉，生成回答时出现错误。',
+    connError: '无法连接服务器。',
+    saveTheme: '保存为主题',
+    saving: '保存中...',
+    saved: '已保存',
+    saveFailed: '保存失败。',
+    examples: {
+      '성수': [
+        '"告诉我现在圣水洞正在举行的时尚快闪店"',
+        '"帮我安排延茂场街附近的美食路线"'
+      ],
+      '홍대': [
+        '"今天弘大有街头表演或演出信息吗？"',
+        '"推荐上水洞附近氛围好的咖啡厅"'
+      ],
+      '제주': [
+        '"最近济州有什么节庆或活动吗？"',
+        '"推荐济州市区可以购物的地方"'
+      ]
+    }
   }
 };
 
+const LINK_LABEL: Record<string, string> = { ko: '바로가기', en: 'Link', zh: '链接' };
+
 // 마크다운·표·URL 정리 후 줄바꿈 처리
-function formatMessage(text: string): React.ReactNode {
+function formatMessage(text: string, lang: string = 'ko'): React.ReactNode {
+  const linkLabel = LINK_LABEL[lang] || LINK_LABEL.ko;
   const cleaned = text
     .replace(/```[\s\S]*?```/g, '')   // 코드블록 제거
     .replace(/`([^`]+)`/g, '$1')
@@ -104,7 +132,7 @@ function formatMessage(text: string): React.ReactNode {
         <p key={i} className="mb-1">
           {parts.map((part, j) =>
             /^https?:\/\//.test(part)
-              ? <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">바로가기</a>
+              ? <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">{linkLabel}</a>
               : part
           )}
         </p>
@@ -129,7 +157,7 @@ function formatMessage(text: string): React.ReactNode {
 }
 
 export default function AskAI({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, session, signInWithGoogle } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setNewInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -138,7 +166,13 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
   const inputRef = useRef<HTMLInputElement>(null);
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '강북' ? 'Gangbuk' : region === '강남' ? 'Gangnam' : region === '제주' ? 'Jeju' : region === '홍대' ? 'Hongdae' : region) : region;
+  const REGION_NAME_EN: Record<string, string> = {
+    '성수': 'Seongsu', '홍대': 'Hongdae', '강북': 'Gangbuk', '강남': 'Gangnam', '제주': 'Jeju', '공연': 'Concert', '축제': 'Festival',
+  };
+  const REGION_NAME_ZH: Record<string, string> = {
+    '성수': '圣水洞', '홍대': '弘大', '강북': '江北', '강남': '江南', '제주': '济州', '공연': '演出', '축제': '节庆',
+  };
+  const displayRegion = lang === 'en' ? (REGION_NAME_EN[region] || region) : lang === 'zh' ? (REGION_NAME_ZH[region] || region) : region;
   const currentExamples = t.examples[region as keyof typeof t.examples] || t.examples['성수'];
 
   useEffect(() => {
@@ -150,6 +184,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    if (!user) return signInWithGoogle();
 
     const userMsg = input.trim();
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
@@ -159,7 +194,10 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
     try {
       const res = await fetch(`/api-now/ask?region=${encodeURIComponent(region)}&lang=${lang}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
         body: JSON.stringify({ user_query: userMsg }),
       });
 
@@ -284,7 +322,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
                   ? "bg-zinc-900 text-white rounded-tr-none"
                   : "bg-white border border-zinc-100 rounded-tl-none text-zinc-800"
               )}>
-                {msg.role === 'assistant' ? formatMessage(msg.content) : msg.content}
+                {msg.role === 'assistant' ? formatMessage(msg.content, lang) : msg.content}
               </div>
               {msg.role === 'assistant' && msg.places && msg.places.length > 0 && (
                 <div className="flex flex-col gap-1.5 w-full">

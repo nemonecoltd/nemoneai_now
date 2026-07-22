@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { ChevronLeft, MessageSquare, Trash2, Pencil, Send, ShieldCheck, Loader2, Lock } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Trash2, Pencil, Send, ShieldCheck, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -16,7 +16,7 @@ function cn(...inputs: ClassValue[]) {
 const ADMIN_EMAIL = 'nemonecoltd@gmail.com';
 
 export default function FeedbackPage() {
-  const { user, session, signInWithGoogle, isLoading: authLoading } = useAuth();
+  const { user, session, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [feedbacks, setFeedbacks] = useState([]);
   const [content, setContent] = useState('');
@@ -41,8 +41,8 @@ export default function FeedbackPage() {
   };
 
   useEffect(() => {
-    if (session?.access_token) fetchFeedbacks();
-  }, [session?.access_token]);
+    fetchFeedbacks();
+  }, []);
 
   const fetchFeedbacks = async () => {
     setIsLoading(true);
@@ -130,31 +130,6 @@ export default function FeedbackPage() {
       console.error(e);
     }
   };
-
-  if (!authLoading && !user) {
-    return (
-      <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col">
-        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 pt-4 pb-1 shadow-sm">
-          <div className="flex items-center gap-4">
-            <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-              <ChevronLeft size={24} />
-            </button>
-            <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
-          </div>
-          <BrandTagline />
-        </header>
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-          <div className="w-14 h-14 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400">
-            <Lock size={24} />
-          </div>
-          <p className="text-sm font-bold text-zinc-600">로그인 후 이용할 수 있는 게시판입니다.</p>
-          <button onClick={() => signInWithGoogle()} className="px-6 py-2.5 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-md">
-            로그인하기
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col pb-10">
