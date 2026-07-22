@@ -37,6 +37,15 @@ const REGION_ACCENT: Record<string, string> = {
   '공연': 'text-emerald-600 border-emerald-500',
   '축제': 'text-amber-600 border-amber-500',
 };
+const REGION_PILL_ACTIVE: Record<string, string> = {
+  '성수': 'bg-emerald-500 text-white border-emerald-500',
+  '홍대': 'bg-orange-500 text-white border-orange-500',
+  '강북': 'bg-yellow-500 text-white border-yellow-500',
+  '강남': 'bg-pink-500 text-white border-pink-500',
+  '제주': 'bg-[#0369a1] text-white border-[#0369a1]',
+  '공연': 'bg-emerald-500 text-white border-emerald-500',
+  '축제': 'bg-amber-500 text-white border-amber-500',
+};
 const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
 const CATEGORY_LABEL: Record<string, { en: string; zh: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ko: '팝업' },
@@ -453,7 +462,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   className={cn(
                     "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
                     isActive
-                      ? "bg-emerald-500 text-white border-emerald-500"
+                      ? REGION_PILL_ACTIVE['공연']
                       : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                   )}
                 >
@@ -479,7 +488,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 className={cn(
                   "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
                   (place.category === 'class' ? 'class' : place.category === 'shopping' ? 'shopping' : place.category === '전시' ? '전시' : place.category === '행사' ? '행사' : 'popup') === c
-                    ? "bg-emerald-500 text-white border-emerald-500"
+                    ? REGION_PILL_ACTIVE[place.region || '성수']
                     : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                 )}
               >

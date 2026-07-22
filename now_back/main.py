@@ -814,19 +814,23 @@ _performance_popularity_cache: list = []
 _festival_popularity_cache: list = []
 _popularity_last_refreshed: Optional[str] = None
 
-def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0):
+def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
     only_performance=False, only_festival=False(기본, 플레이스 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
     (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
     only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계.
     only_festival=True(축제 랭킹 전용): region='축제'만 집계.
-    min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함)."""
+    min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
+    exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
+    제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청."""
     if only_performance:
         region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
     elif only_festival:
         region_clause = "AND p.region = '축제'"
     else:
         region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+        if exclude_jeju:
+            region_clause += " AND p.region != '제주'"
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range,
@@ -913,11 +917,12 @@ async def admin_weekly_ranking():
 
 @app.get("/admin/ranking/weekly7d")
 async def admin_weekly_ranking_7d():
-    """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산."""
+    """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산.
+    "이번주 핫플 팝업" 서울권 기사용이라 제주는 제외(화면 표시용 TOP25는 제주 포함 그대로 유지)."""
     with engine.connect() as conn:
-        result = list(_popularity_rows(conn, 7))
+        result = list(_popularity_rows(conn, 7, exclude_jeju=True))
         if len(result) < 25:
-            result = list(_popularity_rows(conn, 30))
+            result = list(_popularity_rows(conn, 30, exclude_jeju=True))
         return [dict(row._mapping) for row in result[:25]]
 
 @app.post("/places/upload-image")

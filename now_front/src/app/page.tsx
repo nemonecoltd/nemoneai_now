@@ -73,6 +73,16 @@ const REGION_ACCENT: Record<Region, string> = {
   '공연': 'text-emerald-600 border-emerald-500',
   '축제': 'text-amber-600 border-amber-500',
 };
+// 서브탭(팝업/클래스/쇼핑/전시·행사, 공연 장르)의 활성 상태 배경색 — 지역 대표색과 통일
+const REGION_PILL_ACTIVE: Record<Region, string> = {
+  '성수': 'bg-emerald-500 text-white border-emerald-500',
+  '홍대': 'bg-orange-500 text-white border-orange-500',
+  '강북': 'bg-yellow-500 text-white border-yellow-500',
+  '강남': 'bg-pink-500 text-white border-pink-500',
+  '제주': 'bg-[#0369a1] text-white border-[#0369a1]',
+  '공연': 'bg-emerald-500 text-white border-emerald-500',
+  '축제': 'bg-amber-500 text-white border-amber-500',
+};
 
 const dict = {
   ko: {
@@ -370,7 +380,7 @@ function Home() {
                           className={cn(
                             "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
                             isActive
-                              ? "bg-emerald-500 text-white border-emerald-500"
+                              ? REGION_PILL_ACTIVE['공연']
                               : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                           )}
                         >
@@ -403,7 +413,7 @@ function Home() {
                         className={cn(
                           "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
                           placeCategory === c
-                            ? "bg-emerald-500 text-white border-emerald-500"
+                            ? REGION_PILL_ACTIVE[region]
                             : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                         )}
                       >
