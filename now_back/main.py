@@ -964,10 +964,12 @@ async def create_place(place: PlaceUpdate):
         raise HTTPException(status_code=500, detail=str(e))
 
 def _revalidate_place(place_id: int):
+    """공개 도메인으로 호출 — 127.0.0.1:3002는 프로덕션 서버 안에서만 유효한 주소라 로컬 백엔드(텔레그램 봇 등)에서
+    호출하면 로컬 3002번(아무것도 없음)으로 가서 조용히 실패했음. 공개 URL로 바꾸면 로컬/프로덕션 어디서 트리거해도 동작함."""
     try:
         secret = os.getenv("ADMIN_SECRET_KEY", "")
-        url = f"http://127.0.0.1:3002/api/revalidate?path=/posts/{place_id}&secret={secret}"
-        urllib.request.urlopen(url, timeout=3)
+        url = f"https://now.nemoneai.com/api/revalidate?path=/posts/{place_id}&secret={secret}"
+        urllib.request.urlopen(url, timeout=8)
     except Exception:
         pass
 
