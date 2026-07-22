@@ -870,13 +870,19 @@ def refresh_place_popularity():
             CREATE TABLE IF NOT EXISTS ranking_snapshot (
                 id INTEGER PRIMARY KEY DEFAULT 1,
                 top25_ids JSONB NOT NULL,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 CHECK (id = 1)
             )
         """))
+        conn.execute(text("ALTER TABLE ranking_snapshot ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"))
         conn.commit()
 
-        prev_snapshot = conn.execute(text("SELECT top25_ids FROM ranking_snapshot WHERE id = 1")).fetchone()
+        prev_snapshot = conn.execute(text("SELECT top25_ids, updated_at FROM ranking_snapshot WHERE id = 1")).fetchone()
         prev_top25_ids = set(prev_snapshot[0]) if prev_snapshot else set()
+        # 배포/재시작 때마다 이 함수가 다시 호출되는데, 그때마다 스냅샷을 덮어쓰면 4시간이 안 지났어도
+        # "이전 목록 = 방금 계산한 현재 목록"이 되어 NEW가 즉시 사라짐 — 실제 주기(4시간)보다 충분히 짧은
+        # 시간 내 재호출이면 스냅샷을 갱신하지 않고 기존 기준선 그대로 비교만 함
+        is_real_cycle = (prev_snapshot is None) or (datetime.now(timezone.utc) - prev_snapshot[1] >= timedelta(hours=3))
 
         result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE))
         if len(result) < 25:
@@ -887,11 +893,12 @@ def refresh_place_popularity():
         new_ids = set(current_top25_ids) - prev_top25_ids
         for item in _place_popularity_cache:
             item["is_new"] = item["id"] in new_ids
-        conn.execute(
-            text("INSERT INTO ranking_snapshot (id, top25_ids) VALUES (1, CAST(:ids AS jsonb)) ON CONFLICT (id) DO UPDATE SET top25_ids = CAST(:ids AS jsonb)"),
-            {"ids": json.dumps(current_top25_ids)},
-        )
-        conn.commit()
+        if is_real_cycle:
+            conn.execute(
+                text("INSERT INTO ranking_snapshot (id, top25_ids, updated_at) VALUES (1, CAST(:ids AS jsonb), NOW()) ON CONFLICT (id) DO UPDATE SET top25_ids = CAST(:ids AS jsonb), updated_at = NOW()"),
+                {"ids": json.dumps(current_top25_ids)},
+            )
+            conn.commit()
 
         perf_result = list(_popularity_rows(conn, 2, only_performance=True, min_score=_MIN_RANKING_SCORE))
         if len(perf_result) < 25:
@@ -933,8 +940,21 @@ def refresh_closing_soon():
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
-    """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식). 공연 제외."""
-    return _place_popularity_cache[:25]
+    """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식). 공연 제외.
+    blog_reviews만은 캐시가 아닌 실시간 DB 값으로 덮어씀 — 4시간 캐시 주기 사이에 어드민에서 갱신해도
+    "미갱신"으로 잘못 표시되던 동기화 문제 수정(캐시 자체를 매번 새로 계산하기엔 무겁고, 여기선 필요 없음)."""
+    top25 = [dict(item) for item in _place_popularity_cache[:25]]
+    ids = [item["id"] for item in top25]
+    if ids:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("SELECT id, blog_reviews FROM seongsu_places WHERE id = ANY(:ids)"),
+                {"ids": ids},
+            )
+            live_blog_reviews = {row.id: row.blog_reviews for row in rows}
+        for item in top25:
+            item["blog_reviews"] = live_blog_reviews.get(item["id"], item.get("blog_reviews"))
+    return top25
 
 @app.get("/admin/ranking/weekly7d")
 async def admin_weekly_ranking_7d():
