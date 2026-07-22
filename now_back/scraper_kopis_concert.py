@@ -15,9 +15,6 @@ KOPIS_SERVICE_KEY = os.getenv("KOPIS_SERVICE_KEY")
 LIST_URL = "http://www.kopis.or.kr/openApi/restful/pblprfr"
 DETAIL_URL = "http://www.kopis.or.kr/openApi/restful/pblprfr/{mt20id}"
 
-# shcate(장르코드) — 제주 전용 조회에만 사용 (서울은 전체 장르 조회 후 genrenm으로 분류)
-GENRE_CODES = ["AAAA", "GGGA", "CCCD", "EEEB"]  # 연극, 뮤지컬, 대중음악, 서커스/마술
-
 WINDOW_DAYS = 31
 WINDOW_COUNT = 3  # 오늘부터 약 93일
 
@@ -106,7 +103,7 @@ async def scrape_kopis_concert() -> list[dict]:
         print("⚠️ KOPIS_SERVICE_KEY가 설정되지 않았습니다.")
         return []
 
-    print("🎭 [KOPIS] 공연 목록 수집 중 (서울: 전체 장르/연극·뮤지컬·음악·종합 분류, 제주: 기존 4개 장르)...")
+    print("🎭 [KOPIS] 공연 목록 수집 중 (서울: 전체 장르/연극·뮤지컬·음악·종합 분류)...")
     today = date.today()
     found: dict[str, dict] = {}  # mt20id -> {"region": ..., "category": ...}
 
@@ -121,18 +118,6 @@ async def scrape_kopis_concert() -> list[dict]:
                 continue  # 공연완료 제외
             genrenm = el.findtext("genrenm", "").strip()
             found[mt20id] = {"region": "공연", "category": _classify_genre(genrenm)}
-
-    # 제주 — 기존 4개 장르코드 유지, 분류 없이 그대로 (당분간 별도 지역으로 운영)
-    for genre in GENRE_CODES:
-        for stdate, eddate in _date_windows():
-            for el in _fetch_list(genre, "50", stdate, eddate):
-                mt20id = el.findtext("mt20id", "").strip()
-                if not mt20id or mt20id in found:
-                    continue
-                end = _parse_kopis_date(el.findtext("prfpdto", ""))
-                if end and end < today:
-                    continue  # 공연완료 제외
-                found[mt20id] = {"region": "제주", "category": None}
 
     print(f"📦 [KOPIS] 공연 {len(found)}건 발견. 상세 정보 조회 중...")
 

@@ -11,6 +11,15 @@ module.exports = {
         sans: ["var(--font-sans)", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "Space Grotesk", "sans-serif"],
       },
+      keyframes: {
+        marquee: {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+      },
+      animation: {
+        marquee: "marquee 55s linear infinite",
+      },
     },
   },
   plugins: [],

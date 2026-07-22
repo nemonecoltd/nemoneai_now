@@ -24,6 +24,7 @@ import AskAI from '@/components/AskAI';
 import AITour from '@/components/AITour';
 import ThemeMenu from '@/components/ThemeMenu';
 import MagazineList from '@/components/MagazineList';
+import BrandTagline from '@/components/BrandTagline';
 import Recommendation from '@/components/Recommendation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -38,6 +39,40 @@ type Tab = 'rec' | 'map' | 'list' | 'course' | 'magazine' | 'chat';
 type CourseSub = 'ai' | 'theme';
 type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | '축제';
 type Lang = 'ko' | 'en' | 'zh';
+// 우선순위 고정 목록 — 실제 서브탭 노출 여부는 /places/categories로 지역별 DISTINCT 조회해 결정
+// '전시'=성수/홍대/강북/강남(Visit Seoul), '행사'=제주(비짓제주) 전용 — 지역별 DISTINCT라 서로 섞이지 않음
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
+type PlaceCategory = typeof CATEGORY_ORDER[number];
+const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ko: string }> = {
+  popup: { en: 'Pop-up', zh: '快闪店', ko: '팝업' },
+  class: { en: 'Class', zh: '体验课程', ko: '클래스' },
+  shopping: { en: 'Shopping', zh: '购物', ko: '쇼핑' },
+  '전시': { en: 'Exhibit', zh: '展览', ko: '전시' },
+  '행사': { en: 'Event', zh: '活动', ko: '행사' },
+};
+
+// 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+const EVENT_REGIONS = ['공연', '축제'] as const;
+const REGION_LABEL: Record<Region, { en: string; zh: string }> = {
+  '성수': { en: 'SEONGSU', zh: '圣水洞' },
+  '홍대': { en: 'HONGDAE', zh: '弘大' },
+  '강북': { en: 'GANGBUK', zh: '江北' },
+  '강남': { en: 'GANGNAM', zh: '江南' },
+  '제주': { en: 'JEJU', zh: '济州' },
+  '공연': { en: 'CONCERT', zh: '演出' },
+  '축제': { en: 'FESTIVAL', zh: '节庆' },
+};
+// 제주 대표색 — 이전 '공연>제주' 서브탭 시절 쓰던 블루를 지역 자체 대표색으로 승격
+const REGION_ACCENT: Record<Region, string> = {
+  '성수': 'text-emerald-600 border-emerald-500',
+  '홍대': 'text-orange-600 border-orange-500',
+  '강북': 'text-yellow-600 border-yellow-500',
+  '강남': 'text-pink-600 border-pink-500',
+  '제주': 'text-[#0369a1] border-[#0369a1]',
+  '공연': 'text-emerald-600 border-emerald-500',
+  '축제': 'text-amber-600 border-amber-500',
+};
 
 const dict = {
   ko: {
@@ -96,7 +131,8 @@ function Home() {
   const mainRef = useRef<HTMLElement>(null);
   const [activeTab, setActiveTabState] = useState<Tab>('rec');
   const [region, setRegionState] = useState<Region>('성수');
-  const [placeCategory, setPlaceCategory] = useState<'popup' | 'class'>('popup');
+  const [placeCategory, setPlaceCategory] = useState<PlaceCategory>('popup');
+  const [availableCategories, setAvailableCategories] = useState<PlaceCategory[]>([...CATEGORY_ORDER]);
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
   const [courseSub, setCourseSub] = useState<CourseSub>('ai');
@@ -124,19 +160,20 @@ function Home() {
     else if (t === 'tour') { setActiveTab('course'); setCourseSub('ai'); }
     else if (t) setActiveTab(t as Tab);
     if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
-    if (c === 'popup' || c === 'class') setPlaceCategory(c);
+    if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
-  const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (성수/홍대만)
+  const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (PLACE_REGIONS만)
   const [allPlaces, setAllPlaces] = useState([]); // 통합 데이터 (랭킹용)
 
   const t = dict[lang];
+  const isPlaceRegion = (PLACE_REGIONS as readonly string[]).includes(region);
 
   useEffect(() => {
     fetchPlaces();
     fetchAllPlaces();
-    if (region === '성수' || region === '홍대' || region === '강북' || region === '강남') {
+    if (isPlaceRegion) {
       fetchMapPlaces();
     } else {
       setMapPlaces([]);
@@ -144,12 +181,25 @@ function Home() {
   }, [region, lang, placeCategory, concertGenre, placeSort]);
 
   useEffect(() => {
-    // '공연'/'제주'/'축제' 지역엔 지도가 없으므로 리스트로 강제 이동
-    if ((region === '공연' || region === '제주' || region === '축제') && activeTab === 'map') {
+    if (isPlaceRegion) {
+      fetchAvailableCategories();
+    }
+  }, [region]);
+
+  useEffect(() => {
+    // 지역 전환으로 서브탭 목록이 바뀌었는데 현재 선택된 category가 그 지역엔 없으면 첫 번째 탭으로 스냅
+    if (isPlaceRegion && !availableCategories.includes(placeCategory)) {
+      setPlaceCategory(availableCategories[0] ?? 'popup');
+    }
+  }, [availableCategories]);
+
+  useEffect(() => {
+    // '공연'/'축제' 지역엔 지도가 없으므로 리스트로 강제 이동
+    if ((region === '공연' || region === '축제') && activeTab === 'map') {
       setActiveTab('list');
     }
     // 같은 지역들엔 AI코스도 없으므로 '코스' 탭 안에서 '테마' 서브탭으로 대체
-    if ((region === '공연' || region === '제주' || region === '축제') && activeTab === 'course' && courseSub === 'ai') {
+    if ((region === '공연' || region === '축제') && activeTab === 'course' && courseSub === 'ai') {
       setCourseSub('theme');
     }
   }, [region, activeTab, courseSub]);
@@ -181,6 +231,18 @@ function Home() {
     }
   };
 
+  const fetchAvailableCategories = async () => {
+    try {
+      const res = await fetch(`/api-now/places/categories?region=${encodeURIComponent(region)}&t=${Date.now()}`);
+      if (res.ok) {
+        const data: string[] = await res.json();
+        setAvailableCategories(CATEGORY_ORDER.filter((c) => data.includes(c)));
+      }
+    } catch (e) {
+      console.error("Failed to fetch categories:", e);
+    }
+  };
+
   const fetchAllPlaces = async () => {
     try {
       const res = await fetch(`/api-now/places/popular?t=${Date.now()}`);
@@ -208,7 +270,6 @@ function Home() {
             <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
               {t.title} <span className="text-emerald-500">.</span>
             </h1>
-            <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter italic truncate">{t.desc}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
@@ -245,7 +306,9 @@ function Home() {
             )}
           </div>
         </div>
-        
+
+        <BrandTagline lang={lang} />
+
         {/* Region Tabs: '추천'/'매거진'/'코스>테마' 탭에서는 숨김 (통합 운영) */}
         <AnimatePresence>
           {activeTab !== 'rec' && activeTab !== 'magazine' && !(activeTab === 'course' && courseSub === 'theme') && (
@@ -255,48 +318,42 @@ function Home() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              {/* 메인 지역 탭 */}
+              {/* 메인 지역 탭 — 장소형(성수/홍대/강북/강남/제주) | 이벤트형(공연/축제), '|'로 시각적 구분 */}
               <div className="flex items-center gap-4 mb-1">
-                {(['성수', '홍대', '강북', '강남', '공연', '축제'] as const)
-                  .filter(r => (r !== '공연' && r !== '축제') || (activeTab !== 'map' && activeTab !== 'chat' && !(activeTab === 'course' && courseSub === 'ai')))
-                  .map((r) => {
-                    const isConcertActive = r === '공연' && (region === '공연' || region === '제주');
-                    const isFestivalActive = r === '축제' && region === '축제';
-                    const isHongdaeActive = r === '홍대' && region === '홍대';
-                    const isGangbukActive = r === '강북' && region === '강북';
-                    const isGangnamActive = r === '강남' && region === '강남';
-                    return (
+                {PLACE_REGIONS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRegion(r)}
+                    className={cn(
+                      "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
+                      region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
+                    )}
+                  >
+                    {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+                  </button>
+                ))}
+                {(activeTab !== 'map' && activeTab !== 'chat' && !(activeTab === 'course' && courseSub === 'ai')) && (
+                  <>
+                    <span className="text-zinc-200 font-bold select-none">|</span>
+                    {EVENT_REGIONS.map((r) => (
                       <button
                         key={r}
-                        onClick={() => setRegion(r === '공연' && region === '제주' ? '제주' : r)}
+                        onClick={() => setRegion(r)}
                         className={cn(
                           "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1",
-                          isFestivalActive
-                            ? "text-amber-600 border-amber-500"
-                            : isHongdaeActive
-                              ? "text-orange-600 border-orange-500"
-                              : isGangbukActive
-                                ? "text-yellow-600 border-yellow-500"
-                                : isGangnamActive
-                                  ? "text-pink-600 border-pink-500"
-                                  : isConcertActive || region === r
-                                    ? "text-emerald-600 border-emerald-500"
-                                    : "text-zinc-300 border-transparent hover:text-zinc-500"
+                          region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
-                        {lang === 'en'
-                          ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
-                          : lang === 'zh'
-                            ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '강북' ? '江北' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
-                            : r}
+                        {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </>
+                )}
               </div>
 
-              {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 | 제주 (제주만 기존 블루 유지, 나머지는 예전 '서울' 색상) */}
+              {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 */}
               <AnimatePresence>
-                {(region === '공연' || region === '제주') && (
+                {region === '공연' && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -304,27 +361,23 @@ function Home() {
                     className="flex items-center gap-2 mb-1 pl-1 mt-2 overflow-x-auto no-scrollbar"
                   >
                     <span className="text-[10px] text-zinc-300 font-bold flex-shrink-0">›</span>
-                    {(['연극', '뮤지컬', '음악', '종합', '제주'] as const).map((c) => {
-                      const isJeju = c === '제주';
-                      const isActive = isJeju ? region === '제주' : (region === '공연' && concertGenre === c);
+                    {(['연극', '뮤지컬', '음악', '종합'] as const).map((c) => {
+                      const isActive = concertGenre === c;
                       return (
                         <button
                           key={c}
-                          onClick={() => {
-                            if (isJeju) { setRegion('제주'); }
-                            else { setRegion('공연'); setConcertGenre(c); }
-                          }}
+                          onClick={() => setConcertGenre(c)}
                           className={cn(
                             "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
                             isActive
-                              ? (isJeju ? "bg-[#0369a1] text-white border-[#0369a1]" : "bg-emerald-500 text-white border-emerald-500")
+                              ? "bg-emerald-500 text-white border-emerald-500"
                               : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                           )}
                         >
                           {lang === 'en'
-                            ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : c === '종합' ? 'Others' : 'Jeju')
+                            ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
                             : lang === 'zh'
-                              ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : c === '종합' ? '综合' : '济州')
+                              ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
                               : c}
                         </button>
                       );
@@ -333,9 +386,9 @@ function Home() {
                 )}
               </AnimatePresence>
 
-              {/* 성수/홍대/강북 서브탭: 팝업 | 클래스 */}
+              {/* 성수/홍대/강북/강남/제주 서브탭: 해당 지역에 실제 데이터가 있는 category만 동적 렌더링 (fetchAvailableCategories) */}
               <AnimatePresence>
-                {(region === '성수' || region === '홍대' || region === '강북' || region === '강남') && (
+                {isPlaceRegion && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
@@ -343,7 +396,7 @@ function Home() {
                     className="flex items-center gap-2 mb-1 pl-1 mt-2"
                   >
                     <span className="text-[10px] text-zinc-300 font-bold">›</span>
-                    {(['popup', 'class'] as const).map((c) => (
+                    {availableCategories.map((c) => (
                       <button
                         key={c}
                         onClick={() => setPlaceCategory(c)}
@@ -354,11 +407,7 @@ function Home() {
                             : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                         )}
                       >
-                        {lang === 'en'
-                          ? (c === 'popup' ? 'Pop-up' : 'Class')
-                          : lang === 'zh'
-                            ? (c === 'popup' ? '快闪店' : '体验课程')
-                            : (c === 'popup' ? '팝업' : '클래스')}
+                        {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : CATEGORY_LABEL[c].ko}
                       </button>
                     ))}
                   </motion.div>
@@ -378,7 +427,7 @@ function Home() {
             </motion.div>
           )}
 
-          {activeTab === 'map' && region !== '공연' && region !== '제주' && region !== '축제' && (
+          {activeTab === 'map' && isPlaceRegion && (
             <motion.div key="map" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
               <MapView places={mapPlaces} region={region} lang={lang} />
             </motion.div>
@@ -393,7 +442,7 @@ function Home() {
           {activeTab === 'course' && (
             <motion.div key="course" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
               <div className="flex gap-2 px-6 pt-4 pb-1">
-                {(region !== '공연' && region !== '제주' && region !== '축제') && (
+                {isPlaceRegion && (
                   <button
                     onClick={() => setCourseSub('ai')}
                     className={cn(
@@ -414,7 +463,7 @@ function Home() {
                   {t.courseSubTheme}
                 </button>
               </div>
-              {courseSub === 'ai' && region !== '공연' && region !== '제주' && region !== '축제' && (
+              {courseSub === 'ai' && isPlaceRegion && (
                 <AITour region={region} lang={lang} />
               )}
               {courseSub === 'theme' && <ThemeMenu lang={lang} />}
@@ -493,12 +542,12 @@ function Home() {
         <NavButton
           active={activeTab === 'map'}
           onClick={() => {
-            if (region === '공연' || region === '제주') setRegion('성수');
+            if (region === '공연' || region === '축제') setRegion('성수');
             setActiveTab('map');
           }}
           icon={<MapIcon size={22} />}
           label={t.navMap}
-          disabled={(region === '공연' || region === '제주' || region === '축제') && activeTab === 'list'}
+          disabled={(region === '공연' || region === '축제') && activeTab === 'list'}
         />
         <NavButton 
           active={activeTab === 'list'} 
@@ -509,7 +558,7 @@ function Home() {
         <NavButton
           active={activeTab === 'course'}
           onClick={() => {
-            if (region === '공연' || region === '제주') setRegion('성수');
+            if (region === '공연' || region === '축제') setRegion('성수');
             setActiveTab('course');
           }}
           icon={<RouteIcon size={22} />}

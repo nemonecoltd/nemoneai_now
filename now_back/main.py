@@ -524,10 +524,13 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
         title_field = f"COALESCE({_lang_col(lang, 'title')}, title)"
         content_field = f"COALESCE({_lang_col(lang, 'content')}, content)"
 
+        # 제주는 2026-07-21부터 KOPIS/jeju.go.kr 수집 중단 — 기존 kopis_/jeju_ 접두 레거시 데이터가 섞여
+        # 엉뚱한 답변에 쓰이지 않도록 제외 (공연 지역 자체는 KOPIS가 정상 소스라 제외하지 않음)
+        kopis_exclude = "AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'" if region == "제주" else ""
         search_query = text(f"""
             SELECT id, {title_field} AS title, {content_field} AS content, location
             FROM seongsu_places
-            WHERE region = :region
+            WHERE region = :region {kopis_exclude}
             ORDER BY embedding <-> :embedding
             LIMIT 5
         """)
@@ -596,6 +599,20 @@ async def get_popular_performances(limit: Optional[int] = None, offset: int = 0)
         data = data[:min(limit, 500)]
     return data
 
+@app.get("/places/popular/festival")
+async def get_popular_festivals(limit: Optional[int] = None, offset: int = 0):
+    """축제 전용 인기 랭킹 (플레이스 랭킹과 동일 산식/캐시 주기, region='축제'만 집계)."""
+    data = _festival_popularity_cache[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
+
+@app.get("/places/closing-soon")
+async def get_closing_soon():
+    """핫플 탭 상단 '마감임박' 전광판용 (하루 1회 갱신 캐시). /places/{place_id}보다 먼저 등록해야
+    FastAPI가 'closing-soon'을 place_id로 오인해 파싱 에러를 내는 라우팅 충돌을 피할 수 있음."""
+    return _closing_soon_cache
+
 @app.post("/itinerary")
 async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko"):
     import json
@@ -646,7 +663,7 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         title_field = _lang_col(lang, "title")
         content_field = _lang_col(lang, "content")
         
-        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) ORDER BY RANDOM() LIMIT 15")
+        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%' ORDER BY RANDOM() LIMIT 15")
         with engine.connect() as conn:
             result = conn.execute(search_query, {"region": region})
             rows = result.fetchall()
@@ -698,15 +715,26 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
 async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0, sort: Optional[str] = None):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE p.region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
-    # 공연/제주는 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
-    if region in ("공연", "제주"):
+    # 공연은 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
+    if region == "공연":
         where_clause += " AND p.naver_place_id LIKE 'kopis_%'"
-    # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존, category IS NULL)
+    # 제주는 2026-07-21부터 KOPIS/jeju.go.kr 수집 중단(비짓제주 API로 대체) — 기존 kopis_/jeju_ 접두
+    # 레거시 데이터는 SEO 색인 보존을 위해 DB엔 남기되 새 팝업/클래스/행사/쇼핑 목록에는 섞이지 않도록 제외
+    elif region == "제주":
+        where_clause += " AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+    # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존 데이터는 category가 NULL이라 COALESCE로 보정),
+    # 'shopping'/'전시'=Visit Seoul 데이터(성수/홍대/강북/강남 하위), '행사'=비짓제주 축제/행사(제주 하위)
     # 공연(서울)은 장르 서브탭: 연극/뮤지컬/음악(대중음악)/종합(그 외 클래식·국악·무용·서커스마술·복합)
     if category == "class":
         where_clause += " AND p.category = 'class'"
+    elif category == "shopping":
+        where_clause += " AND p.category = 'shopping'"
+    elif category == "전시":
+        where_clause += " AND p.category = '전시'"
+    elif category == "행사":
+        where_clause += " AND p.category = '행사'"
     elif category == "popup":
-        where_clause += " AND p.category IS NULL"
+        where_clause += " AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
     elif category in ("연극", "뮤지컬", "음악", "종합"):
         where_clause += f" AND p.category = '{category}'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
@@ -745,6 +773,19 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
+@app.get("/places/categories")
+async def list_place_categories(region: str):
+    """지역별 서브탭 동적 렌더링용 — 해당 지역에 실제(만료 안 된) 데이터가 있는 category 목록만 반환."""
+    query = text("""
+        SELECT DISTINCT COALESCE(category, 'popup') AS category
+        FROM seongsu_places
+        WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+          AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
+    """)
+    with engine.connect() as conn:
+        result = conn.execute(query, {"region": region})
+        return [row[0] for row in result]
+
 @app.get("/places/{place_id}")
 async def get_place(place_id: int):
     query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at FROM seongsu_places WHERE id = :id")
@@ -770,18 +811,23 @@ async def record_place_view(place_id: int):
 
 _place_popularity_cache: list = []
 _performance_popularity_cache: list = []
+_festival_popularity_cache: list = []
 _popularity_last_refreshed: Optional[str] = None
 
-def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False):
+def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
-    only_performance=False(기본, 플레이스 랭킹): 공연은 완전히 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
+    only_performance=False, only_festival=False(기본, 플레이스 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
     (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
-    only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계."""
-    region_clause = (
-        "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
-        if only_performance
-        else "AND p.region != '공연' AND (p.region != '제주' OR p.naver_place_id LIKE 'kopis_%') AND p.category IS NULL"
-    )
+    only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계.
+    only_festival=True(축제 랭킹 전용): region='축제'만 집계.
+    min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함)."""
+    if only_performance:
+        region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
+    elif only_festival:
+        region_clause = "AND p.region = '축제'"
+    else:
+        region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+    having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range,
                COUNT(DISTINCT l.id) AS like_count,
@@ -793,15 +839,19 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
         WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
           {region_clause}
         GROUP BY p.id
+        {having_clause}
         ORDER BY score DESC, p.created_at DESC
         LIMIT {limit}
     """))
 
+_MIN_RANKING_SCORE = 3  # 이 미만 점수(조회1~2건 수준)는 25위 안이라도 노출 안 함 — 신생 카테고리(축제 등) 0점 채우기 방지
+
 def refresh_place_popularity():
     """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 6회(한국시간 4시간 간격) 실행.
     메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용.
-    48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화."""
-    global _place_popularity_cache, _performance_popularity_cache, _popularity_last_refreshed
+    48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화.
+    _MIN_RANKING_SCORE 미만 항목은 아예 제외해, 활동이 적을 땐 25개를 억지로 채우지 않고 그보다 적게 노출될 수 있음."""
+    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _popularity_last_refreshed
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -813,17 +863,48 @@ def refresh_place_popularity():
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
         conn.commit()
 
-        result = list(_popularity_rows(conn, 2))
+        result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE))
         if len(result) < 25:
-            result = list(_popularity_rows(conn, 30))
+            result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE))
         _place_popularity_cache = [dict(row._mapping) for row in result]
 
-        perf_result = list(_popularity_rows(conn, 2, only_performance=True))
+        perf_result = list(_popularity_rows(conn, 2, only_performance=True, min_score=_MIN_RANKING_SCORE))
         if len(perf_result) < 25:
-            perf_result = list(_popularity_rows(conn, 30, only_performance=True))
+            perf_result = list(_popularity_rows(conn, 30, only_performance=True, min_score=_MIN_RANKING_SCORE))
         _performance_popularity_cache = [dict(row._mapping) for row in perf_result]
 
+        fest_result = list(_popularity_rows(conn, 2, only_festival=True, min_score=_MIN_RANKING_SCORE))
+        if len(fest_result) < 25:
+            fest_result = list(_popularity_rows(conn, 30, only_festival=True, min_score=_MIN_RANKING_SCORE))
+        _festival_popularity_cache = [dict(row._mapping) for row in fest_result]
+
     _popularity_last_refreshed = datetime.now(timezone.utc).isoformat()
+    refresh_closing_soon()  # 랭킹과 같은 주기(4시간)로 같이 갱신 — 랜덤 12개라 자주 바뀌어도 자연스러움
+
+
+_closing_soon_cache: list = []
+
+def refresh_closing_soon():
+    """핫플 탭 상단 '마감임박' 전광판용 — refresh_place_popularity()와 같은 주기(4시간)로 갱신.
+    14일 이내 마감 예정 중 랜덤 12개를 뽑아 캐시. 팝업 전용(공연/축제/클래스/쇼핑/전시/행사 등은 제외해
+    성수/홍대/강북/강남/제주의 순수 팝업스토어만 노출, 정확도 불필요라 랜덤으로 충분)."""
+    global _closing_soon_cache
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT id, title, title_en, title_zh, image_url, region
+            FROM seongsu_places
+            WHERE end_date IS NOT NULL
+              AND end_date >= CURRENT_DATE
+              AND end_date <= CURRENT_DATE + INTERVAL '14 days'
+              AND COALESCE(category, 'popup') = 'popup'
+              AND naver_place_id NOT LIKE 'kopis_%'
+              AND naver_place_id NOT LIKE 'jeju_%'
+              AND naver_place_id NOT LIKE 'culture_%'
+              AND region IN ('성수', '홍대', '강북', '강남', '제주')
+            ORDER BY RANDOM()
+            LIMIT 12
+        """))
+        _closing_soon_cache = [dict(row._mapping) for row in result]
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
@@ -972,9 +1053,9 @@ async def update_place(place_id: int, place: PlaceUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/places/{place_id}/enrich")
-async def enrich_place_content(place_id: int):
-    """pcmap에서 방문자 리뷰 텍스트를 수집해 Gemini로 고품질 소개 생성. 어드민 수동 트리거용."""
+async def _enrich_place_core(place_id: int) -> dict:
+    """블로그갱신 실제 처리 로직 — HTTP 엔드포인트(/places/{id}/enrich)와 텔레그램 봇 둘 다에서 재사용.
+    FastAPI에 종속되지 않도록 HTTPException 대신 ValueError/RuntimeError를 던짐."""
     import asyncio
     import re as _re
 
@@ -985,13 +1066,13 @@ async def enrich_place_content(place_id: int):
             {"id": place_id}
         ).fetchone()
     if not row:
-        raise HTTPException(status_code=404, detail="Place not found")
+        raise ValueError("Place not found")
 
     title = row[0] or ""
     location = row[1] or ""
     naver_place_id = row[2] or ""
     if not naver_place_id:
-        raise HTTPException(status_code=400, detail="naver_place_id 없음 — pcmap 조회 불가")
+        raise ValueError("naver_place_id 없음 — pcmap 조회 불가")
 
     # 2. pcmap 방문자 리뷰 탭 — 블로그 카드 스크래핑
     try:
@@ -1091,7 +1172,7 @@ async def enrich_place_content(place_id: int):
         resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         generated = (resp.text or "").strip()[:600]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini 생성 실패: {e}")
+        raise RuntimeError(f"Gemini 생성 실패: {e}")
 
     # 4. DB 저장 — content 업데이트 + blog_reviews 저장 + 갱신 시각 기록
     with engine.connect() as conn:
@@ -1108,6 +1189,9 @@ async def enrich_place_content(place_id: int):
     # content가 바뀌었으니 영문/중문 번역도 백그라운드로 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
     threading.Thread(target=_translate_and_save, args=(place_id, None, generated), daemon=True).start()
 
+    # 상세 페이지가 5분 ISR 캐시라 이걸 안 부르면 캐시 만료 전까지 옛 내용이 계속 보임(일반 저장 플로우는 이미 호출 중)
+    threading.Thread(target=_revalidate_place, args=(place_id,), daemon=True).start()
+
     return {
         "content": generated,
         "blog_reviews": blog_reviews,
@@ -1115,8 +1199,21 @@ async def enrich_place_content(place_id: int):
     }
 
 
+@app.post("/places/{place_id}/enrich")
+async def enrich_place_content(place_id: int):
+    """pcmap에서 방문자 리뷰 텍스트를 수집해 Gemini로 고품질 소개 생성. 어드민 수동 트리거용."""
+    try:
+        return await _enrich_place_core(place_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/places/{place_id}")
-async def delete_place(place_id: int):
+async def delete_place(place_id: int, viewer: dict = Depends(_verify_supabase_user)):
+    if viewer["email"] != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail="관리자만 삭제할 수 있습니다")
     with engine.connect() as conn:
         row = conn.execute(text("SELECT image_url FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id}).fetchone()
         conn.execute(text("DELETE FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id})
@@ -1289,7 +1386,7 @@ async def get_admin_stats():
         "storage_percent": storage["percent"],
     }
 
-refresh_place_popularity()
+refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
@@ -1301,6 +1398,17 @@ scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='rankin
 scheduler.add_job(refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600')
 scheduler.add_job(refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000')
 scheduler.start()
+
+# 텔레그램으로 플레이스 ID 보내면 블로그갱신 트리거 — 로컬 전용(Playwright 없는 프로덕션에선 절대 켜면 안 됨,
+# getUpdates 폴링도 두 곳에서 동시에 하면 충돌함). 로컬 .env에만 TELEGRAM_BOT_ENABLED=true를 넣어서 게이트.
+if os.getenv("TELEGRAM_BOT_ENABLED") == "true":
+    import asyncio as _asyncio
+    from telegram_admin_bot import start_bot
+
+    def _enrich_place_sync(place_id: int) -> dict:
+        return _asyncio.run(_enrich_place_core(place_id))
+
+    start_bot(_enrich_place_sync)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8081)

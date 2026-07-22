@@ -3,12 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Calendar, Navigation, X, MapPin, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 interface Place {
   id: number;
@@ -37,7 +31,24 @@ const REGIONS = {
   '성수': { lat: 37.5445, lng: 127.0560, title: '성수 팝업 맵' },
   '홍대': { lat: 37.5575, lng: 126.9245, title: '홍대 팝업 맵' },
   '강북': { lat: 37.5344, lng: 126.9947, title: '강북 팝업 맵' },  // '강북'은 표시용 라벨일 뿐 실제 수집 지역은 용산(이태원역 기준, 한남동 인접) — 평균 좌표 대신 핵심 상권으로 고정
-  '강남': { lat: 37.4979, lng: 127.0276, title: '강남 팝업 맵' }  // 강남역 기준
+  '강남': { lat: 37.4979, lng: 127.0276, title: '강남 팝업 맵' },  // 강남역 기준
+  '제주': { lat: 33.4996, lng: 126.5312, title: '제주 팝업 맵' }  // 제주시청 기준
+};
+
+// 지역별 대표색 — 마커/카드 등 지도 전용 UI에서 공통으로 사용
+const REGION_COLOR: Record<string, string> = {
+  '성수': '#10b981',
+  '홍대': '#8b5cf6',
+  '강북': '#eab308',
+  '강남': '#ec4899',
+  '제주': '#0369a1',
+};
+const REGION_TITLE: Record<string, { en: string; zh: string }> = {
+  '성수': { en: 'Seongsu', zh: '圣水洞' },
+  '홍대': { en: 'Hongdae', zh: '弘大' },
+  '강북': { en: 'Gangbuk', zh: '江北' },
+  '강남': { en: 'Gangnam', zh: '江南' },
+  '제주': { en: 'Jeju', zh: '济州' },
 };
 
 export default function MapView({ places = [], region = '성수', lang = 'ko' }: { places?: Place[], region?: string, lang?: string }) {
@@ -96,7 +107,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           title: lang === 'en' ? (place.title_en || place.title) : lang === 'zh' ? (place.title_zh || place.title) : place.title,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: region === '홍대' ? '#8b5cf6' : region === '강북' ? '#eab308' : region === '강남' ? '#ec4899' : '#10b981',
+            fillColor: REGION_COLOR[region] || REGION_COLOR['성수'],
             fillOpacity: 1,
             strokeColor: '#ffffff',
             strokeWeight: 2,
@@ -147,23 +158,23 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
       {/* Floating Info Card */}
       <div className="absolute top-6 left-6 right-6 z-50 pointer-events-none">
         <div className="bg-white/90 backdrop-blur-xl p-4 rounded-3xl border border-white/40 shadow-2xl flex items-center gap-4 pointer-events-auto">
-          <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner flex-shrink-0",
-            region === '홍대' ? "bg-purple-500" : region === '강북' ? "bg-yellow-500" : region === '강남' ? "bg-pink-500" : "bg-emerald-500"
-          )}>
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-inner flex-shrink-0"
+            style={{ backgroundColor: REGION_COLOR[region] || REGION_COLOR['성수'] }}
+          >
             <Calendar size={24} />
           </div>
           <div>
             <h4 className="text-sm font-black text-zinc-900 tracking-tight">
               {lang === 'en'
-                ? `${region === '성수' ? 'Seongsu' : region === '강북' ? 'Gangbuk' : region === '강남' ? 'Gangnam' : 'Hongdae'} Map`
+                ? `${REGION_TITLE[region]?.en || 'Seongsu'} Map`
                 : lang === 'zh'
-                  ? `${region === '성수' ? '圣水洞' : region === '강북' ? '江北' : region === '강남' ? '江南' : '弘大'}地图`
+                  ? `${REGION_TITLE[region]?.zh || '圣水洞'}地图`
                   : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
-              <span className={cn(
-                "ml-2 text-xs font-bold",
-                region === '홍대' ? "text-purple-400" : region === '강북' ? "text-yellow-500" : region === '강남' ? "text-pink-500" : "text-emerald-400"
-              )}>
+              <span
+                className="ml-2 text-xs font-bold"
+                style={{ color: REGION_COLOR[region] || REGION_COLOR['성수'] }}
+              >
                 (지금 당장 {places.length}개)
               </span>
             </h4>
@@ -257,10 +268,8 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
 
               <button
                 onClick={() => router.push(`/posts/${selectedPlace.id}?region=${encodeURIComponent(region)}&lang=${lang}`)}
-                className={cn(
-                  "w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2",
-                  region === '홍대' ? "bg-purple-500" : region === '강북' ? "bg-yellow-500" : region === '강남' ? "bg-pink-500" : "bg-emerald-500"
-                )}
+                className="w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2"
+                style={{ backgroundColor: REGION_COLOR[region] || REGION_COLOR['성수'] }}
               >
                 {lang === 'en' ? 'View Details' : lang === 'zh' ? '查看详情' : '자세히 보기'}
                 <ChevronRight size={16} />

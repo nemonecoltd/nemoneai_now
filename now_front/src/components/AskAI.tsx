@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User, Bot, Loader2, ChevronRight } from 'lucide-react';
+import { Send, Sparkles, User, Bot, Loader2, ChevronRight, BookmarkPlus, Check } from 'lucide-react';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import StoreBanner from './StoreBanner';
+import { useAuth } from '@/context/AuthContext';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,6 +23,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   places?: PlaceRef[];
+  saved?: boolean;
 }
 
 const dict = {
@@ -31,6 +33,10 @@ const dict = {
     placeholder: '무엇이든 물어보세요...',
     error: '죄송합니다. 답변을 생성하는 중 오류가 발생했습니다.',
     connError: '서버와 통신할 수 없습니다.',
+    saveTheme: '테마로 저장',
+    saving: '저장 중...',
+    saved: '저장됨',
+    saveFailed: '저장에 실패했습니다.',
     examples: {
       '성수': [
         '"지금 당장 갈만한 패션 팝업 알려줘"',
@@ -39,6 +45,10 @@ const dict = {
       '홍대': [
         '"오늘 홍대 버스킹이나 공연 정보 있어?"',
         '"상수동 근처 분위기 좋은 카페 추천해줘"'
+      ],
+      '제주': [
+        '"요즘 제주에서 하는 축제나 행사 있어?"',
+        '"제주시내 쇼핑할만한 곳 추천해줘"'
       ]
     }
   },
@@ -48,6 +58,10 @@ const dict = {
     placeholder: 'Ask anything...',
     error: 'Sorry, an error occurred while generating the answer.',
     connError: 'Cannot connect to the server.',
+    saveTheme: 'Save as Theme',
+    saving: 'Saving...',
+    saved: 'Saved',
+    saveFailed: 'Failed to save.',
     examples: {
       '성수': [
         '"Tell me about fashion pop-ups open now in Seongsu"',
@@ -56,6 +70,10 @@ const dict = {
       '홍대': [
         '"Is there any busking or live music in Hongdae today?"',
         '"Recommend a cozy cafe near Sangsu-dong"'
+      ],
+      '제주': [
+        '"Any festivals or events happening in Jeju right now?"',
+        '"Recommend a good shopping spot in Jeju city"'
       ]
     }
   }
@@ -111,14 +129,16 @@ function formatMessage(text: string): React.ReactNode {
 }
 
 export default function AskAI({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
+  const { user, signInWithGoogle } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setNewInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '강북' ? 'Gangbuk' : region === '강남' ? 'Gangnam' : 'Hongdae') : region;
+  const displayRegion = lang === 'en' ? (region === '성수' ? 'Seongsu' : region === '강북' ? 'Gangbuk' : region === '강남' ? 'Gangnam' : region === '제주' ? 'Jeju' : region === '홍대' ? 'Hongdae' : region) : region;
   const currentExamples = t.examples[region as keyof typeof t.examples] || t.examples['성수'];
 
   useEffect(() => {
@@ -154,6 +174,40 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
       setMessages(prev => [...prev, { role: 'assistant', content: t.connError }]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSaveTheme = async (idx: number) => {
+    if (!user) return signInWithGoogle();
+    const msg = messages[idx];
+    const question = messages.slice(0, idx).reverse().find(m => m.role === 'user')?.content || t.title;
+    if (!msg.places || msg.places.length === 0) return;
+
+    setSavingIdx(idx);
+    try {
+      const res = await fetch('/api-now/themes/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          user_name: user.user_metadata?.full_name || user.email || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
+          title: question,
+          description: msg.content,
+          places: msg.places,
+          region,
+        }),
+      });
+      if (res.ok) {
+        setMessages(prev => prev.map((m, i) => i === idx ? { ...m, saved: true } : m));
+      } else {
+        alert(t.saveFailed);
+      }
+    } catch (e) {
+      console.error(e);
+      alert(t.saveFailed);
+    } finally {
+      setSavingIdx(null);
     }
   };
 
@@ -247,6 +301,23 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
                       <ChevronRight size={14} className="text-zinc-300 flex-shrink-0" />
                     </Link>
                   ))}
+                  <button
+                    onClick={() => handleSaveTheme(idx)}
+                    disabled={savingIdx === idx || msg.saved}
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors disabled:opacity-60",
+                      msg.saved ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-zinc-900 text-white hover:bg-emerald-600"
+                    )}
+                  >
+                    {savingIdx === idx ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : msg.saved ? (
+                      <Check size={14} />
+                    ) : (
+                      <BookmarkPlus size={14} />
+                    )}
+                    {savingIdx === idx ? t.saving : msg.saved ? t.saved : t.saveTheme}
+                  </button>
                 </div>
               )}
             </div>

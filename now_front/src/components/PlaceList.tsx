@@ -102,12 +102,6 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     }
   };
 
-  const displayRegion = lang === 'en'
-    ? (region === '성수' ? 'Seongsu' : region === '홍대' ? 'Hongdae' : region === '공연' ? 'Concert' : region === '축제' ? 'Festival' : 'Jeju Culture')
-    : lang === 'zh'
-      ? (region === '성수' ? '圣水洞' : region === '홍대' ? '弘大' : region === '공연' ? '演出' : region === '축제' ? '节庆' : '济州文化')
-      : (region === '제주' ? '제주 문화' : region);
-
   const sortOptions: { key: PlaceSort; ko: string; en: string; zh: string }[] = [
     { key: 'popular', ko: '인기순', en: 'Popular', zh: '人气排序' },
     { key: 'latest', ko: '최신순', en: 'Latest', zh: '最新排序' },

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ExternalLink } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
+import BrandTagline from '@/components/BrandTagline';
 import type { MagazinePost } from './page';
 
 export default function MagazineDetailClient({ post, lang = 'ko' }: { post: MagazinePost | null; lang?: string }) {
@@ -25,16 +26,19 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl">
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-5 pt-3 pb-3 flex items-center gap-2">
-        <button
-          onClick={handleBack}
-          className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
-        >
-          <ChevronLeft size={20} strokeWidth={2.5} />
-        </button>
-        <span className="text-base font-black tracking-tight text-zinc-900">
-          매거진 <span className="text-emerald-500">.</span>
-        </span>
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-5 pt-3 pb-1">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBack}
+            className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
+          >
+            <ChevronLeft size={20} strokeWidth={2.5} />
+          </button>
+          <span className="text-base font-black tracking-tight text-zinc-900">
+            매거진 <span className="text-emerald-500">.</span>
+          </span>
+        </div>
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="pb-16">

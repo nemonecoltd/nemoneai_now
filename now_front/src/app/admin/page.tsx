@@ -83,7 +83,7 @@ type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | 
 type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
-  const { user, signInWithGoogle, isLoading: authLoading } = useAuth();
+  const { user, session, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
   
   const [viewMode, setViewMode] = useState<ViewMode>('ranking');
@@ -433,8 +433,10 @@ export default function AdminPage() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     const res = await fetch(`/api-now/places/${id}`, {
       method: 'DELETE',
+      headers: { Authorization: `Bearer ${session?.access_token || ''}` },
     });
     if (res.ok) fetchPlaces();
+    else alert('삭제에 실패했습니다 (권한 확인 필요).');
   };
 
 

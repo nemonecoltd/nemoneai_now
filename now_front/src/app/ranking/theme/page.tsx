@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeft, Heart } from 'lucide-react';
+import BrandTagline from '@/components/BrandTagline';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -50,11 +51,14 @@ export default async function ThemeRankingPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </Link>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">테마 랭킹</h1>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </Link>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">테마 랭킹</h1>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="px-6 pt-6 space-y-4">

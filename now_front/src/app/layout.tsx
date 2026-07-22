@@ -7,10 +7,10 @@ import NaverAnalytics from "@/components/NaverAnalytics";
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
   title: {
-    default: "당신 3시간의 알찬 설계, 지금 여기 | 성수·홍대·강북·강남 팝업·공연·축제",
+    default: "당신 3시간의 알찬 설계, 지금 여기 | 성수·홍대·강북·강남·제주 팝업·공연·축제",
     template: "%s | 지금 여기"
   },
-  description: "지금 바로 이 시간 성수·홍대·강북·강남 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.",
+  description: "지금 바로 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·행사, 서울 공연·전시, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.",
   alternates: {
     canonical: 'https://now.nemoneai.com',
     languages: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: '지금 여기 | 당신 3시간의 알찬 설계',
-    description: 'Stop wasting time searching. AI-powered guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
+    description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
     url: 'https://now.nemoneai.com',
     images: ['/og-image.png'],
     type: 'website',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: '지금 여기 | 당신 3시간의 알찬 설계',
-    description: 'Stop wasting time searching. AI-powered guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
+    description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
     images: ['/og-image.png'],
   },
   robots: {
@@ -49,7 +49,7 @@ const websiteJsonLd = {
   '@type': 'WebSite',
   name: 'NOW HERE | 지금 여기',
   url: 'https://now.nemoneai.com',
-  description: '지금 바로 이 시간 성수·홍대·강북·강남 팝업, 서울 공연·전시, 제주 문화행사, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul pop-ups, performances, Jeju cultural events, and festivals nationwide.',
+  description: '지금 바로 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·행사, 서울 공연·전시, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
   potentialAction: {
     '@type': 'SearchAction',
     target: {

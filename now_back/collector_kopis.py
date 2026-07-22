@@ -1,8 +1,10 @@
 """
 collector_kopis.py — 공연/축제 수집
-대상: KOPIS 공연 (연극/뮤지컬/대중음악/서커스,마술 · 서울/제주) — 주 1회, 주말 기점 권장
+대상: KOPIS 공연 (연극/뮤지컬/대중음악/서커스,마술 · 서울) — 주 1회, 주말 기점 권장
      문체부API 축제 — 월 1회 권장 (공연보다 갱신 빈도 낮음, 별도 스케줄로 분리 실행)
 collector_culture.py 대체 — 공연 소스만 KOPIS로 교체.
+제주는 더 이상 KOPIS로 수집하지 않음(2026-07-21) — scraper_visitjeju.py(비짓제주 API)로 대체,
+기존 kopis_ 접두 제주 행 SEO 색인 보존을 위해 DB엔 남아있지만 목록에는 노출 안 됨(main.py 참고).
 
 실행:
   python3 collector_kopis.py concert   # 공연만 (주 1회, 주말 기점)
@@ -18,7 +20,7 @@ from notification import send_alert
 
 
 async def run_concert():
-    print("\n🎭 [KOPIS] 공연(서울/제주) 수집 시작")
+    print("\n🎭 [KOPIS] 공연(서울) 수집 시작")
     try:
         items = await scrape_kopis_concert()
     except Exception as e:

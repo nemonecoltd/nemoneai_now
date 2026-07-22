@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import BrandTagline from '@/components/BrandTagline';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -39,7 +40,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const courses = await getCourses();
   const top = courses.slice(0, 5).map(c => c.title).join(', ');
   const title = '이번 주 인기 AI 코스 랭킹 | 지금여기';
-  const description = `성수·홍대·강북에서 유저들이 직접 만든 AI 3시간 코스 랭킹. ${top || '지금 인기 있는 코스를 확인해보세요.'}`;
+  const description = `성수·홍대·강북·제주에서 유저들이 직접 만든 AI 3시간 코스 랭킹. ${top || '지금 인기 있는 코스를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -53,16 +54,19 @@ export default async function CourseRankingPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </Link>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">AI 코스 랭킹</h1>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </Link>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">AI 코스 랭킹</h1>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="px-6 pt-6 space-y-4">
         <p className="text-xs text-zinc-400 leading-relaxed">
-          성수·홍대·강북에서 유저들이 직접 만들고 저장한 3시간 AI 코스를 좋아요 순으로 보여드립니다.
+          성수·홍대·강북·제주에서 유저들이 직접 만들고 저장한 3시간 AI 코스를 좋아요 순으로 보여드립니다.
         </p>
 
         {courses.length === 0 && (

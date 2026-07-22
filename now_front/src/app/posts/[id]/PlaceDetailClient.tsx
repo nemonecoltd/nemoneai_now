@@ -7,6 +7,7 @@ import {
   Users, TrendingUp, Map as MapIcon, Library, Route as RouteIcon, MessageCircle, Megaphone, Flame, Sparkles,
 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
+import BrandTagline from '@/components/BrandTagline';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -15,6 +16,35 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+const EVENT_REGIONS = ['공연', '축제'] as const;
+const REGION_LABEL: Record<string, { en: string; zh: string }> = {
+  '성수': { en: 'SEONGSU', zh: '圣水洞' },
+  '홍대': { en: 'HONGDAE', zh: '弘大' },
+  '강북': { en: 'GANGBUK', zh: '江北' },
+  '강남': { en: 'GANGNAM', zh: '江南' },
+  '제주': { en: 'JEJU', zh: '济州' },
+  '공연': { en: 'CONCERT', zh: '演出' },
+  '축제': { en: 'FESTIVAL', zh: '节庆' },
+};
+const REGION_ACCENT: Record<string, string> = {
+  '성수': 'text-emerald-600 border-emerald-500',
+  '홍대': 'text-orange-600 border-orange-500',
+  '강북': 'text-yellow-600 border-yellow-500',
+  '강남': 'text-pink-600 border-pink-500',
+  '제주': 'text-[#0369a1] border-[#0369a1]',
+  '공연': 'text-emerald-600 border-emerald-500',
+  '축제': 'text-amber-600 border-amber-500',
+};
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
+const CATEGORY_LABEL: Record<string, { en: string; zh: string; ko: string }> = {
+  popup: { en: 'Pop-up', zh: '快闪店', ko: '팝업' },
+  class: { en: 'Class', zh: '体验课程', ko: '클래스' },
+  shopping: { en: 'Shopping', zh: '购物', ko: '쇼핑' },
+  '전시': { en: 'Exhibit', zh: '展览', ko: '전시' },
+  '행사': { en: 'Event', zh: '活动', ko: '행사' },
+};
 
 export interface BlogReview {
   title: string;
@@ -94,6 +124,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   const [lang, setLang] = React.useState(initialLang);
   const t = T[(lang as keyof typeof T)] || T.ko;
   const [banner, setBanner] = React.useState<{ text: string; url: string } | null>(null);
+  const [availableCategories, setAvailableCategories] = React.useState<string[]>([...CATEGORY_ORDER]);
 
   React.useEffect(() => {
     fetch('/api-now/banner')
@@ -103,6 +134,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
       })
       .catch(() => {});
   }, []);
+
+  React.useEffect(() => {
+    if (!place?.region || !(PLACE_REGIONS as readonly string[]).includes(place.region)) return;
+    fetch(`/api-now/places/categories?region=${encodeURIComponent(place.region)}`)
+      .then(res => res.json())
+      .then((data: string[]) => setAvailableCategories(CATEGORY_ORDER.filter((c) => data.includes(c))))
+      .catch(() => {});
+  }, [place?.region]);
 
   React.useEffect(() => {
     if (user?.id && place?.id) {
@@ -263,18 +302,24 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   // 신규 등록(7일 이내)
   const isNew = !!place.created_at && (Date.now() - new Date(place.created_at).getTime()) <= 7 * 24 * 60 * 60 * 1000;
 
-  const isPerformanceRegion = place.region === '공연' || place.region === '축제' || place.region === '제주';
+  // 제주는 2026-07-21부터 팝업/클래스(성수·홍대 등과 동일한 실제 네이버 지도 소스)/쇼핑·행사(비짓제주)를
+  // 함께 갖는 장소형 지역이 됨 — 공연/축제(KOPIS·문체부 등 외부 이벤트 소스만 있는 지역)와는 구분해야 함
+  const isPerformanceRegion = place.region === '공연' || place.region === '축제';
   const hasValidNaverId = place.naver_place_id &&
     !place.naver_place_id.startsWith('raw_') &&
     !place.naver_place_id.startsWith('seoul_') &&
-    !isPerformanceRegion;
+    !place.naver_place_id.startsWith('kopis_') &&
+    !place.naver_place_id.startsWith('visitseoul_') &&
+    !place.naver_place_id.startsWith('visitjeju_') &&
+    !place.naver_place_id.startsWith('jeju_');
 
+  const pageUrl = `https://now.nemoneai.com/posts/${place.id}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
     "name": displayTitle,
     "description": displayContent.replace(/<[^>]*>/g, '').substring(0, 160),
-    "url": `https://now.nemoneai.com/posts/${place.id}`,
+    "url": pageUrl,
     "image": place.image_url || 'https://now.nemoneai.com/og-image.png',
     "location": {
       "@type": "Place",
@@ -288,7 +333,26 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
       }
     },
     "startDate": startDate,
-    ...(endDate ? { "endDate": endDate } : {}),
+    "endDate": endDate || startDate,
+    "eventStatus": "https://schema.org/EventScheduled",
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "performer": {
+      "@type": "Organization",
+      "name": displayTitle
+    },
+    "organizer": {
+      "@type": "Organization",
+      "name": displayTitle,
+      "url": place.link_url || pageUrl
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": place.link_url || pageUrl,
+      "price": "0",
+      "priceCurrency": "KRW",
+      "availability": "https://schema.org/InStock",
+      "validFrom": startDate
+    },
   };
 
   return (
@@ -310,9 +374,6 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             </button>
             <span className="text-lg font-black tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
               {t.nowHere} <span className="text-emerald-500">.</span>
-            </span>
-            <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-tighter italic truncate">
-              {t.tagline}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -348,69 +409,58 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         </div>
 
-        {/* 지역 탭 */}
+        <BrandTagline lang={lang} />
+
+        {/* 지역 탭 — 장소형(성수/홍대/강북/강남/제주) | 이벤트형(공연/축제) */}
         <div className="flex items-center gap-4 mb-1">
-          {(['성수', '홍대', '강북', '강남', '공연', '축제'] as const).map((r) => {
-            const isConcertActive = r === '공연' && (place.region === '공연' || place.region === '제주');
-            const isFestivalActive = r === '축제' && place.region === '축제';
-            const isHongdaeActive = r === '홍대' && place.region === '홍대';
-            const isGangbukActive = r === '강북' && place.region === '강북';
-            const isGangnamActive = r === '강남' && place.region === '강남';
-            return (
-              <button
-                key={r}
-                onClick={() => router.push(`/?region=${encodeURIComponent(r === '공연' && place.region === '제주' ? '제주' : r)}&tab=list&lang=${lang}`)}
-                className={cn(
-                  "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
-                  isFestivalActive
-                    ? "text-amber-600 border-amber-500"
-                    : isHongdaeActive
-                      ? "text-orange-600 border-orange-500"
-                      : isGangbukActive
-                        ? "text-yellow-600 border-yellow-500"
-                        : isGangnamActive
-                          ? "text-pink-600 border-pink-500"
-                          : isConcertActive || place.region === r
-                            ? "text-emerald-600 border-emerald-500"
-                            : "text-zinc-300 border-transparent"
-                )}
-              >
-                {lang === 'en'
-                  ? (r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : 'FESTIVAL')
-                  : lang === 'zh'
-                    ? (r === '성수' ? '圣水洞' : r === '홍대' ? '弘大' : r === '강북' ? '江北' : r === '강남' ? '江南' : r === '공연' ? '演出' : '节庆')
-                    : r}
-              </button>
-            );
-          })}
+          {PLACE_REGIONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => router.push(`/?region=${encodeURIComponent(r)}&tab=list&lang=${lang}`)}
+              className={cn(
+                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
+                place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
+              )}
+            >
+              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+            </button>
+          ))}
+          <span className="text-zinc-200 font-bold select-none">|</span>
+          {EVENT_REGIONS.map((r) => (
+            <button
+              key={r}
+              onClick={() => router.push(`/?region=${encodeURIComponent(r)}&tab=list&lang=${lang}`)}
+              className={cn(
+                "text-sm font-bold transition-all px-1 pb-1 border-b-2 flex items-center gap-1 whitespace-nowrap",
+                place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
+              )}
+            >
+              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+            </button>
+          ))}
         </div>
 
-        {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 | 제주 (제주만 기존 블루, 나머지는 예전 '서울' 색상) */}
-        {(place.region === '공연' || place.region === '제주') && (
+        {/* 공연 서브탭: 연극 | 뮤지컬 | 음악 | 종합 */}
+        {place.region === '공연' && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2 overflow-x-auto no-scrollbar">
             <span className="text-[10px] text-zinc-300 font-bold flex-shrink-0">›</span>
-            {(['연극', '뮤지컬', '음악', '종합', '제주'] as const).map((c) => {
-              const isJeju = c === '제주';
-              const isActive = isJeju ? place.region === '제주' : (place.region === '공연' && place.category === c);
+            {(['연극', '뮤지컬', '음악', '종합'] as const).map((c) => {
+              const isActive = place.category === c;
               return (
                 <button
                   key={c}
-                  onClick={() => router.push(
-                    isJeju
-                      ? `/?region=${encodeURIComponent('제주')}&tab=list&lang=${lang}`
-                      : `/?region=${encodeURIComponent('공연')}&category=${encodeURIComponent(c)}&tab=list&lang=${lang}`
-                  )}
+                  onClick={() => router.push(`/?region=${encodeURIComponent('공연')}&category=${encodeURIComponent(c)}&tab=list&lang=${lang}`)}
                   className={cn(
                     "text-xs font-bold transition-all px-2 py-0.5 rounded-full border flex-shrink-0 whitespace-nowrap",
                     isActive
-                      ? (isJeju ? "bg-[#0369a1] text-white border-[#0369a1]" : "bg-emerald-500 text-white border-emerald-500")
+                      ? "bg-emerald-500 text-white border-emerald-500"
                       : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                   )}
                 >
                   {lang === 'en'
-                    ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : c === '종합' ? 'Others' : 'Jeju')
+                    ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
                     : lang === 'zh'
-                      ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : c === '종합' ? '综合' : '济州')
+                      ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
                       : c}
                 </button>
               );
@@ -418,26 +468,22 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        {/* 성수/홍대/강북 서브탭: 팝업 | 클래스 */}
-        {(place.region === '성수' || place.region === '홍대' || place.region === '강북' || place.region === '강남') && (
+        {/* 성수/홍대/강북/강남/제주 서브탭: 해당 지역에 실제 데이터가 있는 category만 동적 렌더링 */}
+        {(PLACE_REGIONS as readonly string[]).includes(place.region || '') && (
           <div className="flex items-center gap-2 mb-1 pl-1 mt-2">
             <span className="text-[10px] text-zinc-300 font-bold">›</span>
-            {(['popup', 'class'] as const).map((c) => (
+            {availableCategories.map((c) => (
               <button
                 key={c}
-                onClick={() => router.push(`/?region=${encodeURIComponent(place.region!)}&category=${c}&tab=list&lang=${lang}`)}
+                onClick={() => router.push(`/?region=${encodeURIComponent(place.region!)}&category=${encodeURIComponent(c)}&tab=list&lang=${lang}`)}
                 className={cn(
                   "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                  (place.category === 'class' ? 'class' : 'popup') === c
+                  (place.category === 'class' ? 'class' : place.category === 'shopping' ? 'shopping' : place.category === '전시' ? '전시' : place.category === '행사' ? '행사' : 'popup') === c
                     ? "bg-emerald-500 text-white border-emerald-500"
                     : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                 )}
               >
-                {lang === 'en'
-                  ? (c === 'popup' ? 'Pop-up' : 'Class')
-                  : lang === 'zh'
-                    ? (c === 'popup' ? '快闪店' : '体验课程')
-                    : (c === 'popup' ? '팝업' : '클래스')}
+                {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : CATEGORY_LABEL[c].ko}
               </button>
             ))}
           </div>

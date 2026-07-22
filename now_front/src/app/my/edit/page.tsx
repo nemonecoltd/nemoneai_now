@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Camera, Loader2, Save, User, Globe, Trash2 } from 'lucide-react';
+import BrandTagline from '@/components/BrandTagline';
 import { createClient } from '@/utils/supabase/client';
 
 export default function EditProfilePage() {
@@ -173,11 +174,14 @@ export default function EditProfilePage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto shadow-2xl border-x border-zinc-200 pb-20">
-      <header className="sticky top-0 bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">프로필 수정</h1>
+      <header className="sticky top-0 bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-4">
+          <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">프로필 수정</h1>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="p-6 space-y-8">

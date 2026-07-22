@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from '@/components/AdUnit';
+import BrandTagline from '@/components/BrandTagline';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -133,11 +134,14 @@ export default function FeedbackPage() {
   if (!authLoading && !user) {
     return (
       <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col">
-        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4 shadow-sm">
-          <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+        <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 pt-4 pb-1 shadow-sm">
+          <div className="flex items-center gap-4">
+            <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+          </div>
+          <BrandTagline />
         </header>
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
           <div className="w-14 h-14 bg-zinc-100 rounded-full flex items-center justify-center text-zinc-400">
@@ -155,11 +159,14 @@ export default function FeedbackPage() {
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 flex flex-col pb-10">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4 shadow-sm">
-        <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+      <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100 px-6 pt-4 pb-1 shadow-sm">
+        <div className="flex items-center gap-4">
+          <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">

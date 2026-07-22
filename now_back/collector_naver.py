@@ -5,6 +5,7 @@ AI 소개 자동 생성 후 DB upsert
 """
 import asyncio
 import os
+import random
 from datetime import date, timedelta
 from typing import Optional
 from sqlalchemy import text
@@ -255,6 +256,33 @@ async def run_gangnam():
     return ("강남", *counts)
 
 
+async def run_jeju():
+    print("\n🚀 [제주] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("제주 팝업스토어")
+        counts = upsert_naver_items(result, "제주") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [제주] 실패: {e}")
+        return "제주", 0, 0, 1
+    print("✅ [제주] 완료")
+    return ("제주", *counts)
+
+
+async def run_jeju_class():
+    # 결과가 많아도 100개만 랜덤 반영 — 재수집 때마다 다시 랜덤 100개로 갱신됨
+    print("\n🚀 [제주/원데이클래스] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("제주 원데이클래스")
+        if len(result) > 100:
+            result = random.sample(result, 100)
+        counts = upsert_naver_items(result, "제주", category="class") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [제주/원데이클래스] 실패: {e}")
+        return "제주/클래스", 0, 0, 1
+    print("✅ [제주/원데이클래스] 완료")
+    return ("제주/클래스", *counts)
+
+
 async def run_class(region: str, query: str, allowed_districts: Optional[list] = None):
     print(f"\n🚀 [{region}/원데이클래스] 수집 시작 ('{query}')")
     try:
@@ -277,6 +305,8 @@ async def run_all():
         await run_gangbuk(),
         await run_deohyundai(),
         await run_gangnam(),
+        await run_jeju(),
+        await run_jeju_class(),
         await run_class("성수", "성수 원데이클래스"),
         await run_class("성수", "성수 공방 체험"),
         await run_class("홍대", "홍대 원데이클래스"),

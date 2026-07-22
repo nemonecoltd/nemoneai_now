@@ -8,12 +8,13 @@ import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from './AdUnit';
+import ClosingSoonTicker from './ClosingSoonTicker';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'course' | 'theme' | 'place' | 'concert';
+type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival';
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
   const { user, signInWithGoogle } = useAuth();
@@ -22,6 +23,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);
   const [concerts, setConcerts] = useState([]);
+  const [festivals, setFestivals] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
@@ -38,6 +40,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       fetchThemes();
     } else if (activeTab === 'concert') {
       fetchConcerts();
+    } else if (activeTab === 'festival') {
+      fetchFestivals();
     }
   }, [activeTab, lang]);
 
@@ -46,6 +50,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     try {
       const res = await fetch(`/api-now/places/popular/performance?t=${Date.now()}`);
       if (res.ok) setConcerts(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFestivals = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular/festival?t=${Date.now()}`);
+      if (res.ok) setFestivals(await res.json());
     } finally {
       setIsLoading(false);
     }
@@ -173,19 +187,23 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
   return (
     <div className="h-full flex flex-col bg-zinc-50">
+      <ClosingSoonTicker lang={lang} />
       <div className="px-6 py-4">
-        <div className="flex bg-zinc-200/50 p-1 rounded-2xl">
-          <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Courses' : lang === 'zh' ? '路线排行' : '코스 랭킹'}
+        <div className="flex bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Courses' : lang === 'zh' ? '路线' : '코스'}
           </button>
-          <button onClick={() => setActiveTab('theme')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题排行' : '테마 랭킹'}
+          <button onClick={() => setActiveTab('theme')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : '테마'}
           </button>
-          <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Places' : lang === 'zh' ? '地点排行' : '플레이스 랭킹'}
+          <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Places' : lang === 'zh' ? '地点' : '플레이스'}
           </button>
-          <button onClick={() => setActiveTab('concert')} className={cn("flex-1 py-2.5 rounded-xl text-xs font-bold transition-all", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出排行' : '공연 랭킹'}
+          <button onClick={() => setActiveTab('concert')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : '공연'}
+          </button>
+          <button onClick={() => setActiveTab('festival')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : '축제'}
           </button>
         </div>
       </div>
@@ -193,7 +211,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="flex-1 overflow-y-auto px-6 pb-24 no-scrollbar">
         <AnimatePresence mode="wait">
           {activeTab === 'course' ? (
-            <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
               {courses.slice(0, 25).map((course: any, idx: number) => (
                 <div key={course.id}>
                   <div onClick={() => setSelectedCourse(course)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-emerald-200 transition-all group relative overflow-hidden mb-4">
@@ -218,7 +236,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                             : course.region === '강북' ? "bg-yellow-50 text-yellow-700 border-yellow-100"
                             : course.region === '강남' ? "bg-pink-50 text-pink-600 border-pink-100"
                             : course.region === '공연' ? "bg-purple-50 text-purple-600 border-purple-100"
-                            : course.region === '제주' ? "bg-cyan-50 text-cyan-600 border-cyan-100"
+                            : course.region === '제주' ? "bg-sky-50 text-[#0369a1] border-sky-200"
                             : course.region === '축제' ? "bg-amber-50 text-amber-600 border-amber-100"
                             : "bg-emerald-50 text-emerald-600 border-emerald-100"
                           )}>
@@ -254,7 +272,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'theme' ? (
-            <motion.div key="t" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <motion.div key="t" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
               {themes.slice(0, 25).map((theme: any, idx: number) => (
                 <div key={theme.id}>
                   <div onClick={() => setSelectedTheme(theme)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-blue-200 transition-all group relative overflow-hidden mb-4">
@@ -297,7 +315,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'place' ? (
-            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
               {places.slice(0, 25).map((place: any, idx: number) => (
                 <div key={place.id}>
                   <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
@@ -313,7 +331,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                           : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
                           : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                          : place.region === '제주' ? "bg-cyan-500 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
                           : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
@@ -343,17 +361,15 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {place.region === '공연'
                             ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')
-                            : place.region === '제주'
-                              ? (lang === 'en' ? 'Jeju Culture' : lang === 'zh' ? '济州文化' : '제주 공연·전시')
-                              : place.region === '축제'
-                                ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : '전국 축제')
-                                : place.category === 'class'
-                                  ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
-                                  : place.date_range || (lang === 'en'
-                                      ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : 'Seongsu'}`
-                                      : lang === 'zh'
-                                        ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : '圣水洞'}附近`
-                                        : `${place.region} 근처`)}
+                            : place.region === '축제'
+                              ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : '전국 축제')
+                              : (place.category === 'class' || place.category === 'shopping')
+                                ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
+                                : place.date_range || (lang === 'en'
+                                    ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                                    : lang === 'zh'
+                                      ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                                      : `${place.region} 근처`)}
                         </span>
                       </div>
                     </div>
@@ -368,8 +384,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 </div>
               ))}
             </motion.div>
-          ) : (
-            <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+          ) : activeTab === 'concert' ? (
+            <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
               {concerts.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
                   {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : '아직 공연 랭킹 데이터가 없습니다.'}
@@ -403,6 +419,51 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                     </div>
                     <Link href={`/posts/${place.id}?region=공연&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
+
+                  {idx === 2 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+              {festivals.length === 0 && !isLoading && (
+                <p className="text-center text-xs text-zinc-400 py-10">
+                  {lang === 'en' ? 'No festival ranking data yet.' : lang === 'zh' ? '暂无节庆排行数据。' : '아직 축제 랭킹 데이터가 없습니다.'}
+                </p>
+              )}
+              {festivals.slice(0, 25).map((place: any, idx: number) => (
+                <div key={place.id}>
+                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                      {idx + 1}
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                      <div className="absolute -bottom-1 -right-1 shadow-lg">
+                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                          {lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : '축제'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                        {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                      </h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                        </span>
+                        <span className="text-[9px] text-zinc-400 font-medium truncate">
+                          {lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제'}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/posts/${place.id}?region=축제&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>

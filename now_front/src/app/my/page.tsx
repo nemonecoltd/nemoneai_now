@@ -9,6 +9,7 @@ import {
   MessageSquare, Settings, Library, Edit3, Plus, Save, Calendar, Video
 } from 'lucide-react';
 import Link from 'next/link';
+import BrandTagline from '@/components/BrandTagline';
 import { useRouter } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -128,24 +129,27 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-32 border-x border-zinc-200">
-      <header className="fixed top-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <button onClick={() => router.push('/')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">MY PAGE</h1>
-        <div className="ml-auto flex items-center gap-2">
-          {user.email === 'nemonecoltd@gmail.com' && (
-            <Link href="/admin" className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all">
-              ADMIN
-            </Link>
-          )}
-          <button onClick={() => signOut()} className="p-2 bg-zinc-50 rounded-xl text-zinc-400 hover:text-rose-500 transition-colors">
-            <LogOut size={18} />
+      <header className="fixed top-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+            <ChevronLeft size={24} />
           </button>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">MY PAGE</h1>
+          <div className="ml-auto flex items-center gap-2">
+            {user.email === 'nemonecoltd@gmail.com' && (
+              <Link href="/admin" className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all">
+                ADMIN
+              </Link>
+            )}
+            <button onClick={() => signOut()} className="p-2 bg-zinc-50 rounded-xl text-zinc-400 hover:text-rose-500 transition-colors">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
+        <BrandTagline />
       </header>
 
-      <div className="bg-white px-8 pt-24 pb-10 rounded-b-[40px] shadow-sm">
+      <div className="bg-white px-8 pt-28 pb-10 rounded-b-[40px] shadow-sm">
         <div className="flex items-center gap-6 mb-8">
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg flex-shrink-0 bg-zinc-100">
             <img 

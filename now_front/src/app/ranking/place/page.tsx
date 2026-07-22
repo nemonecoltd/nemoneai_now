@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import BrandTagline from '@/components/BrandTagline';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -32,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title).join(', ');
   const title = '실시간 인기 핫플 TOP 25 | 지금여기';
-  const description = `성수·홍대·강북·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const description = `성수·홍대·강북·제주·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -46,16 +47,19 @@ export default async function PlaceRankingPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 py-4 flex items-center gap-4">
-        <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </Link>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 인기 핫플</h1>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </Link>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 인기 핫플</h1>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="px-6 pt-6 space-y-3">
         <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·공연·축제 통합 실시간 TOP 25입니다.
+          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·제주·공연·축제 통합 실시간 TOP 25입니다.
         </p>
 
         {places.length === 0 && (
