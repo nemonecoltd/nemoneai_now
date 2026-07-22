@@ -884,7 +884,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         </button>
 
         {/* Bottom Navigation */}
-        <nav className="pointer-events-auto bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-3 pb-6 flex justify-between items-center">
+        <nav className="pointer-events-auto bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-2 pb-4 flex justify-between items-center">
           <NavButton
             onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=rec&lang=${lang}`)}
             icon={<TrendingUp size={22} />}

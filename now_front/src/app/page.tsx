@@ -542,7 +542,7 @@ function Home() {
       </button>
 
       {/* Bottom Navigation */}
-      <nav className="bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-3 pb-6 flex justify-between items-center z-50">
+      <nav className="bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-2 pb-4 flex justify-between items-center z-50">
         <NavButton 
           active={activeTab === 'rec'} 
           onClick={() => setActiveTab('rec')} 
