@@ -663,10 +663,37 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         # 2. 캐시 없으면 Gemini 호출 (언어에 맞는 필드 가져옴)
         title_field = _lang_col(lang, "title")
         content_field = _lang_col(lang, "content")
-        
-        search_query = text(f"SELECT id, {title_field}, {content_field}, location, date_range FROM seongsu_places WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE) AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%' ORDER BY RANDOM() LIMIT 15")
+
+        # 후보 장소 선정: 기존엔 ORDER BY RANDOM()이라 매번 완전히 무작위였음(편향 버그의 응급조치였을 뿐,
+        # "이 동행에 맞는 장소를 고른다"는 문제 자체는 회피한 상태) — companion을 자연어 쿼리로 바꿔
+        # pgvector 임베딩 유사도로 정렬하고, 카테고리별 ROW_NUMBER round-robin으로 한 카테고리 쏠림 방지
+        _COMPANION_QUERY = {
+            "solo": "혼자 조용히 둘러보기 좋은 감성적인 장소",
+            "couple": "연인과 함께 가기 좋은 로맨틱한 데이트 장소",
+            "friends": "친구들과 함께 즐겁게 놀기 좋은 활기찬 장소",
+        }
+        companion_query_text = _COMPANION_QUERY.get(req.companion.strip().lower(), "누구와 가도 좋은 인기 장소")
+        companion_embedding = await asyncio.to_thread(get_embedding, companion_query_text)
+        companion_embedding_str = f"[{','.join(map(str, companion_embedding))}]"
+
+        search_query = text(f"""
+            WITH ranked AS (
+                SELECT id, {title_field} AS title, {content_field} AS content, location, date_range,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY COALESCE(category, 'popup')
+                           ORDER BY embedding <-> :embedding
+                       ) AS rn,
+                       COALESCE(category, 'popup') AS cat
+                FROM seongsu_places
+                WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+                  AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
+            )
+            SELECT id, title, content, location, date_range FROM ranked
+            ORDER BY rn ASC, cat ASC
+            LIMIT 15
+        """)
         with engine.connect() as conn:
-            result = conn.execute(search_query, {"region": region})
+            result = conn.execute(search_query, {"region": region, "embedding": companion_embedding_str})
             rows = result.fetchall()
             context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
         
