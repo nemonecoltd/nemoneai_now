@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart,
@@ -381,9 +382,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             >
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <span className="text-lg font-black tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
+            <Link href="/" className="text-lg font-black tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0 no-underline">
               {t.nowHere} <span className="text-emerald-500">.</span>
-            </span>
+            </Link>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 shadow-inner">
@@ -392,7 +393,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   key={l}
                   onClick={() => setLang(l)}
                   className={cn(
-                    "px-2 py-0.5 text-[9px] font-black rounded-md transition-all",
+                    "px-2.5 py-1 text-[11px] font-black rounded-md transition-all whitespace-nowrap",
                     lang === l ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"
                   )}
                 >
