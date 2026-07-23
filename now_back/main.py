@@ -10,6 +10,7 @@ from database import engine, cleanup_expired_data
 from image_storage import rehost_image, delete_image, upload_bytes, get_storage_usage
 from gemini_service import get_embedding, generate_answer, ai_translate
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 import uvicorn
 import logging
 import os
@@ -1446,6 +1447,42 @@ scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='rankin
 scheduler.add_job(refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600')
 scheduler.add_job(refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000')
 scheduler.start()
+
+# 신규 팝업 자동 블로그갱신 — 10분마다 blog_reviews가 비어있는 네이버 팝업(공연/축제/코피스/비짓제주 등
+# 레거시 소스 제외)을 찾아 자동으로 갱신. Playwright가 로컬에만 있어 프로덕션에선 절대 켜면 안 됨 —
+# 로컬 .env에만 AUTO_ENRICH_POPUPS=true를 넣어서 게이트.
+# created_at 7일(지난주치까지) 이내로 한정 — 매주 목요일 스크래핑분만 대상으로 하고 그보다 예전부터
+# 쌓인 미갱신 백로그는 안 건드림(백로그는 기존처럼 어드민/텔레그램 수동 트리거로 처리).
+def _auto_enrich_new_popups() -> None:
+    import asyncio as _asyncio
+    BATCH_LIMIT = 1  # 10분마다 1건 — 안전하게 천천히
+    ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
+    with engine.connect() as conn:
+        rows = conn.execute(text("""
+            SELECT id FROM seongsu_places
+            WHERE blog_reviews IS NULL
+              AND COALESCE(category, 'popup') = 'popup'
+              AND region NOT IN ('공연', '축제')
+              AND naver_place_id NOT LIKE 'kopis_%'
+              AND naver_place_id NOT LIKE 'jeju_%'
+              AND naver_place_id NOT LIKE 'culture_%'
+              AND naver_place_id NOT LIKE 'visitjeju_%'
+              AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+              AND created_at >= NOW() - INTERVAL '7 days'
+            ORDER BY created_at ASC
+            LIMIT :limit
+        """), {"limit": BATCH_LIMIT}).fetchall()
+    for row in rows:
+        try:
+            _asyncio.run(_asyncio.wait_for(_enrich_place_core(row.id), timeout=ITEM_TIMEOUT_SEC))
+            logger.info("[auto_enrich] 완료 (place_id=%s)", row.id)
+        except _asyncio.TimeoutError:
+            logger.error("[auto_enrich] 타임아웃(%ss 초과) — 건너뜀 (place_id=%s)", ITEM_TIMEOUT_SEC, row.id)
+        except Exception as e:
+            logger.error("[auto_enrich] 실패 (place_id=%s): %s", row.id, e)
+
+if os.getenv("AUTO_ENRICH_POPUPS") == "true":
+    scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
 
 # 텔레그램으로 플레이스 ID 보내면 블로그갱신 트리거 — 로컬 전용(Playwright 없는 프로덕션에선 절대 켜면 안 됨,
 # getUpdates 폴링도 두 곳에서 동시에 하면 충돌함). 로컬 .env에만 TELEGRAM_BOT_ENABLED=true를 넣어서 게이트.
