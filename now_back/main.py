@@ -1480,8 +1480,12 @@ scheduler.start()
 # 로컬 .env에만 AUTO_ENRICH_POPUPS=true를 넣어서 게이트.
 # created_at 7일(지난주치까지) 이내로 한정 — 매주 목요일 스크래핑분만 대상으로 하고 그보다 예전부터
 # 쌓인 미갱신 백로그는 안 건드림(백로그는 기존처럼 어드민/텔레그램 수동 트리거로 처리).
+_auto_enrich_success_count = 0
+_auto_enrich_fail_count = 0
+
 def _auto_enrich_new_popups() -> None:
     import asyncio as _asyncio
+    global _auto_enrich_success_count, _auto_enrich_fail_count
     BATCH_LIMIT = 1  # 10분마다 1건 — 안전하게 천천히
     ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
     with engine.connect() as conn:
@@ -1499,14 +1503,29 @@ def _auto_enrich_new_popups() -> None:
             ORDER BY created_at ASC
             LIMIT :limit
         """), {"limit": BATCH_LIMIT}).fetchall()
+
+    if not rows:
+        # 처리할 게 없어짐 = 이번 배치 종료. 뭔가 했었으면(카운터>0) 요약 알림 후 리셋, 이미 0이면(계속 idle) 조용히 넘어감
+        if _auto_enrich_success_count or _auto_enrich_fail_count:
+            from notification import send_alert
+            send_alert(
+                f"[신규 팝업 자동 블로그갱신] 배치 완료 — 성공 {_auto_enrich_success_count}건, 실패 {_auto_enrich_fail_count}건"
+            )
+            _auto_enrich_success_count = 0
+            _auto_enrich_fail_count = 0
+        return
+
     for row in rows:
         try:
             _asyncio.run(_asyncio.wait_for(_enrich_place_core(row.id), timeout=ITEM_TIMEOUT_SEC))
             logger.info("[auto_enrich] 완료 (place_id=%s)", row.id)
+            _auto_enrich_success_count += 1
         except _asyncio.TimeoutError:
             logger.error("[auto_enrich] 타임아웃(%ss 초과) — 건너뜀 (place_id=%s)", ITEM_TIMEOUT_SEC, row.id)
+            _auto_enrich_fail_count += 1
         except Exception as e:
             logger.error("[auto_enrich] 실패 (place_id=%s): %s", row.id, e)
+            _auto_enrich_fail_count += 1
 
 if os.getenv("AUTO_ENRICH_POPUPS") == "true":
     scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
