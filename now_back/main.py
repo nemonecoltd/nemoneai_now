@@ -767,10 +767,10 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         where_clause += f" AND p.category = '{category}'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
     base_cols = "p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id"
-    # sort 옵션: 'latest'(최신 갱신/수집순), 'popular'(최근 30일 조회+좋아요 인기순), 'closing'(마감임박순), 기본은 랜덤
-    # updated_at은 어드민 수동 편집 시에만 찍혀(스크래퍼 재수집은 안 건드림) 대부분 NULL이라,
-    # "updated_at DESC NULLS LAST"를 그대로 1순위로 쓰면 몇 달 전 수동 편집된 소수 항목이
-    # 오늘 새로 수집된 항목보다 항상 위로 올라가는 문제가 있었음 — GREATEST로 실제 최신 시점 비교
+    # sort 옵션: 'latest'(신규 수집순), 'popular'(최근 30일 조회+좋아요 인기순), 'closing'(마감임박순), 기본은 랜덤
+    # 예전엔 GREATEST(updated_at, created_at)를 썼는데, 블로그갱신(어드민 수동 편집 + 신규 팝업 자동갱신 스케줄러)이
+    # updated_at을 계속 찍다 보니 몇 달 전 수집된 팝업이 오늘 갱신됐다는 이유만으로 "최신순" 상위에 튀어오르는
+    # 문제가 생김 — "최신순"은 사용자 입장에서 "신규 추가"를 의미하므로 created_at만 기준으로 함
     if sort == "popular":
         query = text(
             f"SELECT {base_cols}, COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score "
@@ -783,7 +783,7 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         )
     else:
         order_clause = (
-            "GREATEST(p.updated_at, p.created_at) DESC" if sort == "latest"
+            "p.created_at DESC" if sort == "latest"
             else "p.end_date ASC NULLS LAST" if sort == "closing"
             else "RANDOM()"
         )
