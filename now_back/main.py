@@ -1251,12 +1251,15 @@ async def _enrich_place_core(place_id: int) -> dict:
         raise RuntimeError(f"Gemini 생성 실패: {e}")
 
     # 4. DB 저장 — content 업데이트 + blog_reviews 저장 + 갱신 시각 기록
+    # blog_reviews가 빈 배열([])일 때 "if blog_reviews else None"이 False로 평가돼 NULL로 저장되던 버그 —
+    # 실제로 리뷰가 0건인 장소가 영원히 "미처리(NULL)"로 보여서 자동갱신 스케줄러가 같은 곳을 무한 재시도했음.
+    # 스크래핑이 실행됐다는 사실 자체를 항상 빈 배열로라도 기록해 "처리 완료"를 구분할 수 있게 함.
     with engine.connect() as conn:
         conn.execute(
             text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, updated_at = NOW() WHERE id = :id"),
             {
                 "content": generated,
-                "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False) if blog_reviews else None,
+                "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False),
                 "id": place_id,
             }
         )

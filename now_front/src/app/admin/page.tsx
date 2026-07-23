@@ -623,7 +623,7 @@ export default function AdminPage() {
                     <div className="flex-grow min-w-0">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
-                        {item.blog_reviews && item.blog_reviews.length > 0 ? (
+                        {item.blog_reviews != null ? (
                           <span className="flex-shrink-0 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
                             갱신됨
                           </span>
