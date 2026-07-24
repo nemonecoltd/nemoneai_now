@@ -9,6 +9,8 @@ from datetime import date, datetime, timedelta
 import requests
 from dotenv import load_dotenv
 
+from image_storage import rehost_image
+
 load_dotenv()
 
 KOPIS_SERVICE_KEY = os.getenv("KOPIS_SERVICE_KEY")
@@ -180,7 +182,9 @@ async def scrape_kopis_concert() -> list[dict]:
             "longitude": None,
             "video_url": "",
             "naver_place_id": f"kopis_{mt20id}",
-            "image_url": poster,
+            # KOPIS 포스터를 그대로 핫링크(http://, 비HTTPS)하면 HTTPS 페이지에서 혼합 콘텐츠가 되고
+            # KOPIS 서버 상태에 의존하게 됨 — 다른 소스(네이버/비짓서울/비짓제주)와 동일하게 우리 스토리지로 재호스팅
+            "image_url": rehost_image(poster) or "",
             "region": meta["region"],
             "category": meta.get("category"),
             "end_date_actual": end_date_actual,

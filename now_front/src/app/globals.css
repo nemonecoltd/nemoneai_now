@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-    --font-display: "Space Grotesk", sans-serif;
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-space-grotesk), sans-serif;
   }
   
   body {
