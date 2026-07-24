@@ -225,6 +225,7 @@ async def scrape_culture_api_festival() -> list[dict]:
             "image_url": image_url,
             "region": "축제",
             "end_date_actual": _end_date_actual(it["eventPeriod"]),
+            "date_range": it["eventPeriod"],
             "detail_url": it["url"],
         })
 
