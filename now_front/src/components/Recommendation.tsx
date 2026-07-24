@@ -15,6 +15,8 @@ function cn(...inputs: ClassValue[]) {
 }
 
 type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival';
+const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '제주'] as const;
+type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
   const { user, signInWithGoogle } = useAuth();
@@ -22,6 +24,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [courses, setCourses] = useState([]);
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);
+  const [placeRegion, setPlaceRegion] = useState<PlaceRankingRegion>('종합');
   const [concerts, setConcerts] = useState([]);
   const [festivals, setFestivals] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
@@ -30,8 +33,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    setPlaces(initialPlaces);
-  }, [initialPlaces]);
+    if (placeRegion === '종합') setPlaces(initialPlaces);
+  }, [initialPlaces, placeRegion]);
 
   useEffect(() => {
     if (activeTab === 'course') {
@@ -42,8 +45,24 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       fetchConcerts();
     } else if (activeTab === 'festival') {
       fetchFestivals();
+    } else if (activeTab === 'place' && placeRegion !== '종합') {
+      fetchPlacesByRegion(placeRegion);
     }
-  }, [activeTab, lang]);
+  }, [activeTab, lang, placeRegion]);
+
+  const fetchPlacesByRegion = async (region: PlaceRankingRegion) => {
+    if (region === '종합') {
+      setPlaces(initialPlaces);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular?region=${encodeURIComponent(region)}&t=${Date.now()}`);
+      if (res.ok) setPlaces(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const fetchConcerts = async () => {
     setIsLoading(true);
@@ -206,6 +225,32 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : '축제'}
           </button>
         </div>
+        {activeTab === 'place' && (
+          <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+            {PLACE_RANKING_REGIONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setPlaceRegion(r)}
+                className={cn(
+                  "flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
+                  placeRegion === r ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-400 border-zinc-200"
+                )}
+              >
+                {r === '종합'
+                  ? (lang === 'en' ? 'All' : lang === 'zh' ? '综合' : '종합')
+                  : r === '홍대'
+                    ? (lang === 'en' ? 'Hongdae' : lang === 'zh' ? '弘大' : '홍대')
+                    : r === '강북'
+                      ? (lang === 'en' ? 'Gangbuk' : lang === 'zh' ? '江北' : '강북')
+                      : r === '강남'
+                        ? (lang === 'en' ? 'Gangnam' : lang === 'zh' ? '江南' : '강남')
+                        : r === '제주'
+                          ? (lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : '제주')
+                          : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : '성수')}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 pb-24 no-scrollbar">

@@ -15,13 +15,34 @@ async function getPlace(id: string): Promise<Place | null> {
   }
 }
 
-async function getSuggestions(excludeId: string, region: string): Promise<Place[]> {
+// '이런 곳도 있어요' 추천 풀 — 팝업/전시는 자기 카테고리끼리만, 클래스+쇼핑은 '상시 운영' 성격이 같아 하나로 묶음.
+// 공연 장르(연극/뮤지컬/음악/종합)·제주 행사 등은 이번 범위 밖이라 null을 반환해 기존처럼 지역 전체에서 추천.
+function popupCategoryGroup(category?: string | null): 'popup' | 'living' | '전시' | null {
+  if (category === 'class' || category === 'shopping') return 'living';
+  if (category === '전시') return '전시';
+  if (!category || category === 'popup') return 'popup';
+  return null;
+}
+
+async function getSuggestions(excludeId: string, region: string, group: 'popup' | 'living' | '전시' | null): Promise<Place[]> {
   try {
-    const res = await fetch(`${BACKEND}/places?region=${encodeURIComponent(region)}&limit=30`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return [];
-    const all: Place[] = await res.json();
+    let all: Place[] = [];
+    if (group === 'living') {
+      const [classRes, shopRes] = await Promise.all([
+        fetch(`${BACKEND}/places?region=${encodeURIComponent(region)}&category=class&limit=20`, { next: { revalidate: 300 } }),
+        fetch(`${BACKEND}/places?region=${encodeURIComponent(region)}&category=shopping&limit=20`, { next: { revalidate: 300 } }),
+      ]);
+      const [classData, shopData] = await Promise.all([
+        classRes.ok ? classRes.json() : [],
+        shopRes.ok ? shopRes.json() : [],
+      ]);
+      all = [...classData, ...shopData];
+    } else {
+      const categoryParam = group ? `&category=${encodeURIComponent(group)}` : '';
+      const res = await fetch(`${BACKEND}/places?region=${encodeURIComponent(region)}&limit=30${categoryParam}`, { next: { revalidate: 300 } });
+      if (!res.ok) return [];
+      all = await res.json();
+    }
     const pool = all.filter((p) => p.id !== Number(excludeId) && p.image_url);
     return pool.sort(() => Math.random() - 0.5).slice(0, 15);
   } catch {
@@ -97,7 +118,7 @@ export default async function PostDetailPage({
   const { lang = 'ko' } = await searchParams;
 
   const place = await getPlace(id);
-  const suggestions = place ? await getSuggestions(id, place.region || '성수') : [];
+  const suggestions = place ? await getSuggestions(id, place.region || '성수', popupCategoryGroup(place.category)) : [];
 
   return <PlaceDetailClient place={place} lang={lang} suggestions={suggestions} />;
 }

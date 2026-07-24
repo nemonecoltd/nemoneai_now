@@ -585,9 +585,11 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/places/popular")
-async def get_popular_places(limit: Optional[int] = None, offset: int = 0):
-    """인기 랭킹 (조회수+좋아요*2 가중치, 하루 2회 갱신 캐시). 지역 무관 통합 랭킹(공연 제외)."""
-    data = _place_popularity_cache[offset:]
+async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+    """인기 랭킹 (조회수+좋아요*2 가중치, 4시간 주기 갱신 캐시).
+    region 미지정: 지역 무관 통합 랭킹(공연/축제 제외). region 지정 시(성수/홍대/강북/강남/제주) 해당 지역만."""
+    source = _place_popularity_by_region.get(region, []) if region else _place_popularity_cache
+    data = source[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -840,9 +842,12 @@ async def record_place_view(place_id: int):
 _place_popularity_cache: list = []
 _performance_popularity_cache: list = []
 _festival_popularity_cache: list = []
+_place_popularity_by_region: dict = {}
 _popularity_last_refreshed: Optional[str] = None
 
-def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False):
+_PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '제주']  # 플레이스 랭킹 지역 서브탭
+
+def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False, only_region: Optional[str] = None):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
     only_performance=False, only_festival=False(기본, 플레이스 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
     (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
@@ -850,7 +855,8 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     only_festival=True(축제 랭킹 전용): region='축제'만 집계.
     min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
     exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
-    제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청."""
+    제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청.
+    only_region: 플레이스 랭킹 지역 서브탭용 — _PLACE_RANKING_REGIONS 중 하나만 집계(호출 전 화이트리스트 검증 필수, SQL에 직접 삽입됨)."""
     if only_performance:
         region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
     elif only_festival:
@@ -859,6 +865,8 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
         region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
         if exclude_jeju:
             region_clause += " AND p.region != '제주'"
+        if only_region:
+            region_clause += f" AND p.region = '{only_region}'"
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews,
@@ -884,7 +892,7 @@ def refresh_place_popularity(is_cron: bool = False):
     48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화.
     _MIN_RANKING_SCORE 미만 항목은 아예 제외해, 활동이 적을 땐 25개를 억지로 채우지 않고 그보다 적게 노출될 수 있음.
     is_cron: True면 스케줄러가 정확히 4시간 간격으로 호출한 것 — 이때만 NEW 배지 기준 스냅샷을 갱신함."""
-    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _popularity_last_refreshed
+    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -939,6 +947,15 @@ def refresh_place_popularity(is_cron: bool = False):
                 {"ids": json.dumps(current_top25_ids), "prev_ids": json.dumps(sorted(prev_top25_ids))},
             )
             conn.commit()
+
+        # 플레이스 랭킹 지역 서브탭 — 종합과 같은 산식으로 지역별 톱25만 따로 캐시(NEW 배지는 아직 미적용)
+        by_region: dict = {}
+        for r in _PLACE_RANKING_REGIONS:
+            r_result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE, only_region=r))
+            if len(r_result) < 25:
+                r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
+            by_region[r] = [dict(row._mapping) for row in r_result]
+        _place_popularity_by_region = by_region
 
         # 공연 랭킹 전용 NEW 배지 — 플레이스 랭킹과 동일한 스냅샷 방식(직전 사이클 대비 신규 진입만 표시)
         conn.execute(text("""
