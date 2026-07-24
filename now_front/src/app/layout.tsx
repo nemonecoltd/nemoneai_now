@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     title: '지금 여기 | 당신 3시간의 알찬 설계',
     description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
     url: 'https://now.nemoneai.com',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
     type: 'website',
     locale: 'ko_KR',
   },
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: '지금 여기 | 당신 3시간의 알찬 설계',
     description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
-    images: ['/og-image.png'],
+    images: ['/og-image.jpg'],
   },
   robots: {
     index: true,
