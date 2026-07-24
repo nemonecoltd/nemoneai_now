@@ -948,13 +948,45 @@ def refresh_place_popularity(is_cron: bool = False):
             )
             conn.commit()
 
-        # 플레이스 랭킹 지역 서브탭 — 종합과 같은 산식으로 지역별 톱25만 따로 캐시(NEW 배지는 아직 미적용)
+        # 플레이스 랭킹 지역 서브탭 — 종합과 같은 산식으로 지역별 톱25만 따로 캐시 + 지역별 NEW 배지
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS place_region_ranking_snapshot (
+                region TEXT PRIMARY KEY,
+                top25_ids JSONB NOT NULL,
+                prev_top25_ids JSONB,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        """))
+        conn.commit()
+
         by_region: dict = {}
         for r in _PLACE_RANKING_REGIONS:
             r_result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE, only_region=r))
             if len(r_result) < 25:
                 r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
-            by_region[r] = [dict(row._mapping) for row in r_result]
+            region_cache = [dict(row._mapping) for row in r_result]
+
+            prev_r_snapshot = conn.execute(text("SELECT top25_ids FROM place_region_ranking_snapshot WHERE region = :region"), {"region": r}).fetchone()
+            prev_r_ids = set(prev_r_snapshot[0]) if prev_r_snapshot else set()
+            current_r_ids = [item["id"] for item in region_cache[:25]]
+            r_new_ids = set(current_r_ids) - prev_r_ids
+            for item in region_cache:
+                item["is_new"] = item["id"] in r_new_ids
+            by_region[r] = region_cache
+
+            if is_real_cycle:
+                conn.execute(
+                    text("""
+                        INSERT INTO place_region_ranking_snapshot (region, top25_ids, prev_top25_ids, updated_at)
+                        VALUES (:region, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
+                        ON CONFLICT (region) DO UPDATE SET
+                            prev_top25_ids = place_region_ranking_snapshot.top25_ids,
+                            top25_ids = CAST(:ids AS jsonb),
+                            updated_at = NOW()
+                    """),
+                    {"region": r, "ids": json.dumps(current_r_ids), "prev_ids": json.dumps(sorted(prev_r_ids))},
+                )
+                conn.commit()
         _place_popularity_by_region = by_region
 
         # 공연 랭킹 전용 NEW 배지 — 플레이스 랭킹과 동일한 스냅샷 방식(직전 사이클 대비 신규 진입만 표시)
