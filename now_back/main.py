@@ -904,6 +904,8 @@ def refresh_place_popularity(is_cron: bool = False):
             )
         """))
         conn.execute(text("ALTER TABLE ranking_snapshot ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"))
+        # NEW 배지 계산 검증용 — 직전 한 사이클치 톱25도 같이 보관(그 이전 이력은 안 쌓음)
+        conn.execute(text("ALTER TABLE ranking_snapshot ADD COLUMN IF NOT EXISTS prev_top25_ids JSONB"))
         conn.commit()
 
         prev_snapshot = conn.execute(text("SELECT top25_ids, updated_at FROM ranking_snapshot WHERE id = 1")).fetchone()
@@ -924,16 +926,56 @@ def refresh_place_popularity(is_cron: bool = False):
         for item in _place_popularity_cache:
             item["is_new"] = item["id"] in new_ids
         if is_real_cycle:
+            logger.info("[ranking] NEW 배지 계산 — 직전 톱25=%s / 이번 톱25=%s / new_ids=%s", sorted(prev_top25_ids), sorted(current_top25_ids), sorted(new_ids))
             conn.execute(
-                text("INSERT INTO ranking_snapshot (id, top25_ids, updated_at) VALUES (1, CAST(:ids AS jsonb), NOW()) ON CONFLICT (id) DO UPDATE SET top25_ids = CAST(:ids AS jsonb), updated_at = NOW()"),
-                {"ids": json.dumps(current_top25_ids)},
+                text("""
+                    INSERT INTO ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
+                    VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        prev_top25_ids = ranking_snapshot.top25_ids,
+                        top25_ids = CAST(:ids AS jsonb),
+                        updated_at = NOW()
+                """),
+                {"ids": json.dumps(current_top25_ids), "prev_ids": json.dumps(sorted(prev_top25_ids))},
             )
             conn.commit()
+
+        # 공연 랭킹 전용 NEW 배지 — 플레이스 랭킹과 동일한 스냅샷 방식(직전 사이클 대비 신규 진입만 표시)
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS performance_ranking_snapshot (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                top25_ids JSONB NOT NULL,
+                prev_top25_ids JSONB,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                CHECK (id = 1)
+            )
+        """))
+        conn.commit()
+        prev_perf_snapshot = conn.execute(text("SELECT top25_ids FROM performance_ranking_snapshot WHERE id = 1")).fetchone()
+        prev_perf_top25_ids = set(prev_perf_snapshot[0]) if prev_perf_snapshot else set()
 
         perf_result = list(_popularity_rows(conn, 2, only_performance=True, min_score=_MIN_RANKING_SCORE))
         if len(perf_result) < 25:
             perf_result = list(_popularity_rows(conn, 30, only_performance=True, min_score=_MIN_RANKING_SCORE))
         _performance_popularity_cache = [dict(row._mapping) for row in perf_result]
+
+        current_perf_top25_ids = [item["id"] for item in _performance_popularity_cache[:25]]
+        perf_new_ids = set(current_perf_top25_ids) - prev_perf_top25_ids
+        for item in _performance_popularity_cache:
+            item["is_new"] = item["id"] in perf_new_ids
+        if is_real_cycle:
+            conn.execute(
+                text("""
+                    INSERT INTO performance_ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
+                    VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
+                    ON CONFLICT (id) DO UPDATE SET
+                        prev_top25_ids = performance_ranking_snapshot.top25_ids,
+                        top25_ids = CAST(:ids AS jsonb),
+                        updated_at = NOW()
+                """),
+                {"ids": json.dumps(current_perf_top25_ids), "prev_ids": json.dumps(sorted(prev_perf_top25_ids))},
+            )
+            conn.commit()
 
         fest_result = list(_popularity_rows(conn, 2, only_festival=True, min_score=_MIN_RANKING_SCORE))
         if len(fest_result) < 25:

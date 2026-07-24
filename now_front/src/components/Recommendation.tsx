@@ -406,20 +406,31 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
                       <div className="absolute -bottom-1 -right-1 shadow-lg">
                         <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-                          {lang === 'en' ? 'CONCERT' : lang === 'zh' ? '演出' : '공연'}
+                          {lang === 'en'
+                            ? (place.category === '연극' ? 'THEATER' : place.category === '뮤지컬' ? 'MUSICAL' : place.category === '음악' ? 'MUSIC' : 'CONCERT')
+                            : lang === 'zh'
+                              ? (place.category === '연극' ? '话剧' : place.category === '뮤지컬' ? '音乐剧' : place.category === '음악' ? '音乐' : '综合')
+                              : (place.category || '종합')}
                         </span>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                        {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                      </h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                        </h4>
+                        {place.is_new && (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                           <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연'}
+                          {place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')}
                         </span>
                       </div>
                     </div>
@@ -464,7 +475,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제'}
+                          {place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제')}
                         </span>
                       </div>
                     </div>

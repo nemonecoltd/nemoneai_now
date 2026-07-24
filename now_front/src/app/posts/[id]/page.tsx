@@ -53,8 +53,10 @@ export async function generateMetadata({
 
   if (!place) {
     return {
-      title: `장소 정보 #${id}`,
+      title: `운영 종료된 팝업·행사 #${id}`,
+      description: `#${id} 팝업·행사는 운영 기간이 종료되어 더 이상 조회할 수 없습니다. 지금 가볼 만한 다른 핫플을 확인해보세요.`,
       alternates: { canonical },
+      robots: { index: false, follow: true },
     };
   }
 
