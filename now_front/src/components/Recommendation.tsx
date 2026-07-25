@@ -205,36 +205,21 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   };
 
   // 랭킹 공유/마이페이지 저장 — 클릭 시점의 top10 스냅샷을 그대로 고정해서 보관(라이브 랭킹과 무관하게 유지)
-  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival' || activeTab === 'theme';
+  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival';
   const currentRankingLabel = activeTab === 'place'
     ? `${placeRegion === '종합' ? '종합' : placeRegion} 핫플 랭킹`
-    : activeTab === 'concert' ? '공연 랭킹' : activeTab === 'festival' ? '축제 랭킹' : '테마 랭킹';
+    : activeTab === 'concert' ? '공연 랭킹' : '축제 랭킹';
 
-  const buildShareItems = () => {
-    if (activeTab === 'theme') {
-      return themes.slice(0, 10).map((t: any) => {
-        const themePlaces = typeof t.places === 'string' ? JSON.parse(t.places) : t.places;
-        return { id: t.id, title: t.title, description: t.description, image_url: themePlaces?.[0]?.image_url };
-      });
-    }
-    const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
-    return list.slice(0, 10).map((p: any) => ({
-      id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
-      image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
-    }));
-  };
-
-  const createRankingShare = async (userId?: string) => {
-    const items = buildShareItems();
+  const createRankingShare = async (opts: { tab: string; region?: string | null; label: string; items: any[]; userId?: string }) => {
     const res = await fetch('/api-now/ranking/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tab: activeTab,
-        region: activeTab === 'place' ? placeRegion : null,
-        label: currentRankingLabel,
-        items,
-        user_id: userId || null,
+        tab: opts.tab,
+        region: opts.region ?? null,
+        label: opts.label,
+        items: opts.items,
+        user_id: opts.userId || null,
       }),
     });
     if (!res.ok) throw new Error('공유 링크 생성 실패');
@@ -243,7 +228,12 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
   const handleShareRanking = async () => {
     try {
-      const { id } = await createRankingShare();
+      const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
+      const items = list.slice(0, 10).map((p: any) => ({
+        id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
+        image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
+      }));
+      const { id } = await createRankingShare({ tab: activeTab, region: activeTab === 'place' ? placeRegion : null, label: currentRankingLabel, items });
       const url = `${window.location.origin}/ranking/share/${id}`;
       await navigator.clipboard.writeText(url);
       alert('공유 링크가 복사되었습니다!');
@@ -256,7 +246,40 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const handleSaveRanking = async () => {
     if (!user) return signInWithGoogle();
     try {
-      await createRankingShare(user.id);
+      const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
+      const items = list.slice(0, 10).map((p: any) => ({
+        id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
+        image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
+      }));
+      await createRankingShare({ tab: activeTab, region: activeTab === 'place' ? placeRegion : null, label: currentRankingLabel, items, userId: user.id });
+      alert('마이페이지에 저장했습니다!');
+    } catch (e) {
+      alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error(e);
+    }
+  };
+
+  // 테마 상세(선택한 테마 하나에 딸린 장소 10개)를 공유/저장 — 테마 랭킹 목록 자체는 공유 대상 아님
+  const handleShareTheme = async (theme: any) => {
+    try {
+      const themePlaces = typeof theme.places === 'string' ? JSON.parse(theme.places) : theme.places;
+      const items = themePlaces.slice(0, 10).map((p: any) => ({ id: p.id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }));
+      const { id } = await createRankingShare({ tab: 'theme', label: theme.title, items });
+      const url = `${window.location.origin}/ranking/share/${id}`;
+      await navigator.clipboard.writeText(url);
+      alert('공유 링크가 복사되었습니다!');
+    } catch (e) {
+      alert('공유 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error(e);
+    }
+  };
+
+  const handleSaveTheme = async (theme: any) => {
+    if (!user) return signInWithGoogle();
+    try {
+      const themePlaces = typeof theme.places === 'string' ? JSON.parse(theme.places) : theme.places;
+      const items = themePlaces.slice(0, 10).map((p: any) => ({ id: p.id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }));
+      await createRankingShare({ tab: 'theme', label: theme.title, items, userId: user.id });
       alert('마이페이지에 저장했습니다!');
     } catch (e) {
       alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
@@ -726,7 +749,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 ))}
               </div>
 
-              <button 
+              <div className="flex gap-2 mb-3">
+                <button onClick={() => handleShareTheme(selectedTheme)} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+                  <Share2 size={14} /> 공유하기
+                </button>
+                <button onClick={() => handleSaveTheme(selectedTheme)} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+                  <Save size={14} /> 마이페이지에 저장
+                </button>
+              </div>
+
+              <button
                 onClick={() => handleForkTheme(selectedTheme)}
                 className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all"
               >
