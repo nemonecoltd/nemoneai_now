@@ -274,19 +274,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     }
   };
 
-  const handleSaveTheme = async (theme: any) => {
-    if (!user) return signInWithGoogle();
-    try {
-      const themePlaces = typeof theme.places === 'string' ? JSON.parse(theme.places) : theme.places;
-      const items = themePlaces.slice(0, 10).map((p: any) => ({ id: p.id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }));
-      await createRankingShare({ tab: 'theme', label: theme.title, items, userId: user.id });
-      alert('마이페이지에 저장했습니다!');
-    } catch (e) {
-      alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
-      console.error(e);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
@@ -749,14 +736,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 ))}
               </div>
 
-              <div className="flex gap-2 mb-3">
-                <button onClick={() => handleShareTheme(selectedTheme)} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
-                  <Share2 size={14} /> 공유하기
-                </button>
-                <button onClick={() => handleSaveTheme(selectedTheme)} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
-                  <Save size={14} /> 마이페이지에 저장
-                </button>
-              </div>
+              <button onClick={() => handleShareTheme(selectedTheme)} className="w-full mb-3 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+                <Share2 size={14} /> 공유하기
+              </button>
 
               <button
                 onClick={() => handleForkTheme(selectedTheme)}
