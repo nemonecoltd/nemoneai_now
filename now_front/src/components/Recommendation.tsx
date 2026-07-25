@@ -204,6 +204,55 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     }
   };
 
+  // 랭킹 공유/마이페이지 저장 — 클릭 시점의 top10 스냅샷을 그대로 고정해서 보관(라이브 랭킹과 무관하게 유지)
+  const currentRankingList = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : activeTab === 'festival' ? festivals : [];
+  const currentRankingLabel = activeTab === 'place'
+    ? `${placeRegion === '종합' ? '종합' : placeRegion} 핫플 랭킹`
+    : activeTab === 'concert' ? '공연 랭킹' : '축제 랭킹';
+
+  const createRankingShare = async (userId?: string) => {
+    const items = currentRankingList.slice(0, 10).map((p: any) => ({
+      id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
+      image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
+    }));
+    const res = await fetch('/api-now/ranking/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tab: activeTab,
+        region: activeTab === 'place' ? placeRegion : null,
+        label: currentRankingLabel,
+        items,
+        user_id: userId || null,
+      }),
+    });
+    if (!res.ok) throw new Error('공유 링크 생성 실패');
+    return res.json();
+  };
+
+  const handleShareRanking = async () => {
+    try {
+      const { id } = await createRankingShare();
+      const url = `${window.location.origin}/ranking/share/${id}`;
+      await navigator.clipboard.writeText(url);
+      alert('공유 링크가 복사되었습니다!');
+    } catch (e) {
+      alert('공유 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error(e);
+    }
+  };
+
+  const handleSaveRanking = async () => {
+    if (!user) return signInWithGoogle();
+    try {
+      await createRankingShare(user.id);
+      alert('마이페이지에 저장했습니다!');
+    } catch (e) {
+      alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      console.error(e);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
@@ -249,6 +298,18 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : '성수')}
               </button>
             ))}
+          </div>
+        )}
+        {(activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival') && (
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <button onClick={handleShareRanking} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-700 px-2 py-1 transition-colors">
+              <Share2 size={12} />
+              {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유'}
+            </button>
+            <button onClick={handleSaveRanking} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-700 px-2 py-1 transition-colors">
+              <Save size={12} />
+              {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : '저장'}
+            </button>
           </div>
         )}
       </div>

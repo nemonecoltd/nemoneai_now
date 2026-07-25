@@ -18,15 +18,16 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'theme' | 'course' | 'place';
+type Tab = 'theme' | 'course' | 'place' | 'ranking';
 
 export default function MyPage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>('theme');
+  const [activeTab, setActiveTab] = useState<Tab>('place');
   const [likedPlaces, setLikedPlaces] = useState([]);
   const [savedCourses, setSavedCourses] = useState([]);
   const [userThemes, setUserThemes] = useState([]);
+  const [savedRankings, setSavedRankings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal States
@@ -50,16 +51,30 @@ export default function MyPage() {
     if (!user?.id) return;
     setIsLoading(true);
     try {
-      const [likesRes, coursesRes, themesRes] = await Promise.all([
+      const [likesRes, coursesRes, themesRes, rankingsRes] = await Promise.all([
         fetch(`/api-now/users/${user.id}/likes`),
         fetch(`/api-now/users/${user.id}/courses`),
-        fetch(`/api-now/users/${user.id}/themes`)
+        fetch(`/api-now/users/${user.id}/themes`),
+        fetch(`/api-now/users/${user.id}/ranking-shares`)
       ]);
       if (likesRes.ok) setLikedPlaces(await likesRes.json());
       if (coursesRes.ok) setSavedCourses(await coursesRes.json());
       if (themesRes.ok) setUserThemes(await themesRes.json());
+      if (rankingsRes.ok) setSavedRankings(await rankingsRes.json());
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteRanking = async (rankingId: number) => {
+    if (!confirm('저장한 랭킹을 삭제하시겠습니까?')) return;
+    try {
+      const res = await fetch(`/api-now/ranking/share/${rankingId}?user_id=${user?.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSavedRankings((prev) => prev.filter((r: any) => r.id !== rankingId));
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -177,6 +192,9 @@ export default function MyPage() {
           <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             <Heart size={16} /> 찜
           </button>
+          <button onClick={() => setActiveTab('ranking')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'ranking' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            <TrendingUp size={16} /> 랭킹
+          </button>
         </div>
       </div>
 
@@ -268,6 +286,37 @@ export default function MyPage() {
                 <div className="py-20 text-center space-y-4">
                   <Heart size={48} className="mx-auto text-zinc-200" />
                   <p className="text-zinc-400 text-sm font-medium">찜한 장소가 없습니다.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'ranking' && (
+            <motion.div key="ranking" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              {savedRankings.length > 0 ? savedRankings.map((ranking: any) => {
+                const items = typeof ranking.items === 'string' ? JSON.parse(ranking.items) : ranking.items;
+                const firstImage = items[0]?.image_url || `https://picsum.photos/seed/ranking-${ranking.id}/400/300`;
+                return (
+                  <Link href={`/ranking/share/${ranking.id}`} key={ranking.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative no-underline group">
+                    <img
+                      src={firstImage}
+                      className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white"
+                      alt={ranking.label}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{ranking.label}</h4>
+                      <p className="text-[10px] text-zinc-400 truncate mt-1">{new Date(ranking.created_at).toLocaleString()} 기준 · {items.length}개 장소</p>
+                    </div>
+                    <button onClick={(e) => { e.preventDefault(); handleDeleteRanking(ranking.id); }} className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </Link>
+                );
+              }) : (
+                <div className="py-20 text-center space-y-4">
+                  <TrendingUp size={48} className="mx-auto text-zinc-200" />
+                  <p className="text-zinc-400 text-sm font-medium">저장한 랭킹이 없습니다.</p>
+                  <p className="text-zinc-300 text-xs">핫플 랭킹에서 '저장' 버튼을 눌러보세요.</p>
                 </div>
               )}
             </motion.div>

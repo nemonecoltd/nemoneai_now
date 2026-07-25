@@ -36,3 +36,11 @@ def cleanup_expired_data():
     for row in expired:
         if row[0]:
             delete_image(row[0])
+
+    # 공유/마이페이지 저장 랭킹 스냅샷도 동일한 45일 유예 후 삭제 — 테이블이 없으면(첫 배포 전) 조용히 스킵
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("DELETE FROM ranking_share WHERE created_at < NOW() - INTERVAL '45 days'"))
+            conn.commit()
+        except Exception:
+            conn.rollback()

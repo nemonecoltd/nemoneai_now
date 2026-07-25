@@ -136,6 +136,13 @@ class ThemeSave(BaseModel):
     places: List[dict]
     region: Optional[str] = "성수"
 
+class RankingShareCreate(BaseModel):
+    tab: str  # 'place' | 'concert' | 'festival'
+    region: Optional[str] = None  # place 탭만 해당(종합/성수/홍대/강북/강남/제주), concert/festival은 None
+    label: str  # 화면 표시용 문구, 프론트에서 조합해서 보냄 (예: "성수 팝업 랭킹")
+    items: List[dict]  # 공유/저장 시점의 top-N 스냅샷
+    user_id: Optional[str] = None  # 마이페이지 저장이면 값 있음, 공유만 하면 None
+
 class ThemeLikeToggle(BaseModel):
     user_id: str
     theme_id: int
@@ -312,6 +319,77 @@ async def get_user_themes(user_id: str):
     with engine.connect() as conn:
         result = conn.execute(query, {"user_id": user_id})
         return [dict(row._mapping) for row in result]
+
+def _ensure_ranking_share_table(conn):
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS ranking_share (
+            id SERIAL PRIMARY KEY,
+            tab TEXT NOT NULL,
+            region TEXT,
+            label TEXT NOT NULL,
+            items JSONB NOT NULL,
+            user_id UUID,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    """))
+    conn.commit()
+
+_MAX_SAVED_RANKINGS_PER_USER = 10
+
+@app.post("/ranking/share")
+async def create_ranking_share(payload: RankingShareCreate):
+    """랭킹 공유/마이페이지 저장 — 클릭 시점의 top-N 스냅샷을 그대로 고정 저장(라이브 랭킹과 무관하게 유지).
+    user_id가 있으면(마이페이지 저장) 유저당 최대 _MAX_SAVED_RANKINGS_PER_USER개만 유지, 넘으면 가장 오래된 것부터 삭제."""
+    import json
+    with engine.connect() as conn:
+        _ensure_ranking_share_table(conn)
+        if payload.user_id:
+            conn.execute(text("""
+                DELETE FROM ranking_share WHERE id IN (
+                    SELECT id FROM ranking_share WHERE user_id = :user_id
+                    ORDER BY created_at DESC OFFSET :max_keep
+                )
+            """), {"user_id": payload.user_id, "max_keep": _MAX_SAVED_RANKINGS_PER_USER - 1})
+        row = conn.execute(text("""
+            INSERT INTO ranking_share (tab, region, label, items, user_id)
+            VALUES (:tab, :region, :label, CAST(:items AS jsonb), :user_id)
+            RETURNING id
+        """), {
+            "tab": payload.tab,
+            "region": payload.region,
+            "label": payload.label,
+            "items": json.dumps(payload.items, ensure_ascii=False),
+            "user_id": payload.user_id,
+        }).fetchone()
+        conn.commit()
+        return {"id": row.id}
+
+@app.get("/ranking/share/{share_id}")
+async def get_ranking_share(share_id: int):
+    with engine.connect() as conn:
+        _ensure_ranking_share_table(conn)
+        row = conn.execute(text("SELECT id, tab, region, label, items, created_at FROM ranking_share WHERE id = :id"), {"id": share_id}).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="공유된 랭킹을 찾을 수 없습니다.")
+        return dict(row._mapping)
+
+@app.get("/users/{user_id}/ranking-shares")
+async def get_user_ranking_shares(user_id: str):
+    with engine.connect() as conn:
+        _ensure_ranking_share_table(conn)
+        result = conn.execute(text("""
+            SELECT id, tab, region, label, items, created_at FROM ranking_share
+            WHERE user_id = :user_id ORDER BY created_at DESC
+        """), {"user_id": user_id})
+        return [dict(row._mapping) for row in result]
+
+@app.delete("/ranking/share/{share_id}")
+async def delete_ranking_share(share_id: int, user_id: str):
+    with engine.connect() as conn:
+        _ensure_ranking_share_table(conn)
+        conn.execute(text("DELETE FROM ranking_share WHERE id = :id AND user_id = :user_id"), {"id": share_id, "user_id": user_id})
+        conn.commit()
+        return {"status": "success"}
 
 @app.put("/themes/{theme_id}")
 async def update_theme(theme_id: int, theme: ThemeSave):
