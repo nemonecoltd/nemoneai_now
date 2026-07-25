@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Share2 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
 import type { MagazinePost } from './page';
@@ -11,6 +11,21 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) router.back();
     else router.push('/');
+  };
+
+  const handleShare = async () => {
+    if (!post) return;
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: post.title, url });
+      } catch {
+        // 사용자가 공유 시트를 취소한 경우 등 — 별도 처리 없음
+      }
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    alert('링크가 복사되었습니다!');
   };
 
   if (!post) {
@@ -73,14 +88,23 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
             })()}
           </div>
 
-          <a
-            href={`https://nemoneai.com/posts/${post.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-8 inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
-          >
-            네모네AIM에서 원문 보기 <ExternalLink size={12} />
-          </a>
+          <div className="mt-8 flex items-center gap-3">
+            <a
+              href={`https://nemoneai.com/posts/${post.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+            >
+              네모네AIM에서 원문 보기 <ExternalLink size={12} />
+            </a>
+            <button
+              onClick={handleShare}
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+              aria-label="공유하기"
+            >
+              <Share2 size={16} />
+            </button>
+          </div>
         </div>
       </main>
     </div>
