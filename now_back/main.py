@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Header
+from fastapi import FastAPI, HTTPException, Depends, File, UploadFile, Header, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ import urllib.request
 import urllib.error
 import re
 import asyncio
+import time
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -136,12 +137,64 @@ class ThemeSave(BaseModel):
     places: List[dict]
     region: Optional[str] = "성수"
 
+_ALLOWED_RANKING_SHARE_TABS = {"place", "concert", "festival", "theme"}
+_ALLOWED_RANKING_SHARE_ITEM_KEYS = {"id", "title", "title_en", "title_zh", "image_url", "region", "category", "date_range", "score"}
+_RANKING_SHARE_MAX_STR_LEN = 300
+
 class RankingShareCreate(BaseModel):
-    tab: str  # 'place' | 'concert' | 'festival'
-    region: Optional[str] = None  # place 탭만 해당(종합/성수/홍대/강북/강남/제주), concert/festival은 None
+    """랭킹 공유/마이페이지 저장 요청 — 인증 없이(공유는 로그인 불필요) 누구나 호출 가능한 엔드포인트라
+    스팸/어뷰징 방지를 위해 모든 필드를 화이트리스트·길이 기준으로 엄격 검증(항목별 허용 키만 통과, 문자열 길이 제한,
+    tab/region은 실제 존재하는 값만 허용). 요청 빈도 제한은 create_ranking_share()의 IP 기반 레이트리밋에서 별도 처리."""
+    tab: str  # 'place' | 'concert' | 'festival' | 'theme'
+    region: Optional[str] = None  # place 탭만 해당(종합/성수/홍대/강북/강남/제주), concert/festival/theme은 None
     label: str  # 화면 표시용 문구, 프론트에서 조합해서 보냄 (예: "성수 팝업 랭킹")
     items: List[dict]  # 공유/저장 시점의 top-N 스냅샷
     user_id: Optional[str] = None  # 마이페이지 저장이면 값 있음, 공유만 하면 None
+
+    @field_validator("tab")
+    @classmethod
+    def _validate_tab(cls, v):
+        if v not in _ALLOWED_RANKING_SHARE_TABS:
+            raise ValueError(f"허용되지 않은 tab 값입니다: {v}")
+        return v
+
+    @field_validator("region")
+    @classmethod
+    def _validate_region(cls, v):
+        if v is not None and v not in {"종합", *_PLACE_RANKING_REGIONS}:
+            raise ValueError(f"허용되지 않은 region 값입니다: {v}")
+        return v
+
+    @field_validator("label")
+    @classmethod
+    def _validate_label(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("label은 비어 있을 수 없습니다.")
+        return v[:100]
+
+    @field_validator("items")
+    @classmethod
+    def _validate_items(cls, v):
+        if not v:
+            raise ValueError("items는 최소 1개 이상이어야 합니다.")
+        cleaned = []
+        for raw in v[:10]:  # 서버에서도 top10으로 강제 절단(클라이언트가 더 많이 보내도 무시)
+            if not isinstance(raw, dict):
+                continue
+            item = {}
+            for key in _ALLOWED_RANKING_SHARE_ITEM_KEYS:  # 화이트리스트 밖 키는 전부 버림
+                val = raw.get(key)
+                if val is None:
+                    continue
+                if isinstance(val, str):
+                    val = val[:_RANKING_SHARE_MAX_STR_LEN]
+                item[key] = val
+            if "id" in item and "title" in item:
+                cleaned.append(item)
+        if not cleaned:
+            raise ValueError("유효한 item이 없습니다(id/title 필수).")
+        return cleaned
 
 class ThemeLikeToggle(BaseModel):
     user_id: str
@@ -336,11 +389,35 @@ def _ensure_ranking_share_table(conn):
 
 _MAX_SAVED_RANKINGS_PER_USER = 10
 
+# 공유 생성은 로그인 없이 누구나 호출 가능 — IP당 요청 빈도를 제한해 스팸 페이지 대량 생성을 막는다.
+# 단일 프로세스(fork 모드)라 메모리 dict로 충분, 재시작하면 카운트가 리셋되지만 공격 방지 목적상 문제 없음.
+_ranking_share_rate_limit: dict = {}
+_RANKING_SHARE_LIMIT_PER_HOUR = 5
+_RANKING_SHARE_LIMIT_PER_DAY = 20
+
+def _client_ip(request: Request) -> str:
+    # nginx가 /api-now/를 FastAPI로 직접 프록시하며 X-Forwarded-For를 항상 세팅함(단일 홉이라 신뢰 가능)
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def _check_ranking_share_rate_limit(ip: str):
+    now = time.time()
+    timestamps = _ranking_share_rate_limit.setdefault(ip, [])
+    timestamps[:] = [t for t in timestamps if now - t < 86400]
+    if len([t for t in timestamps if now - t < 3600]) >= _RANKING_SHARE_LIMIT_PER_HOUR:
+        raise HTTPException(status_code=429, detail="너무 많은 요청입니다. 잠시 후 다시 시도해주세요.")
+    if len(timestamps) >= _RANKING_SHARE_LIMIT_PER_DAY:
+        raise HTTPException(status_code=429, detail="일일 공유 생성 한도를 초과했습니다.")
+    timestamps.append(now)
+
 @app.post("/ranking/share")
-async def create_ranking_share(payload: RankingShareCreate):
+async def create_ranking_share(payload: RankingShareCreate, request: Request):
     """랭킹 공유/마이페이지 저장 — 클릭 시점의 top-N 스냅샷을 그대로 고정 저장(라이브 랭킹과 무관하게 유지).
     user_id가 있으면(마이페이지 저장) 유저당 최대 _MAX_SAVED_RANKINGS_PER_USER개만 유지, 넘으면 가장 오래된 것부터 삭제."""
     import json
+    _check_ranking_share_rate_limit(_client_ip(request))
     with engine.connect() as conn:
         _ensure_ranking_share_table(conn)
         if payload.user_id:
