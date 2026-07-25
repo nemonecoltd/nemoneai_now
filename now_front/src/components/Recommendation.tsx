@@ -205,16 +205,27 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   };
 
   // 랭킹 공유/마이페이지 저장 — 클릭 시점의 top10 스냅샷을 그대로 고정해서 보관(라이브 랭킹과 무관하게 유지)
-  const currentRankingList = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : activeTab === 'festival' ? festivals : [];
+  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival' || activeTab === 'theme';
   const currentRankingLabel = activeTab === 'place'
     ? `${placeRegion === '종합' ? '종합' : placeRegion} 핫플 랭킹`
-    : activeTab === 'concert' ? '공연 랭킹' : '축제 랭킹';
+    : activeTab === 'concert' ? '공연 랭킹' : activeTab === 'festival' ? '축제 랭킹' : '테마 랭킹';
 
-  const createRankingShare = async (userId?: string) => {
-    const items = currentRankingList.slice(0, 10).map((p: any) => ({
+  const buildShareItems = () => {
+    if (activeTab === 'theme') {
+      return themes.slice(0, 10).map((t: any) => {
+        const themePlaces = typeof t.places === 'string' ? JSON.parse(t.places) : t.places;
+        return { id: t.id, title: t.title, description: t.description, image_url: themePlaces?.[0]?.image_url };
+      });
+    }
+    const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
+    return list.slice(0, 10).map((p: any) => ({
       id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
       image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
     }));
+  };
+
+  const createRankingShare = async (userId?: string) => {
+    const items = buildShareItems();
     const res = await fetch('/api-now/ranking/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -298,18 +309,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : '성수')}
               </button>
             ))}
-          </div>
-        )}
-        {(activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival') && (
-          <div className="flex items-center justify-end gap-2 mt-2">
-            <button onClick={handleShareRanking} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-700 px-2 py-1 transition-colors">
-              <Share2 size={12} />
-              {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유'}
-            </button>
-            <button onClick={handleSaveRanking} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-zinc-700 px-2 py-1 transition-colors">
-              <Save size={12} />
-              {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : '저장'}
-            </button>
           </div>
         )}
       </div>
@@ -605,6 +604,18 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             </motion.div>
           )}
         </AnimatePresence>
+        {isShareableTab && (
+          <div className="flex gap-2 pt-2 pb-4">
+            <button onClick={handleShareRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+              <Share2 size={14} />
+              {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유하기'}
+            </button>
+            <button onClick={handleSaveRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+              <Save size={14} />
+              {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : '마이페이지에 저장'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Course Detail Modal */}

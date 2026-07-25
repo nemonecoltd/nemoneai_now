@@ -15,6 +15,7 @@ interface RankingShareItem {
   category?: string | null;
   date_range?: string;
   score?: number;
+  description?: string;
 }
 
 interface RankingShare {
@@ -93,33 +94,42 @@ export default async function RankingSharePage({ params }: { params: Promise<{ i
           {formatSnapshotTime(share.created_at)}으로 고정된 랭킹입니다. 지금은 순위가 달라졌을 수 있어요.
         </p>
 
-        {share.items.map((place, idx) => (
-          <Link
-            key={place.id}
-            href={`/posts/${place.id}`}
-            className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
-          >
-            <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">
-              {idx + 1}
-            </span>
-            <img
-              src={place.image_url || `https://picsum.photos/seed/share-${place.id}/200`}
-              className="w-12 h-12 rounded-xl object-cover border border-zinc-50 flex-shrink-0"
-              alt={place.title}
-              referrerPolicy="no-referrer"
-            />
-            <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
-              <p className="text-[10px] text-zinc-400">{place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
-            </div>
-            {typeof place.score === 'number' && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
-                <Flame size={11} fill="currentColor" /> {place.score}
+        {share.items.map((place, idx) => {
+          const card = (
+            <>
+              <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">
+                {idx + 1}
               </span>
-            )}
-            <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
-          </Link>
-        ))}
+              <img
+                src={place.image_url || `https://picsum.photos/seed/share-${place.id}/200`}
+                className="w-12 h-12 rounded-xl object-cover border border-zinc-50 flex-shrink-0"
+                alt={place.title}
+                referrerPolicy="no-referrer"
+              />
+              <div className="flex-1 min-w-0">
+                <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
+                <p className="text-[10px] text-zinc-400 truncate">
+                  {share.tab === 'theme' ? place.description : `${place.region || ''}${place.date_range ? ` · ${place.date_range}` : ''}`}
+                </p>
+              </div>
+              {typeof place.score === 'number' && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
+                  <Flame size={11} fill="currentColor" /> {place.score}
+                </span>
+              )}
+              {share.tab !== 'theme' && <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />}
+            </>
+          );
+          return share.tab === 'theme' ? (
+            <div key={place.id} className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+              {card}
+            </div>
+          ) : (
+            <Link key={place.id} href={`/posts/${place.id}`} className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm">
+              {card}
+            </Link>
+          );
+        })}
 
         <Link href="/" className="block text-center mt-6 px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">
           지금 실시간 랭킹 보러가기
