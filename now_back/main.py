@@ -1596,8 +1596,6 @@ async def _enrich_place_core(place_id: int) -> dict:
 
         resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         generated = (resp.text or "").strip()[:600]
-        if generated:
-            generated += "\n\n<출처 : 네이버 지도 제공>"
     except Exception as e:
         raise RuntimeError(f"Gemini 생성 실패: {e}")
 
