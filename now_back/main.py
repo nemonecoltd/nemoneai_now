@@ -137,7 +137,7 @@ class ThemeSave(BaseModel):
     places: List[dict]
     region: Optional[str] = "성수"
 
-_ALLOWED_RANKING_SHARE_TABS = {"place", "concert", "festival", "theme"}
+_ALLOWED_RANKING_SHARE_TABS = {"place", "concert", "festival", "theme", "shopping", "exhibition"}
 _ALLOWED_RANKING_SHARE_ITEM_KEYS = {"id", "title", "title_en", "title_zh", "image_url", "region", "category", "date_range", "score"}
 _RANKING_SHARE_MAX_STR_LEN = 300
 
@@ -765,6 +765,22 @@ async def get_popular_festivals(limit: Optional[int] = None, offset: int = 0):
         data = data[:min(limit, 500)]
     return data
 
+@app.get("/places/popular/shopping")
+async def get_popular_shopping(limit: Optional[int] = None, offset: int = 0):
+    """쇼핑 전용 인기 랭킹 (category='shopping', 지역 구분 없이 통합 — 트래픽 쌓이면 지역 서브탭 분리 예정)."""
+    data = _shopping_popularity_cache[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
+
+@app.get("/places/popular/exhibition")
+async def get_popular_exhibitions(limit: Optional[int] = None, offset: int = 0):
+    """전시 전용 인기 랭킹 (category='전시', 지역 구분 없이 통합 — 트래픽 쌓이면 지역 서브탭 분리 예정)."""
+    data = _exhibition_popularity_cache[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
+
 @app.get("/places/closing-soon")
 async def get_closing_soon():
     """핫플 탭 상단 '마감임박' 전광판용 (하루 1회 갱신 캐시). /places/{place_id}보다 먼저 등록해야
@@ -997,17 +1013,20 @@ async def record_place_view(place_id: int):
 _place_popularity_cache: list = []
 _performance_popularity_cache: list = []
 _festival_popularity_cache: list = []
+_shopping_popularity_cache: list = []
+_exhibition_popularity_cache: list = []
 _place_popularity_by_region: dict = {}
 _popularity_last_refreshed: Optional[str] = None
 
 _PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '제주']  # 플레이스 랭킹 지역 서브탭
 
-def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False, only_region: Optional[str] = None):
+def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False, only_region: Optional[str] = None, only_category: Optional[str] = None):
     """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
-    only_performance=False, only_festival=False(기본, 플레이스 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
+    only_performance=False, only_festival=False, only_category=None(기본, 플레이스=팝업 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
     (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
     only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계.
     only_festival=True(축제 랭킹 전용): region='축제'만 집계.
+    only_category='shopping'|'전시'(쇼핑/전시 랭킹 전용): 해당 category만 집계, 지역 구분 없이 통합.
     min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
     exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
     제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청.
@@ -1016,6 +1035,8 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
         region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
     elif only_festival:
         region_clause = "AND p.region = '축제'"
+    elif only_category:
+        region_clause = f"AND p.category = '{only_category}'"
     else:
         region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
         if exclude_jeju:
@@ -1047,7 +1068,7 @@ def refresh_place_popularity(is_cron: bool = False):
     48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화.
     _MIN_RANKING_SCORE 미만 항목은 아예 제외해, 활동이 적을 땐 25개를 억지로 채우지 않고 그보다 적게 노출될 수 있음.
     is_cron: True면 스케줄러가 정확히 4시간 간격으로 호출한 것 — 이때만 NEW 배지 기준 스냅샷을 갱신함."""
-    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
+    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _shopping_popularity_cache, _exhibition_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -1217,6 +1238,49 @@ def refresh_place_popularity(is_cron: bool = False):
                 {"ids": json.dumps(current_fest_top25_ids), "prev_ids": json.dumps(sorted(prev_fest_top25_ids))},
             )
             conn.commit()
+
+        # 쇼핑/전시 랭킹 — 지역 구분 없이 통합 집계(트래픽 쌓이면 플레이스처럼 지역 서브탭 분리 예정), NEW 배지는 공연/축제와 동일한 스냅샷 방식
+        for cat_key, cache_attr, snapshot_table in (
+            ("shopping", "_shopping_popularity_cache", "shopping_ranking_snapshot"),
+            ("전시", "_exhibition_popularity_cache", "exhibition_ranking_snapshot"),
+        ):
+            conn.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {snapshot_table} (
+                    id INTEGER PRIMARY KEY DEFAULT 1,
+                    top25_ids JSONB NOT NULL,
+                    prev_top25_ids JSONB,
+                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    CHECK (id = 1)
+                )
+            """))
+            conn.commit()
+            prev_snap = conn.execute(text(f"SELECT top25_ids FROM {snapshot_table} WHERE id = 1")).fetchone()
+            prev_ids = set(prev_snap[0]) if prev_snap else set()
+
+            cat_result = list(_popularity_rows(conn, 2, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
+            if len(cat_result) < 25:
+                cat_result = list(_popularity_rows(conn, 30, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
+            cat_cache = [dict(row._mapping) for row in cat_result]
+
+            current_ids = [item["id"] for item in cat_cache[:25]]
+            new_ids = set(current_ids) - prev_ids
+            for item in cat_cache:
+                item["is_new"] = item["id"] in new_ids
+            globals()[cache_attr] = cat_cache
+
+            if is_real_cycle:
+                conn.execute(
+                    text(f"""
+                        INSERT INTO {snapshot_table} (id, top25_ids, prev_top25_ids, updated_at)
+                        VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
+                        ON CONFLICT (id) DO UPDATE SET
+                            prev_top25_ids = {snapshot_table}.top25_ids,
+                            top25_ids = CAST(:ids AS jsonb),
+                            updated_at = NOW()
+                    """),
+                    {"ids": json.dumps(current_ids), "prev_ids": json.dumps(sorted(prev_ids))},
+                )
+                conn.commit()
 
     _popularity_last_refreshed = datetime.now(timezone.utc).isoformat()
     refresh_closing_soon()  # 랭킹과 같은 주기(4시간)로 같이 갱신 — 랜덤 12개라 자주 바뀌어도 자연스러움

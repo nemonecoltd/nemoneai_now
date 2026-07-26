@@ -14,7 +14,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival';
+type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition';
 const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '제주'] as const;
 type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
 
@@ -27,6 +27,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [placeRegion, setPlaceRegion] = useState<PlaceRankingRegion>('종합');
   const [concerts, setConcerts] = useState([]);
   const [festivals, setFestivals] = useState([]);
+  const [shopping, setShopping] = useState([]);
+  const [exhibitions, setExhibitions] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
@@ -45,6 +47,10 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       fetchConcerts();
     } else if (activeTab === 'festival') {
       fetchFestivals();
+    } else if (activeTab === 'shopping') {
+      fetchShopping();
+    } else if (activeTab === 'exhibition') {
+      fetchExhibitions();
     } else if (activeTab === 'place' && placeRegion !== '종합') {
       fetchPlacesByRegion(placeRegion);
     }
@@ -79,6 +85,26 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     try {
       const res = await fetch(`/api-now/places/popular/festival?t=${Date.now()}`);
       if (res.ok) setFestivals(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchShopping = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular/shopping?t=${Date.now()}`);
+      if (res.ok) setShopping(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchExhibitions = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular/exhibition?t=${Date.now()}`);
+      if (res.ok) setExhibitions(await res.json());
     } finally {
       setIsLoading(false);
     }
@@ -205,10 +231,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   };
 
   // 랭킹 공유/마이페이지 저장 — 클릭 시점의 top10 스냅샷을 그대로 고정해서 보관(라이브 랭킹과 무관하게 유지)
-  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival';
+  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival' || activeTab === 'shopping' || activeTab === 'exhibition';
   const currentRankingLabel = activeTab === 'place'
-    ? `${placeRegion === '종합' ? '종합' : placeRegion} 핫플 랭킹`
-    : activeTab === 'concert' ? '공연 랭킹' : '축제 랭킹';
+    ? `${placeRegion === '종합' ? '종합' : placeRegion} 팝업 랭킹`
+    : activeTab === 'concert' ? '공연 랭킹'
+    : activeTab === 'festival' ? '축제 랭킹'
+    : activeTab === 'shopping' ? '쇼핑 랭킹'
+    : '전시 랭킹';
+
+  const getCurrentRankingList = () =>
+    activeTab === 'place' ? places
+    : activeTab === 'concert' ? concerts
+    : activeTab === 'festival' ? festivals
+    : activeTab === 'shopping' ? shopping
+    : exhibitions;
 
   const createRankingShare = async (opts: { tab: string; region?: string | null; label: string; items: any[]; userId?: string }) => {
     const res = await fetch('/api-now/ranking/share', {
@@ -228,8 +264,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
   const handleShareRanking = async () => {
     try {
-      const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
-      const items = list.slice(0, 10).map((p: any) => ({
+      const items = getCurrentRankingList().slice(0, 10).map((p: any) => ({
         id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
         image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
       }));
@@ -246,8 +281,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const handleSaveRanking = async () => {
     if (!user) return signInWithGoogle();
     try {
-      const list = activeTab === 'place' ? places : activeTab === 'concert' ? concerts : festivals;
-      const items = list.slice(0, 10).map((p: any) => ({
+      const items = getCurrentRankingList().slice(0, 10).map((p: any) => ({
         id: p.id, title: p.title, title_en: p.title_en, title_zh: p.title_zh,
         image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
       }));
@@ -278,20 +312,26 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
       <div className="px-6 py-4">
-        <div className="flex bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+        <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Courses' : lang === 'zh' ? '路线' : '코스'}
           </button>
-          <button onClick={() => setActiveTab('theme')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('theme')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : '테마'}
           </button>
-          <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Places' : lang === 'zh' ? '地点' : '플레이스'}
+          <button onClick={() => setActiveTab('place')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Pop-ups' : lang === 'zh' ? '快闪店' : '팝업'}
           </button>
-          <button onClick={() => setActiveTab('concert')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('shopping')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'shopping' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Shopping' : lang === 'zh' ? '购物' : '쇼핑'}
+          </button>
+          <button onClick={() => setActiveTab('exhibition')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'exhibition' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+            {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : '전시'}
+          </button>
+          <button onClick={() => setActiveTab('concert')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : '공연'}
           </button>
-          <button onClick={() => setActiveTab('festival')} className={cn("flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap px-1", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('festival')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : '축제'}
           </button>
         </div>
@@ -560,7 +600,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 </div>
               ))}
             </motion.div>
-          ) : (
+          ) : activeTab === 'festival' ? (
             <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
               {festivals.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
@@ -602,6 +642,140 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                     </div>
                     <Link href={`/posts/${place.id}?region=축제&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
+
+                  {idx === 1 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          ) : activeTab === 'shopping' ? (
+            <motion.div key="sh" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+              {shopping.length === 0 && !isLoading && (
+                <p className="text-center text-xs text-zinc-400 py-10">
+                  {lang === 'en' ? 'No shopping ranking data yet.' : lang === 'zh' ? '暂无购物排行数据。' : '아직 쇼핑 랭킹 데이터가 없습니다.'}
+                </p>
+              )}
+              {shopping.slice(0, 25).map((place: any, idx: number) => (
+                <div key={place.id}>
+                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                      {idx + 1}
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                      <div className="absolute -bottom-1 -right-1 shadow-lg">
+                        <span className={cn(
+                          "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
+                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                          : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
+                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                        )}>
+                          {lang === 'en'
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                            : lang === 'zh'
+                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞')
+                              : (place.region || '성수')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                        </h4>
+                        {place.is_new && (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                        </span>
+                        <span className="text-[9px] text-zinc-400 font-medium truncate">
+                          {lang === 'en'
+                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                            : lang === 'zh'
+                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                              : `${place.region || '성수'} 근처`}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                      <ChevronRight size={18} />
+                    </Link>
+                  </div>
+
+                  {idx === 1 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div key="ex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+              {exhibitions.length === 0 && !isLoading && (
+                <p className="text-center text-xs text-zinc-400 py-10">
+                  {lang === 'en' ? 'No exhibition ranking data yet.' : lang === 'zh' ? '暂无展览排行数据。' : '아직 전시 랭킹 데이터가 없습니다.'}
+                </p>
+              )}
+              {exhibitions.slice(0, 25).map((place: any, idx: number) => (
+                <div key={place.id}>
+                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                      {idx + 1}
+                    </div>
+                    <div className="relative flex-shrink-0">
+                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                      <div className="absolute -bottom-1 -right-1 shadow-lg">
+                        <span className={cn(
+                          "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
+                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                          : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
+                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                        )}>
+                          {lang === 'en'
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                            : lang === 'zh'
+                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞')
+                              : (place.region || '성수')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
+                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                        </h4>
+                        {place.is_new && (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                            NEW
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                        </span>
+                        <span className="text-[9px] text-zinc-400 font-medium truncate">
+                          {place.date_range || (lang === 'en'
+                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                            : lang === 'zh'
+                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                              : `${place.region || '성수'} 근처`)}
+                        </span>
+                      </div>
+                    </div>
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
