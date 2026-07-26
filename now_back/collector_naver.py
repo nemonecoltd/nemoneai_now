@@ -21,7 +21,7 @@ load_dotenv()
 
 
 def ai_generate_intro(title: str, location: str, category: Optional[str] = None) -> str:
-    kind = "원데이클래스/체험 공방" if category == "class" else "팝업스토어"
+    kind = "원데이클래스/체험 공방" if category == "class" else "소품샵/편집숍" if category == "shopping" else "팝업스토어"
     try:
         from google import genai
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
@@ -101,10 +101,11 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             print(f"    소개: {intro[:60]}...")
 
         existing_title_en, existing_content_en, existing_title_zh, existing_content_zh = _existing_translation(naver_place_id)
-        if category != "class":
-            # 팝업(category=None)은 신규 팝업 자동 블로그갱신 스케줄러(_enrich_place_core)가 며칠 내로
+        if category is None:
+            # 팝업(category=None)만 신규 팝업 자동 블로그갱신 스케줄러(_enrich_place_core)가 며칠 내로
             # content를 통째로 재생성하고 번역도 다시 하므로, 1차 스크래핑에서의 번역은 곧 버려질 헛수고임 —
             # 여기서는 API 호출 없이 기존 번역(있으면)만 재사용하고, 없으면 한글 그대로 폴백(enrich 전까지 임시 노출)
+            # class/shopping 등 명시적으로 태깅된 카테고리는 재작업 대상이 아니므로 기존대로 번역 진행.
             title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
         elif not regenerated and existing_title_en and existing_content_en and existing_title_zh and existing_content_zh:
             title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
@@ -300,6 +301,20 @@ async def run_class(region: str, query: str, allowed_districts: Optional[list] =
     return (f"{region}/클래스", *counts)
 
 
+async def run_shopping(region: str, query: str, allowed_districts: Optional[list] = None):
+    """네이버 지도 검색 기반 쇼핑(소품샵/편집숍 등) 수집 — 핫플 쇼핑 랭킹(category='shopping')에 반영됨.
+    번역 포함(팝업과 달리 나중에 별도 재작업/enrich 대상이 아니라 1차에서 번역까지 완료)."""
+    print(f"\n🚀 [{region}/쇼핑] 수집 시작 ('{query}')")
+    try:
+        result = await scrape_naver_map_popups(query, allowed_districts=allowed_districts)
+        counts = upsert_naver_items(result, region, category="shopping") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [{region}/쇼핑] 실패: {e}")
+        return f"{region}/쇼핑", 0, 0, 1
+    print(f"✅ [{region}/쇼핑] 완료")
+    return (f"{region}/쇼핑", *counts)
+
+
 async def run_all():
     print("=" * 50)
     print("🗺️  네이버 팝업스토어 수집 시작")
@@ -319,6 +334,7 @@ async def run_all():
         await run_class("강북", "용산 공방 체험"),
         await run_class("강남", "강남 원데이클래스", allowed_districts=["강남구"]),
         await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
+        await run_shopping("제주", "제주 소품샵"),
     ]
     cleanup_expired()
     print("\n" + "=" * 50)

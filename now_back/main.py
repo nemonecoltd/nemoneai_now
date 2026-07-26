@@ -1027,6 +1027,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계.
     only_festival=True(축제 랭킹 전용): region='축제'만 집계.
     only_category='shopping'|'전시'(쇼핑/전시 랭킹 전용): 해당 category만 집계, 지역 구분 없이 통합.
+    only_category='전시'는 category='전시'(비짓서울) + category='행사'(비짓제주)를 함께 묶어서 집계함.
     min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
     exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
     제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청.
@@ -1036,7 +1037,11 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     elif only_festival:
         region_clause = "AND p.region = '축제'"
     elif only_category:
-        region_clause = f"AND p.category = '{only_category}'"
+        # 전시 랭킹은 서울권(비짓서울) '전시' + 제주(비짓제주) '행사'를 하나로 합쳐서 노출 —
+        # 성격은 다르지만 카테고리 메뉴가 아직 '전시' 하나뿐이라 우선 통합, 품질/분리는 추후 검토
+        categories = ("전시", "행사") if only_category == "전시" else (only_category,)
+        cat_in = ", ".join(f"'{c}'" for c in categories)
+        region_clause = f"AND p.category IN ({cat_in})"
     else:
         region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
         if exclude_jeju:
