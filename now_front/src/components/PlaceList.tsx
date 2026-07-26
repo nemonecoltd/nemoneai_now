@@ -173,17 +173,17 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
             </div>
 
             <div className="p-5 space-y-3">
-              <div className="flex items-start justify-between">
-                <div>
+              <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}&lang=${lang}`} className="flex items-start justify-between gap-3 -m-1 p-1 rounded-xl hover:bg-zinc-50 transition-colors">
+                <div className="min-w-0">
                   <h3 className="text-lg font-bold text-zinc-900">
                     {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
                   </h3>
                   <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{place.location}</p>
                 </div>
-                <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}&lang=${lang}`} className="p-2 rounded-full bg-zinc-50 text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50 transition-all">
+                <span className="flex-shrink-0 p-2 rounded-full bg-zinc-50 text-zinc-400">
                   <ChevronRight size={20} />
-                </Link>
-              </div>
+                </span>
+              </Link>
               <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed">
                 {(lang === 'en' && place.content_en) ? place.content_en : (lang === 'zh' && place.content_zh) ? place.content_zh : place.content}
               </p>

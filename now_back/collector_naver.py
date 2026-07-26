@@ -101,7 +101,12 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             print(f"    소개: {intro[:60]}...")
 
         existing_title_en, existing_content_en, existing_title_zh, existing_content_zh = _existing_translation(naver_place_id)
-        if not regenerated and existing_title_en and existing_content_en and existing_title_zh and existing_content_zh:
+        if category != "class":
+            # 팝업(category=None)은 신규 팝업 자동 블로그갱신 스케줄러(_enrich_place_core)가 며칠 내로
+            # content를 통째로 재생성하고 번역도 다시 하므로, 1차 스크래핑에서의 번역은 곧 버려질 헛수고임 —
+            # 여기서는 API 호출 없이 기존 번역(있으면)만 재사용하고, 없으면 한글 그대로 폴백(enrich 전까지 임시 노출)
+            title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+        elif not regenerated and existing_title_en and existing_content_en and existing_title_zh and existing_content_zh:
             title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
         else:
             title_en, content_en, title_zh, content_zh = ai_translate(title, content)

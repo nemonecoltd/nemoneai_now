@@ -423,6 +423,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
+                  {idx === 14 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
                 </div>
               ))}
             </motion.div>
@@ -464,6 +467,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 1 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                  {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
@@ -541,6 +547,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
+                  {idx === 14 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
                 </div>
               ))}
             </motion.div>
@@ -597,6 +606,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
+                  {idx === 14 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
                 </div>
               ))}
             </motion.div>
@@ -647,6 +659,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 1 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                  {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
@@ -716,6 +731,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
+                  {idx === 14 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
                 </div>
               ))}
             </motion.div>
@@ -781,6 +799,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
 
                   {idx === 1 && (
+                    <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+                  )}
+                  {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
