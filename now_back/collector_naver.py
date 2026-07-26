@@ -56,9 +56,9 @@ def _existing_translation(naver_place_id: str) -> tuple[str, str, str, str]:
 def build_content(item: dict, intro: str) -> str:
     naver_url = f"https://map.naver.com/p/entry/place/{item.get('naver_place_id', '')}"
     link_line = f"네이버 지도 바로가기: {naver_url}"
-    if intro:
-        return "\n\n".join([intro, link_line])
-    return link_line
+    source_line = "<출처 : 네이버 지도 제공>"
+    parts = [intro, link_line, source_line] if intro else [link_line, source_line]
+    return "\n\n".join(parts)
 
 
 def _existing_content(naver_place_id: str) -> str:

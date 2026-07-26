@@ -318,10 +318,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   const hasValidNaverId = place.naver_place_id &&
     !place.naver_place_id.startsWith('raw_') &&
     !place.naver_place_id.startsWith('seoul_') &&
+    !place.naver_place_id.startsWith('seoulex_') &&
     !place.naver_place_id.startsWith('kopis_') &&
     !place.naver_place_id.startsWith('visitseoul_') &&
     !place.naver_place_id.startsWith('visitjeju_') &&
-    !place.naver_place_id.startsWith('jeju_');
+    !place.naver_place_id.startsWith('jeju_') &&
+    !place.naver_place_id.startsWith('culture_') &&
+    !place.naver_place_id.startsWith('concert_') &&
+    !place.naver_place_id.startsWith('festival_');
 
   const pageUrl = `https://now.nemoneai.com/posts/${place.id}`;
   const jsonLd = {
@@ -753,6 +757,16 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 <span className="ml-auto text-zinc-300 text-lg">›</span>
               </div>
             </a>
+          )}
+
+          {hasValidNaverId && (
+            <p className="text-[10px] text-zinc-400 text-center leading-relaxed">
+              {lang === 'en'
+                ? 'This content is AI-generated from public information and may differ from actual facts.'
+                : lang === 'zh'
+                  ? '本内容由AI根据公开信息生成，可能与实际情况有所出入。'
+                  : 'AI로 분석하여 생성되어 실제 사실과 다를 수 있습니다.'}
+            </p>
           )}
 
         </div>

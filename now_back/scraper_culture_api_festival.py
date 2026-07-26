@@ -206,6 +206,7 @@ async def scrape_culture_api_festival() -> list[dict]:
             content_parts.append(f"기간: {it['eventPeriod']}")
         if description:
             content_parts.append(description)
+        content_parts.append("<출처 : 문체부 지역축제 제공>")
 
         image_url = it["referenceIdentifier"] if it["referenceIdentifier"].lower().endswith((".jpg", ".jpeg", ".png", ".gif")) else ""
         if not image_url:

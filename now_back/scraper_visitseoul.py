@@ -189,7 +189,7 @@ def _fetch_one(raw: dict) -> Optional[dict]:
         return None
 
     extra_text = _extra_text(extra)
-    content = _content_from_detail(ko_detail, extra_text)
+    content = _content_from_detail(ko_detail, extra_text) + "\n\n<출처 : Visit Seoul 제공>"
 
     lang_map = dict(pair.split(":", 1) for pair in raw.get("multi_lang_list", "").split(",") if ":" in pair)
     title_en, content_en = title, ""
