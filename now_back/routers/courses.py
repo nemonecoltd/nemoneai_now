@@ -103,13 +103,17 @@ async def create_course_draft(
     lang: str = "ko",
     viewer: dict = Depends(_verify_supabase_user),
 ):
-    """코스 생성 진입점 3종:
+    """코스 생성 진입점 2종:
     - scope=timed: 3시간코스 — AI 생성(2회/일 공유 한도), companion으로 취향 반영
     - scope=free & source=likes: 찜한 장소로 즉시 구성(AI 미호출, 한도 무관)
-    - scope=free (그 외): 빈 코스 즉시 생성(AI 미호출, 한도 무관)
+
+    자유 형식(장소 없이 직접 큐레이션)은 테마지도(themes) 기능과 개념이 겹쳐
+    별도 구현하지 않음 — scope=free는 반드시 source=likes와 함께 호출.
     """
     if scope not in _ALLOWED_SCOPES:
         raise HTTPException(status_code=400, detail=f"허용되지 않은 scope입니다: {scope}")
+    if scope == "free" and source != "likes":
+        raise HTTPException(status_code=400, detail="scope=free는 source=likes와 함께만 사용할 수 있습니다.")
     if lang not in ("ko", "en", "zh"):
         lang = "ko"
 
