@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import BrandTagline from '@/components/BrandTagline';
+import HeaderControls from '@/components/HeaderControls';
+
+const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
 interface Step {
   place_id: number;
@@ -47,6 +50,8 @@ export default function CourseEditPage() {
   const params = useParams();
   const courseId = params.id as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lang = searchParams.get('lang') || 'ko';
   const { user, session, isLoading: authLoading } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -214,19 +219,24 @@ export default function CourseEditPage() {
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 pb-32">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-1">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/course')} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap">
-            <Link href="/" className="no-underline text-inherit">지금여기<span className="text-emerald-500">.</span></Link>
-          </h1>
-          <span className="flex-1 text-sm font-bold text-zinc-500 truncate">코스 편집</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => router.push('/course')} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
+            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
+              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang] || BRAND_TITLE.ko} <span className="text-emerald-500">.</span></Link>
+            </h1>
+          </div>
+          <HeaderControls />
+        </div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-bold text-zinc-500 truncate">코스 편집</span>
           <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase flex-shrink-0">
             {course.scope === 'timed' ? '3시간코스' : '자유코스'}
           </span>
         </div>
-        <BrandTagline />
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="px-6 py-6 space-y-6">

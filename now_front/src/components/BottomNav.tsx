@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, Map as MapIcon, MapPin, Library, Route as RouteIcon, MessageCircle } from 'lucide-react';
+import { TrendingUp, Map as MapIcon, MapPin, Route as RouteIcon, Newspaper, MessageCircle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -10,10 +10,11 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// 메인 SPA(page.tsx)의 하단 탭 5종과 동일하게 유지 — 라벨/구성이 어긋나면 안 됨
 const LABELS = {
-  ko: { navRec: '핫플', navMap: '지도', navList: '장소', navTheme: '테마', navTour: '코스' },
-  en: { navRec: 'Hot', navMap: 'Map', navList: 'Spot', navTheme: 'Theme', navTour: 'Course' },
-  zh: { navRec: '热门', navMap: '地图', navList: '地点', navTheme: '主题', navTour: '路线' },
+  ko: { navRec: '핫플', navMap: '지도', navList: '장소', navCourse: '코스', navMagazine: '매거진' },
+  en: { navRec: 'Hot', navMap: 'Map', navList: 'Spot', navCourse: 'Course', navMagazine: 'Magazine' },
+  zh: { navRec: '热门', navMap: '地图', navList: '地点', navCourse: '路线', navMagazine: '杂志' },
 } as const;
 
 interface BottomNavProps {
@@ -54,15 +55,14 @@ export default function BottomNav({ region = '성수', lang = 'ko', isPerformanc
           label={t.navList}
         />
         <NavButton
-          onClick={() => router.push(`/?region=${encodedRegion}&tab=theme&lang=${lang}`)}
-          icon={<Library size={22} />}
-          label={t.navTheme}
+          onClick={() => router.push(`/?region=${encodedRegion}&tab=course&lang=${lang}`)}
+          icon={<RouteIcon size={22} />}
+          label={t.navCourse}
         />
         <NavButton
-          onClick={() => router.push(`/?region=${encodedRegion}&tab=tour&lang=${lang}`)}
-          icon={<RouteIcon size={22} />}
-          label={t.navTour}
-          disabled={isPerformanceRegion}
+          onClick={() => router.push(`/?region=${encodedRegion}&tab=magazine&lang=${lang}`)}
+          icon={<Newspaper size={22} />}
+          label={t.navMagazine}
         />
       </nav>
     </div>

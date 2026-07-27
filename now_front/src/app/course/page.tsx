@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Clock, Compass, Info, Loader2, Plus, Sparkles, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Compass, Info, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
+import HeaderControls from '@/components/HeaderControls';
+
+const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 type Region = typeof PLACE_REGIONS[number];
@@ -16,7 +19,17 @@ type Companion = 'solo' | 'couple' | 'friends';
 const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
 
 export default function CourseHubPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+      <CourseHubContent />
+    </Suspense>
+  );
+}
+
+function CourseHubContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lang = searchParams.get('lang') || 'ko';
   const { user, session, signInWithGoogle, isLoading: authLoading } = useAuth();
   const [myCourses, setMyCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,13 +57,12 @@ export default function CourseHubPage() {
     })();
   }, [user]);
 
-  const createDraft = async (params: { scope: 'timed' | 'free'; region?: string; source?: string; companion?: string }) => {
+  const createDraft = async (params: { scope: 'timed'; region?: string; companion?: string }) => {
     if (!user) return signInWithGoogle();
     setIsCreating(true);
     try {
       const qs = new URLSearchParams({ scope: params.scope });
       if (params.region) qs.set('region', params.region);
-      if (params.source) qs.set('source', params.source);
       const res = await fetch(`/api-now/courses/draft?${qs.toString()}`, {
         method: 'POST',
         headers: {
@@ -89,17 +101,18 @@ export default function CourseHubPage() {
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-1">
-        <div className="flex items-center gap-3 mb-2">
-          <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-            <ChevronLeft size={24} />
-          </button>
-          <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap">
-            <Link href="/" className="no-underline text-inherit">지금여기<span className="text-emerald-500">.</span></Link>
-          </h1>
-          <span className="text-zinc-300">/</span>
-          <span className="text-sm font-bold text-zinc-500">코스</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={handleBack} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
+            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
+              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang] || BRAND_TITLE.ko} <span className="text-emerald-500">.</span></Link>
+            </h1>
+          </div>
+          <HeaderControls />
         </div>
-        <BrandTagline />
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="px-6 py-6 space-y-8 pb-28">
@@ -113,11 +126,13 @@ export default function CourseHubPage() {
             <span className="text-sm">3시간코스 만들기</span>
           </button>
           <button
-            onClick={() => createDraft({ scope: 'free' })}
-            disabled={isCreating}
-            className="flex flex-col items-center justify-center gap-2 py-6 bg-white border border-zinc-200 text-zinc-700 rounded-3xl font-bold hover:border-emerald-200 hover:text-emerald-600 transition-all disabled:opacity-50"
+            onClick={() => {
+              if (!user) return signInWithGoogle();
+              router.push(`/?tab=theme&action=create&lang=${lang}`);
+            }}
+            className="flex flex-col items-center justify-center gap-2 py-6 bg-white border border-zinc-200 text-zinc-700 rounded-3xl font-bold hover:border-emerald-200 hover:text-emerald-600 transition-all"
           >
-            {isCreating ? <Loader2 size={24} className="animate-spin" /> : <Compass size={24} />}
+            <Compass size={24} />
             <span className="text-sm">자유롭게 만들기</span>
           </button>
         </div>
@@ -225,7 +240,7 @@ export default function CourseHubPage() {
         )}
       </AnimatePresence>
 
-      <BottomNav region={region} />
+      <BottomNav region={region} lang={lang} />
     </div>
   );
 }

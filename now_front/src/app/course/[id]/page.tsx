@@ -3,8 +3,10 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
+import HeaderControls from '@/components/HeaderControls';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
+const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
 interface Step {
   place_id: number;
@@ -96,8 +98,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CourseDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { id } = await params;
+  const { lang: rawLang } = await searchParams;
+  const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'ko';
   const course = await getCourse(id);
 
   if (!course) {
@@ -116,16 +120,19 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
-        <div className="flex items-center gap-2 mb-1">
-          <Link href="/course" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 flex-shrink-0">
-            <ChevronLeft size={24} />
-          </Link>
-          <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
-            <Link href="/" className="no-underline text-inherit">지금여기<span className="text-emerald-500">.</span></Link>
-          </h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link href="/course" className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </Link>
+            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
+              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang]} <span className="text-emerald-500">.</span></Link>
+            </h1>
+          </div>
+          <HeaderControls />
         </div>
         <h2 className="text-sm font-bold text-zinc-600 truncate mb-1">{course.title}</h2>
-        <BrandTagline />
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="px-6 pt-6 pb-28 space-y-6">
@@ -175,7 +182,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
         </Link>
       </main>
 
-      <BottomNav region={course.region} />
+      <BottomNav region={course.region} lang={lang} />
     </div>
   );
 }
