@@ -21,7 +21,6 @@ import {
 import MapView from '@/components/MapView';
 import PlaceList, { PlaceSort } from '@/components/PlaceList';
 import AskAI from '@/components/AskAI';
-import AITour from '@/components/AITour';
 import ThemeMenu from '@/components/ThemeMenu';
 import MagazineList from '@/components/MagazineList';
 import BrandTagline from '@/components/BrandTagline';
@@ -95,7 +94,7 @@ const dict = {
     navList: '장소',
     navCourse: '코스',
     navMagazine: '매거진',
-    courseSubAi: 'AI 코스',
+    courseSubAi: '코스',
     courseSubTheme: '테마',
     my: '마이',
     footer: '© 네모네 주식회사, 당신 시간의 알찬 소비',
@@ -111,7 +110,7 @@ const dict = {
     navList: 'Spot',
     navCourse: 'Course',
     navMagazine: 'Magazine',
-    courseSubAi: 'AI Tour',
+    courseSubAi: 'Course',
     courseSubTheme: 'Theme',
     my: 'My',
     footer: '© Nemone Co., Ltd. Make every moment count.',
@@ -127,7 +126,7 @@ const dict = {
     navList: '地点',
     navCourse: '路线',
     navMagazine: '杂志',
-    courseSubAi: 'AI路线',
+    courseSubAi: '路线',
     courseSubTheme: '主题',
     my: '我的',
     footer: '© Nemone Co., Ltd. 让每一刻都有意义',
@@ -145,7 +144,7 @@ function Home() {
   const [availableCategories, setAvailableCategories] = useState<PlaceCategory[]>([...CATEGORY_ORDER]);
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
-  const [courseSub, setCourseSub] = useState<CourseSub>('ai');
+  const [courseSub, setCourseSub] = useState<CourseSub>('theme');
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
@@ -165,9 +164,9 @@ function Home() {
     const l = params.get('lang') as Lang;
     const c = params.get('category');
     if (r) setRegionState(r);
-    // 구버전 링크 호환: '테마'/'AI코스' 탭이 '코스' 밑 서브탭으로 합쳐짐
+    // 구버전 링크 호환: '테마'는 그대로 '코스' 밑 서브탭 유지, 'AI코스(tour)'는 신규 /course 페이지로 리다이렉트
     if (t === 'theme') { setActiveTab('course'); setCourseSub('theme'); }
-    else if (t === 'tour') { setActiveTab('course'); setCourseSub('ai'); }
+    else if (t === 'tour') { router.push('/course'); return; }
     else if (t) setActiveTab(t as Tab);
     if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
     if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
@@ -208,11 +207,7 @@ function Home() {
     if ((region === '공연' || region === '축제') && activeTab === 'map') {
       setActiveTab('list');
     }
-    // 같은 지역들엔 AI코스도 없으므로 '코스' 탭 안에서 '테마' 서브탭으로 대체
-    if ((region === '공연' || region === '축제') && activeTab === 'course' && courseSub === 'ai') {
-      setCourseSub('theme');
-    }
-  }, [region, activeTab, courseSub]);
+  }, [region, activeTab]);
 
   const categoryParam = `&category=${region === '공연' ? concertGenre : placeCategory}`;
   const sortParam = placeSort ? `&sort=${placeSort}` : '';
@@ -344,7 +339,7 @@ function Home() {
                     {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
                   </button>
                 ))}
-                {(activeTab !== 'map' && activeTab !== 'chat' && !(activeTab === 'course' && courseSub === 'ai')) && (
+                {(activeTab !== 'map' && activeTab !== 'chat') && (
                   <>
                     <span className="text-zinc-200 font-bold select-none shrink-0">|</span>
                     {EVENT_REGIONS.map((r) => (
@@ -456,11 +451,8 @@ function Home() {
               <div className="flex gap-2 px-6 pt-4 pb-1">
                 {isPlaceRegion && (
                   <button
-                    onClick={() => setCourseSub('ai')}
-                    className={cn(
-                      "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all",
-                      courseSub === 'ai' ? "bg-zinc-900 text-white shadow-sm" : "bg-zinc-100 text-zinc-400"
-                    )}
+                    onClick={() => router.push('/course')}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all bg-zinc-100 text-zinc-400"
                   >
                     {t.courseSubAi}
                   </button>
@@ -475,9 +467,6 @@ function Home() {
                   {t.courseSubTheme}
                 </button>
               </div>
-              {courseSub === 'ai' && isPlaceRegion && (
-                <AITour region={region} lang={lang} />
-              )}
               {courseSub === 'theme' && <ThemeMenu lang={lang} />}
             </motion.div>
           )}

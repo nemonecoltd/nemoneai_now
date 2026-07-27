@@ -32,7 +32,6 @@ export default function MyPage() {
 
   // Modal States
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null); // 재추가
 
   // Edit Mode State
@@ -247,11 +246,12 @@ export default function MyPage() {
           {activeTab === 'course' && (
             <motion.div key="course" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {savedCourses.length > 0 ? savedCourses.map((course: any) => (
-                <div key={course.id} onClick={() => setSelectedCourse(course)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-emerald-200 transition-colors">
-                  <h4 className="font-bold text-zinc-900 tracking-tight">{course.title}</h4>
+                <div key={course.id} onClick={() => router.push(`/course/${course.id}/edit`)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-emerald-200 transition-colors">
+                  <h4 className="font-bold text-zinc-900 tracking-tight">{course.title || '제목 없는 코스'}</h4>
                   <p className="text-xs text-zinc-500 line-clamp-1">{course.description}</p>
                   <div className="flex items-center gap-2 pt-2 border-t border-zinc-50">
-                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase">AI COURSE</span>
+                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase">{course.scope === 'timed' ? '3시간코스' : '자유코스'}</span>
+                    {course.is_public && <span className="text-[10px] font-black text-zinc-400 bg-zinc-100 px-2 py-1 rounded-md uppercase">공개</span>}
                     <span className="text-[10px] font-bold text-zinc-400 ml-auto">{new Date(course.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
@@ -259,6 +259,7 @@ export default function MyPage() {
                 <div className="py-20 text-center space-y-4">
                   <Route size={48} className="mx-auto text-zinc-200" />
                   <p className="text-zinc-400 text-sm font-medium">아직 저장된 코스가 없습니다.</p>
+                  <button onClick={() => router.push('/course')} className="inline-block px-8 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">코스 만들러 가기</button>
                 </div>
               )}
             </motion.div>
@@ -408,41 +409,6 @@ export default function MyPage() {
                       <p className="text-[11px] text-zinc-600 mt-2 line-clamp-2">{place.content}</p>
                     </div>
                     <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 group-hover:text-emerald-500 transition-colors" />
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Course Detail Modal */}
-      <AnimatePresence>
-        {selectedCourse && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={() => setSelectedCourse(null)}>
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-3">
-                  <img src={user?.user_metadata?.avatar_url || "https://picsum.photos/200"} className="w-10 h-10 rounded-full border border-zinc-100 object-cover" alt="" />
-                  <div>
-                    <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedCourse.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{user?.user_metadata?.full_name || 'User'}의 코스</p>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedCourse(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
-              </div>
-
-              <div className="relative space-y-8 mb-10 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-100">
-                {(Array.isArray(selectedCourse.steps) ? selectedCourse.steps : JSON.parse(selectedCourse.steps)).map((step: any, idx: number) => (
-                  <div key={idx} className="relative pl-10">
-                    <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-emerald-500 z-10" />
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-zinc-400 font-mono uppercase">{step.time} • {step.duration}MIN</p>
-                      <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                        <h4 className="font-bold text-zinc-900 text-sm">{step.place_name}</h4>
-                        <p className="text-[11px] text-zinc-500 mt-1">{step.activity}</p>
-                      </div>
-                    </div>
                   </div>
                 ))}
               </div>
