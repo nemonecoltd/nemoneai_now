@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, ChevronUp, ChevronDown, X, Plus, Search, Loader2,
   Save, Send, MessageSquarePlus, Clock,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import BrandTagline from '@/components/BrandTagline';
 
 interface Step {
   place_id: number;
@@ -211,14 +213,20 @@ export default function CourseEditPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200 pb-32">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={() => router.push('/course')} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 flex-1">코스 편집</h1>
-        <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase">
-          {course.scope === 'timed' ? '3시간코스' : '자유코스'}
-        </span>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.push('/course')} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap">
+            <Link href="/" className="no-underline text-inherit">지금여기<span className="text-emerald-500">.</span></Link>
+          </h1>
+          <span className="flex-1 text-sm font-bold text-zinc-500 truncate">코스 편집</span>
+          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase flex-shrink-0">
+            {course.scope === 'timed' ? '3시간코스' : '자유코스'}
+          </span>
+        </div>
+        <BrandTagline />
       </header>
 
       <main className="px-6 py-6 space-y-6">

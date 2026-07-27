@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Clock, Compass, Info, Loader2, Plus, Sparkles, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import BrandTagline from '@/components/BrandTagline';
+import BottomNav from '@/components/BottomNav';
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 type Region = typeof PLACE_REGIONS[number];
@@ -85,14 +88,21 @@ export default function CourseHubPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl border-x border-zinc-200">
-      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-3 flex items-center gap-3">
-        <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">코스</h1>
+      <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-1">
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+            <ChevronLeft size={24} />
+          </button>
+          <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap">
+            <Link href="/" className="no-underline text-inherit">지금여기<span className="text-emerald-500">.</span></Link>
+          </h1>
+          <span className="text-zinc-300">/</span>
+          <span className="text-sm font-bold text-zinc-500">코스</span>
+        </div>
+        <BrandTagline />
       </header>
 
-      <main className="px-6 py-6 space-y-8 pb-24">
+      <main className="px-6 py-6 space-y-8 pb-28">
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => setShowTimedModal(true)}
@@ -214,6 +224,8 @@ export default function CourseHubPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <BottomNav region={region} />
     </div>
   );
 }

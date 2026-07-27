@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, ChevronRight, MapPin, Calendar, Clock, Share2, Globe, Video, Heart,
-  Users, TrendingUp, Map as MapIcon, Library, Route as RouteIcon, MessageCircle, Megaphone, Flame, Sparkles,
+  Users, Megaphone, Flame, Sparkles,
 } from 'lucide-react';
 import { InArticleAd } from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
+import BottomNav from '@/components/BottomNav';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -101,7 +102,7 @@ const T = {
     details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
     locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
     linkCopied: '링크가 복사되었습니다!',
-    navRec: '핫플', navMap: '지도', navList: '장소', navTheme: '테마', navTour: 'AI 코스', my: '마이',
+    my: '마이',
     tagline: '당신 3시간의 알찬 설계',
   },
   en: {
@@ -111,7 +112,7 @@ const T = {
     details: 'Details', moreToExplore: 'More to explore', location: 'Location',
     locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
     linkCopied: 'Link copied!',
-    navRec: 'Hot', navMap: 'Map', navList: 'Spot', navTheme: 'Theme', navTour: 'AI Tour', my: 'My',
+    my: 'My',
     tagline: 'A fulfilling plan for your 3 hours',
   },
   zh: {
@@ -121,7 +122,7 @@ const T = {
     details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
     locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
     linkCopied: '链接已复制！',
-    navRec: '热门', navMap: '地图', navList: '地点', navTheme: '主题', navTour: 'AI路线', my: '我的',
+    my: '我的',
     tagline: '为您3小时的充实安排',
   },
 } as const;
@@ -889,62 +890,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         </footer>
       </div>
 
-      {/* Floating AI Chat Button */}
-      <div className="fixed inset-x-0 bottom-0 max-w-md mx-auto z-50 pointer-events-none">
-        <button
-          onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=chat&lang=${lang}`)}
-          className="pointer-events-auto absolute bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-zinc-900 text-white hover:bg-emerald-600 active:scale-90 transition-all"
-        >
-          <MessageCircle size={28} />
-        </button>
-
-        {/* Bottom Navigation */}
-        <nav className="pointer-events-auto bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-2 pb-4 flex justify-between items-center">
-          <NavButton
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=rec&lang=${lang}`)}
-            icon={<TrendingUp size={22} />}
-            label={t.navRec}
-          />
-          <NavButton
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=map&lang=${lang}`)}
-            icon={<MapIcon size={22} />}
-            label={t.navMap}
-            disabled={isPerformanceRegion}
-          />
-          <NavButton
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=list&lang=${lang}`)}
-            icon={<MapPin size={22} />}
-            label={t.navList}
-          />
-          <NavButton
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=theme&lang=${lang}`)}
-            icon={<Library size={22} />}
-            label={t.navTheme}
-          />
-          <NavButton
-            onClick={() => router.push(`/?region=${encodeURIComponent(place.region || '성수')}&tab=tour&lang=${lang}`)}
-            icon={<RouteIcon size={22} />}
-            label={t.navTour}
-            disabled={isPerformanceRegion}
-          />
-        </nav>
-      </div>
+      <BottomNav region={place.region || '성수'} lang={lang} isPerformanceRegion={isPerformanceRegion} />
     </div>
-  );
-}
-
-function NavButton({ onClick, icon, label, disabled }: { onClick: () => void; icon: React.ReactNode; label: string; disabled?: boolean }) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      className={cn(
-        "flex flex-col items-center gap-1 transition-all",
-        disabled ? "text-zinc-300 cursor-not-allowed" : "text-zinc-400 hover:text-emerald-600"
-      )}
-    >
-      {icon}
-      <span className="text-[10px] font-bold">{label}</span>
-    </button>
   );
 }
