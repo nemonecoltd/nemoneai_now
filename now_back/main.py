@@ -26,7 +26,10 @@ import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from deps import ADMIN_EMAIL, _PLACE_RANKING_REGIONS, _client_ip, _lang_col, _verify_supabase_user
+from deps import ADMIN_EMAIL, _client_ip, _lang_col, _verify_supabase_user
+# ranking_service의 캐시는 갱신 시 전역 재할당되므로 변수 직접 import 금지 — 모듈 경유(ranking.get_*)로만 접근
+import ranking_service as ranking
+from enrich_service import _auto_enrich_new_popups, _enrich_place_core, _revalidate_place, _translate_and_save
 from schemas import (
     CourseLikeToggle,
     CourseSave,
@@ -378,9 +381,9 @@ async def admin_generate_weekly_theme():
     """어드민 전용 — 최근 7일 인기 팝업 TOP10으로 '주간 TOP10' 테마 자동 생성.
     같은 목적의 테마 하나(pinned_at IS NOT NULL)를 매주 덮어써서 테마 목록 최상단에 고정 노출."""
     with engine.connect() as conn:
-        rows = list(_popularity_rows(conn, 7, limit=10))
+        rows = list(ranking._popularity_rows(conn, 7, limit=10))
         if len(rows) < 10:
-            rows = list(_popularity_rows(conn, 30, limit=10))
+            rows = list(ranking._popularity_rows(conn, 30, limit=10))
 
         today = date.today()
         week_start = today - timedelta(days=7)
@@ -593,7 +596,7 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
 async def get_popular_places(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
     """인기 랭킹 (조회수+좋아요*2 가중치, 4시간 주기 갱신 캐시).
     region 미지정: 지역 무관 통합 랭킹(공연/축제 제외). region 지정 시(성수/홍대/강북/강남/제주) 해당 지역만."""
-    source = _place_popularity_by_region.get(region, []) if region else _place_popularity_cache
+    source = ranking.get_popular(region)
     data = source[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
@@ -602,7 +605,7 @@ async def get_popular_places(region: Optional[str] = None, limit: Optional[int] 
 @app.get("/places/popular/performance")
 async def get_popular_performances(limit: Optional[int] = None, offset: int = 0):
     """공연 전용 인기 랭킹 (플레이스 랭킹과 동일 산식/캐시 주기, 공연만 집계)."""
-    data = _performance_popularity_cache[offset:]
+    data = ranking.get_performance()[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -610,7 +613,7 @@ async def get_popular_performances(limit: Optional[int] = None, offset: int = 0)
 @app.get("/places/popular/festival")
 async def get_popular_festivals(limit: Optional[int] = None, offset: int = 0):
     """축제 전용 인기 랭킹 (플레이스 랭킹과 동일 산식/캐시 주기, region='축제'만 집계)."""
-    data = _festival_popularity_cache[offset:]
+    data = ranking.get_festival()[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -618,7 +621,7 @@ async def get_popular_festivals(limit: Optional[int] = None, offset: int = 0):
 @app.get("/places/popular/shopping")
 async def get_popular_shopping(limit: Optional[int] = None, offset: int = 0):
     """쇼핑 전용 인기 랭킹 (category='shopping', 지역 구분 없이 통합 — 트래픽 쌓이면 지역 서브탭 분리 예정)."""
-    data = _shopping_popularity_cache[offset:]
+    data = ranking.get_shopping()[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -626,7 +629,7 @@ async def get_popular_shopping(limit: Optional[int] = None, offset: int = 0):
 @app.get("/places/popular/exhibition")
 async def get_popular_exhibitions(limit: Optional[int] = None, offset: int = 0):
     """전시 전용 인기 랭킹 (category='전시', 지역 구분 없이 통합 — 트래픽 쌓이면 지역 서브탭 분리 예정)."""
-    data = _exhibition_popularity_cache[offset:]
+    data = ranking.get_exhibition()[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data
@@ -635,7 +638,7 @@ async def get_popular_exhibitions(limit: Optional[int] = None, offset: int = 0):
 async def get_closing_soon():
     """핫플 탭 상단 '마감임박' 전광판용 (하루 1회 갱신 캐시). /places/{place_id}보다 먼저 등록해야
     FastAPI가 'closing-soon'을 place_id로 오인해 파싱 에러를 내는 라우팅 충돌을 피할 수 있음."""
-    return _closing_soon_cache
+    return ranking.get_closing_soon()
 
 @app.post("/itinerary")
 async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko", viewer: dict = Depends(_verify_supabase_user)):
@@ -847,9 +850,9 @@ async def get_place(place_id: int):
             raise HTTPException(status_code=404, detail="Place not found")
         place = dict(row._mapping)
         # 핫플인증 배지 — 현재 TOP25 인기 랭킹에 들어있는지 + 랭킹 갱신 시각
-        hot_rank = next((i + 1 for i, r in enumerate(_place_popularity_cache[:25]) if r["id"] == place_id), None)
+        hot_rank = next((i + 1 for i, r in enumerate(ranking.get_popular()[:25]) if r["id"] == place_id), None)
         place["hot_rank"] = hot_rank
-        place["hot_rank_updated_at"] = _popularity_last_refreshed if hot_rank else None
+        place["hot_rank_updated_at"] = ranking.get_last_refreshed() if hot_rank else None
         return place
 
 @app.post("/places/{place_id}/view")
@@ -860,315 +863,13 @@ async def record_place_view(place_id: int):
         conn.commit()
     return {"ok": True}
 
-_place_popularity_cache: list = []
-_performance_popularity_cache: list = []
-_festival_popularity_cache: list = []
-_shopping_popularity_cache: list = []
-_exhibition_popularity_cache: list = []
-_place_popularity_by_region: dict = {}
-_popularity_last_refreshed: Optional[str] = None
-
-def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performance: bool = False, only_festival: bool = False, min_score: int = 0, exclude_jeju: bool = False, only_region: Optional[str] = None, only_category: Optional[str] = None):
-    """조회수/좋아요 기반 인기 랭킹 쿼리 — interval_days 기간 내 활동만 집계.
-    only_performance=False, only_festival=False, only_category=None(기본, 플레이스=팝업 랭킹): 공연/축제 제외, 원데이클래스/체험(category='class')도 제외해 팝업만 집계
-    (어드민 CSV가 "이번주 핫플 팝업" 기사 작성용이라 학원류가 섞이면 편집상 어색함).
-    only_performance=True(공연 랭킹 전용): 공연(KOPIS 수집분)만 집계.
-    only_festival=True(축제 랭킹 전용): region='축제'만 집계.
-    only_category='shopping'|'전시'(쇼핑/전시 랭킹 전용): 해당 category만 집계, 지역 구분 없이 통합.
-    only_category='전시'는 category='전시'(비짓서울) + category='행사'(비짓제주)를 함께 묶어서 집계함.
-    min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
-    exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
-    제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청.
-    only_region: 플레이스 랭킹 지역 서브탭용 — _PLACE_RANKING_REGIONS 중 하나만 집계(호출 전 화이트리스트 검증 필수, SQL에 직접 삽입됨)."""
-    if only_performance:
-        region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
-    elif only_festival:
-        region_clause = "AND p.region = '축제'"
-    elif only_category:
-        # 전시 랭킹은 서울권(비짓서울) '전시' + 제주(비짓제주) '행사'를 하나로 합쳐서 노출 —
-        # 성격은 다르지만 카테고리 메뉴가 아직 '전시' 하나뿐이라 우선 통합, 품질/분리는 추후 검토
-        categories = ("전시", "행사") if only_category == "전시" else (only_category,)
-        cat_in = ", ".join(f"'{c}'" for c in categories)
-        region_clause = f"AND p.category IN ({cat_in})"
-    else:
-        region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
-        if exclude_jeju:
-            region_clause += " AND p.region != '제주'"
-        if only_region:
-            region_clause += f" AND p.region = '{only_region}'"
-    having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
-    return conn.execute(text(f"""
-        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews,
-               COUNT(DISTINCT l.id) AS like_count,
-               COUNT(DISTINCT v.id) AS view_count,
-               COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
-        FROM seongsu_places p
-        LEFT JOIN likes l ON l.place_id = p.id AND l.created_at >= NOW() - INTERVAL '{interval_days} days'
-        LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{interval_days} days'
-        WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)
-          {region_clause}
-        GROUP BY p.id
-        {having_clause}
-        ORDER BY score DESC, p.created_at DESC
-        LIMIT {limit}
-    """))
-
-_MIN_RANKING_SCORE = 3  # 이 미만 점수(조회1~2건 수준)는 25위 안이라도 노출 안 함 — 신생 카테고리(축제 등) 0점 채우기 방지
-
-def refresh_place_popularity(is_cron: bool = False):
-    """장소 인기 랭킹 재계산 — 조회수(최근48시간, 부족시 30일 확장) + 좋아요*2. 하루 6회(한국시간 4시간 간격) 실행.
-    메인 페이지 '추천' 탭(/places/popular)과 어드민 랭킹(/admin/ranking/weekly)이 공통으로 사용.
-    48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화.
-    _MIN_RANKING_SCORE 미만 항목은 아예 제외해, 활동이 적을 땐 25개를 억지로 채우지 않고 그보다 적게 노출될 수 있음.
-    is_cron: True면 스케줄러가 정확히 4시간 간격으로 호출한 것 — 이때만 NEW 배지 기준 스냅샷을 갱신함."""
-    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _shopping_popularity_cache, _exhibition_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
-    with engine.connect() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS place_views (
-                id SERIAL PRIMARY KEY,
-                place_id INTEGER NOT NULL,
-                viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
-        # 톱25 'NEW' 배지용 — 프로세스 재시작에도 이전 톱25 목록이 유지되도록 DB에 스냅샷 저장(메모리 캐시만 쓰면 재배포할 때마다 전부 NEW로 오탐)
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS ranking_snapshot (
-                id INTEGER PRIMARY KEY DEFAULT 1,
-                top25_ids JSONB NOT NULL,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                CHECK (id = 1)
-            )
-        """))
-        conn.execute(text("ALTER TABLE ranking_snapshot ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()"))
-        # NEW 배지 계산 검증용 — 직전 한 사이클치 톱25도 같이 보관(그 이전 이력은 안 쌓음)
-        conn.execute(text("ALTER TABLE ranking_snapshot ADD COLUMN IF NOT EXISTS prev_top25_ids JSONB"))
-        conn.commit()
-
-        prev_snapshot = conn.execute(text("SELECT top25_ids, updated_at FROM ranking_snapshot WHERE id = 1")).fetchone()
-        prev_top25_ids = set(prev_snapshot[0]) if prev_snapshot else set()
-        # 배포/재시작 때마다 이 함수가 module-level에서 다시 호출되는데(is_cron=False), 그걸로 스냅샷을
-        # 갱신하면 재배포 타이밍에 따라 기준점이 "4시간 전"이 아니라 "마지막 재시작 시점"으로 흔들림
-        # (실제로 하루에 여러 번 재배포하면서 기준점이 그때그때 달라졌던 적 있음) — 그래서 스케줄러가
-        # 정확히 4시간 간격으로 호출한 경우(is_cron=True)에만 스냅샷을 갱신, 재시작 호출은 절대 안 건드림
-        is_real_cycle = is_cron or (prev_snapshot is None)
-
-        result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE))
-        if len(result) < 25:
-            result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE))
-        _place_popularity_cache = [dict(row._mapping) for row in result]
-
-        current_top25_ids = [item["id"] for item in _place_popularity_cache[:25]]
-        new_ids = set(current_top25_ids) - prev_top25_ids
-        for item in _place_popularity_cache:
-            item["is_new"] = item["id"] in new_ids
-        if is_real_cycle:
-            logger.info("[ranking] NEW 배지 계산 — 직전 톱25=%s / 이번 톱25=%s / new_ids=%s", sorted(prev_top25_ids), sorted(current_top25_ids), sorted(new_ids))
-            conn.execute(
-                text("""
-                    INSERT INTO ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
-                    VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
-                    ON CONFLICT (id) DO UPDATE SET
-                        prev_top25_ids = ranking_snapshot.top25_ids,
-                        top25_ids = CAST(:ids AS jsonb),
-                        updated_at = NOW()
-                """),
-                {"ids": json.dumps(current_top25_ids), "prev_ids": json.dumps(sorted(prev_top25_ids))},
-            )
-            conn.commit()
-
-        # 플레이스 랭킹 지역 서브탭 — 종합과 같은 산식으로 지역별 톱25만 따로 캐시 + 지역별 NEW 배지
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS place_region_ranking_snapshot (
-                region TEXT PRIMARY KEY,
-                top25_ids JSONB NOT NULL,
-                prev_top25_ids JSONB,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            )
-        """))
-        conn.commit()
-
-        by_region: dict = {}
-        for r in _PLACE_RANKING_REGIONS:
-            r_result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE, only_region=r))
-            if len(r_result) < 25:
-                r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
-            region_cache = [dict(row._mapping) for row in r_result]
-
-            prev_r_snapshot = conn.execute(text("SELECT top25_ids FROM place_region_ranking_snapshot WHERE region = :region"), {"region": r}).fetchone()
-            prev_r_ids = set(prev_r_snapshot[0]) if prev_r_snapshot else set()
-            current_r_ids = [item["id"] for item in region_cache[:25]]
-            r_new_ids = set(current_r_ids) - prev_r_ids
-            for item in region_cache:
-                item["is_new"] = item["id"] in r_new_ids
-            by_region[r] = region_cache
-
-            if is_real_cycle:
-                conn.execute(
-                    text("""
-                        INSERT INTO place_region_ranking_snapshot (region, top25_ids, prev_top25_ids, updated_at)
-                        VALUES (:region, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
-                        ON CONFLICT (region) DO UPDATE SET
-                            prev_top25_ids = place_region_ranking_snapshot.top25_ids,
-                            top25_ids = CAST(:ids AS jsonb),
-                            updated_at = NOW()
-                    """),
-                    {"region": r, "ids": json.dumps(current_r_ids), "prev_ids": json.dumps(sorted(prev_r_ids))},
-                )
-                conn.commit()
-        _place_popularity_by_region = by_region
-
-        # 공연 랭킹 전용 NEW 배지 — 플레이스 랭킹과 동일한 스냅샷 방식(직전 사이클 대비 신규 진입만 표시)
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS performance_ranking_snapshot (
-                id INTEGER PRIMARY KEY DEFAULT 1,
-                top25_ids JSONB NOT NULL,
-                prev_top25_ids JSONB,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                CHECK (id = 1)
-            )
-        """))
-        conn.commit()
-        prev_perf_snapshot = conn.execute(text("SELECT top25_ids FROM performance_ranking_snapshot WHERE id = 1")).fetchone()
-        prev_perf_top25_ids = set(prev_perf_snapshot[0]) if prev_perf_snapshot else set()
-
-        perf_result = list(_popularity_rows(conn, 2, only_performance=True, min_score=_MIN_RANKING_SCORE))
-        if len(perf_result) < 25:
-            perf_result = list(_popularity_rows(conn, 30, only_performance=True, min_score=_MIN_RANKING_SCORE))
-        _performance_popularity_cache = [dict(row._mapping) for row in perf_result]
-
-        current_perf_top25_ids = [item["id"] for item in _performance_popularity_cache[:25]]
-        perf_new_ids = set(current_perf_top25_ids) - prev_perf_top25_ids
-        for item in _performance_popularity_cache:
-            item["is_new"] = item["id"] in perf_new_ids
-        if is_real_cycle:
-            conn.execute(
-                text("""
-                    INSERT INTO performance_ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
-                    VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
-                    ON CONFLICT (id) DO UPDATE SET
-                        prev_top25_ids = performance_ranking_snapshot.top25_ids,
-                        top25_ids = CAST(:ids AS jsonb),
-                        updated_at = NOW()
-                """),
-                {"ids": json.dumps(current_perf_top25_ids), "prev_ids": json.dumps(sorted(prev_perf_top25_ids))},
-            )
-            conn.commit()
-
-        # 축제 랭킹 전용 NEW 배지 — 위 공연 랭킹과 동일한 스냅샷 방식
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS festival_ranking_snapshot (
-                id INTEGER PRIMARY KEY DEFAULT 1,
-                top25_ids JSONB NOT NULL,
-                prev_top25_ids JSONB,
-                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                CHECK (id = 1)
-            )
-        """))
-        conn.commit()
-        prev_fest_snapshot = conn.execute(text("SELECT top25_ids FROM festival_ranking_snapshot WHERE id = 1")).fetchone()
-        prev_fest_top25_ids = set(prev_fest_snapshot[0]) if prev_fest_snapshot else set()
-
-        fest_result = list(_popularity_rows(conn, 2, only_festival=True, min_score=_MIN_RANKING_SCORE))
-        if len(fest_result) < 25:
-            fest_result = list(_popularity_rows(conn, 30, only_festival=True, min_score=_MIN_RANKING_SCORE))
-        _festival_popularity_cache = [dict(row._mapping) for row in fest_result]
-
-        current_fest_top25_ids = [item["id"] for item in _festival_popularity_cache[:25]]
-        fest_new_ids = set(current_fest_top25_ids) - prev_fest_top25_ids
-        for item in _festival_popularity_cache:
-            item["is_new"] = item["id"] in fest_new_ids
-        if is_real_cycle:
-            conn.execute(
-                text("""
-                    INSERT INTO festival_ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
-                    VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
-                    ON CONFLICT (id) DO UPDATE SET
-                        prev_top25_ids = festival_ranking_snapshot.top25_ids,
-                        top25_ids = CAST(:ids AS jsonb),
-                        updated_at = NOW()
-                """),
-                {"ids": json.dumps(current_fest_top25_ids), "prev_ids": json.dumps(sorted(prev_fest_top25_ids))},
-            )
-            conn.commit()
-
-        # 쇼핑/전시 랭킹 — 지역 구분 없이 통합 집계(트래픽 쌓이면 플레이스처럼 지역 서브탭 분리 예정), NEW 배지는 공연/축제와 동일한 스냅샷 방식
-        for cat_key, cache_attr, snapshot_table in (
-            ("shopping", "_shopping_popularity_cache", "shopping_ranking_snapshot"),
-            ("전시", "_exhibition_popularity_cache", "exhibition_ranking_snapshot"),
-        ):
-            conn.execute(text(f"""
-                CREATE TABLE IF NOT EXISTS {snapshot_table} (
-                    id INTEGER PRIMARY KEY DEFAULT 1,
-                    top25_ids JSONB NOT NULL,
-                    prev_top25_ids JSONB,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    CHECK (id = 1)
-                )
-            """))
-            conn.commit()
-            prev_snap = conn.execute(text(f"SELECT top25_ids FROM {snapshot_table} WHERE id = 1")).fetchone()
-            prev_ids = set(prev_snap[0]) if prev_snap else set()
-
-            cat_result = list(_popularity_rows(conn, 2, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
-            if len(cat_result) < 25:
-                cat_result = list(_popularity_rows(conn, 30, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
-            cat_cache = [dict(row._mapping) for row in cat_result]
-
-            current_ids = [item["id"] for item in cat_cache[:25]]
-            new_ids = set(current_ids) - prev_ids
-            for item in cat_cache:
-                item["is_new"] = item["id"] in new_ids
-            globals()[cache_attr] = cat_cache
-
-            if is_real_cycle:
-                conn.execute(
-                    text(f"""
-                        INSERT INTO {snapshot_table} (id, top25_ids, prev_top25_ids, updated_at)
-                        VALUES (1, CAST(:ids AS jsonb), CAST(:prev_ids AS jsonb), NOW())
-                        ON CONFLICT (id) DO UPDATE SET
-                            prev_top25_ids = {snapshot_table}.top25_ids,
-                            top25_ids = CAST(:ids AS jsonb),
-                            updated_at = NOW()
-                    """),
-                    {"ids": json.dumps(current_ids), "prev_ids": json.dumps(sorted(prev_ids))},
-                )
-                conn.commit()
-
-    _popularity_last_refreshed = datetime.now(timezone.utc).isoformat()
-    refresh_closing_soon()  # 랭킹과 같은 주기(4시간)로 같이 갱신 — 랜덤 12개라 자주 바뀌어도 자연스러움
-
-
-_closing_soon_cache: list = []
-
-def refresh_closing_soon():
-    """핫플 탭 상단 '마감임박' 전광판용 — refresh_place_popularity()와 같은 주기(4시간)로 갱신.
-    14일 이내 마감 예정 중 랜덤 12개를 뽑아 캐시. 팝업 전용(공연/축제/클래스/쇼핑/전시/행사 등은 제외해
-    성수/홍대/강북/강남/제주의 순수 팝업스토어만 노출, 정확도 불필요라 랜덤으로 충분)."""
-    global _closing_soon_cache
-    with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT id, title, title_en, title_zh, image_url, region
-            FROM seongsu_places
-            WHERE end_date IS NOT NULL
-              AND end_date >= CURRENT_DATE
-              AND end_date <= CURRENT_DATE + INTERVAL '14 days'
-              AND COALESCE(category, 'popup') = 'popup'
-              AND naver_place_id NOT LIKE 'kopis_%'
-              AND naver_place_id NOT LIKE 'jeju_%'
-              AND naver_place_id NOT LIKE 'culture_%'
-              AND region IN ('성수', '홍대', '강북', '강남', '제주')
-            ORDER BY RANDOM()
-            LIMIT 12
-        """))
-        _closing_soon_cache = [dict(row._mapping) for row in result]
 
 @app.get("/admin/ranking/weekly")
 async def admin_weekly_ranking():
     """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식). 공연 제외.
     blog_reviews만은 캐시가 아닌 실시간 DB 값으로 덮어씀 — 4시간 캐시 주기 사이에 어드민에서 갱신해도
     "미갱신"으로 잘못 표시되던 동기화 문제 수정(캐시 자체를 매번 새로 계산하기엔 무겁고, 여기선 필요 없음)."""
-    top25 = [dict(item) for item in _place_popularity_cache[:25]]
+    top25 = [dict(item) for item in ranking.get_popular()[:25]]
     ids = [item["id"] for item in top25]
     if ids:
         with engine.connect() as conn:
@@ -1186,9 +887,9 @@ async def admin_weekly_ranking_7d():
     """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산.
     "이번주 핫플 팝업" 서울권 기사용이라 제주는 제외(화면 표시용 TOP25는 제주 포함 그대로 유지)."""
     with engine.connect() as conn:
-        result = list(_popularity_rows(conn, 7, exclude_jeju=True))
+        result = list(ranking._popularity_rows(conn, 7, exclude_jeju=True))
         if len(result) < 25:
-            result = list(_popularity_rows(conn, 30, exclude_jeju=True))
+            result = list(ranking._popularity_rows(conn, 30, exclude_jeju=True))
         return [dict(row._mapping) for row in result[:25]]
 
 @app.post("/places/upload-image")
@@ -1229,43 +930,6 @@ async def create_place(place: PlaceUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def _revalidate_place(place_id: int):
-    """공개 도메인으로 호출 — 127.0.0.1:3002는 프로덕션 서버 안에서만 유효한 주소라 로컬 백엔드(텔레그램 봇 등)에서
-    호출하면 로컬 3002번(아무것도 없음)으로 가서 조용히 실패했음. 공개 URL로 바꾸면 로컬/프로덕션 어디서 트리거해도 동작함."""
-    try:
-        secret = os.getenv("ADMIN_SECRET_KEY", "")
-        url = f"https://now.nemoneai.com/api/revalidate?path=/posts/{place_id}&secret={secret}"
-        urllib.request.urlopen(url, timeout=8)
-    except Exception:
-        pass
-
-def _translate_and_save(place_id: int, new_title: Optional[str], new_content: Optional[str]):
-    """어드민 저장과 별개로 백그라운드에서 영문/중문 번역 후 DB에 반영 (저장 응답 지연 방지)."""
-    try:
-        with engine.connect() as conn:
-            row = conn.execute(
-                text("SELECT title, content FROM seongsu_places WHERE id = :id"),
-                {"id": place_id}
-            ).fetchone()
-            if not row:
-                return
-            title = new_title if new_title is not None else row.title
-            content = new_content if new_content is not None else row.content
-            title_en, content_en, title_zh, content_zh = ai_translate(title, content)
-            if title_en:
-                conn.execute(
-                    text("""
-                        UPDATE seongsu_places SET
-                            title_en = :title_en, content_en = :content_en,
-                            title_zh = :title_zh, content_zh = :content_zh
-                        WHERE id = :id
-                    """),
-                    {"title_en": title_en, "content_en": content_en,
-                     "title_zh": title_zh, "content_zh": content_zh, "id": place_id}
-                )
-                conn.commit()
-    except Exception as e:
-        logger.error(f"❌ 백그라운드 번역 실패 (place_id={place_id}): {e}")
 
 @app.put("/places/{place_id}")
 async def update_place(place_id: int, place: PlaceUpdate):
@@ -1325,155 +989,6 @@ async def update_place(place_id: int, place: PlaceUpdate):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-async def _enrich_place_core(place_id: int) -> dict:
-    """블로그갱신 실제 처리 로직 — HTTP 엔드포인트(/places/{id}/enrich)와 텔레그램 봇 둘 다에서 재사용.
-    FastAPI에 종속되지 않도록 HTTPException 대신 ValueError/RuntimeError를 던짐."""
-    import asyncio
-    import re as _re
-
-    # 1. DB에서 place 정보 조회
-    with engine.connect() as conn:
-        row = conn.execute(
-            text("SELECT title, location, naver_place_id FROM seongsu_places WHERE id = :id"),
-            {"id": place_id}
-        ).fetchone()
-    if not row:
-        raise ValueError("Place not found")
-
-    title = row[0] or ""
-    location = row[1] or ""
-    naver_place_id = row[2] or ""
-    if not naver_place_id:
-        raise ValueError("naver_place_id 없음 — pcmap 조회 불가")
-
-    # 2. pcmap 방문자 리뷰 탭 — 블로그 카드 스크래핑
-    try:
-        from playwright.async_api import async_playwright
-
-        blog_reviews: list[dict] = []
-        road_text = ""
-
-        async def _scrape():
-            nonlocal road_text
-            async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
-                ctx = await browser.new_context(
-                    user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                )
-                page = await ctx.new_page()
-
-                # 홈 탭 — Apollo state에서 road 텍스트만 수집
-                await page.goto(
-                    f"https://pcmap.place.naver.com/place/{naver_place_id}/home",
-                    wait_until="domcontentloaded", timeout=25000
-                )
-                await page.wait_for_timeout(2000)
-                home_html = await page.content()
-                apollo_match = _re.search(r'window\.__APOLLO_STATE__\s*=\s*(\{.+?\});\s*</script>', home_html, _re.DOTALL)
-                if apollo_match:
-                    try:
-                        apollo = json.loads(apollo_match.group(1))
-                        for key, val in apollo.items():
-                            if key.startswith("PlaceDetailBase:") and isinstance(val, dict):
-                                road_text = val.get("road") or ""
-                    except Exception:
-                        pass
-
-                async def _extract_blog_cards(pg):
-                    return await pg.evaluate("""() => {
-                        const result = [];
-                        const links = document.querySelectorAll('a[href*="blog.naver.com"]');
-                        for (const a of links) {
-                            const lines = (a.innerText || '').split('\\n').map(s => s.trim()).filter(Boolean);
-                            const title = lines[3] || lines[2] || lines[1] || lines[0] || '';
-                            const img = a.querySelector('img');
-                            if (title.length > 5) {
-                                result.push({
-                                    title: title.substring(0, 100),
-                                    url: a.href,
-                                    thumbnail: img ? img.src : ''
-                                });
-                            }
-                            if (result.length >= 5) break;
-                        }
-                        return result;
-                    }""")
-
-                # 블로그 리뷰 탭
-                await page.goto(
-                    f"https://pcmap.place.naver.com/place/{naver_place_id}/review/ugc",
-                    wait_until="domcontentloaded", timeout=25000
-                )
-                await page.wait_for_timeout(3000)
-                cards = await _extract_blog_cards(page)
-
-                await browser.close()
-                return cards
-
-        blog_reviews = await asyncio.wait_for(_scrape(), timeout=45)
-
-    except Exception as e:
-        logger.warning(f"pcmap 스크래핑 실패 ({naver_place_id}): {e}")
-        blog_reviews = []
-        road_text = ""
-
-    # 3. Gemini로 고품질 소개 생성
-    try:
-        from google import genai as _genai
-        client = _genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-        blog_block = ""
-        if blog_reviews:
-            blog_block = "\n실제 방문자 블로그 후기 제목:\n" + "\n".join(f"- {r['title']}" for r in blog_reviews)
-        road_block = f"\n찾아오는 길: {road_text}" if road_text else ""
-
-        if blog_reviews:
-            length_guide = "3~4문장, 1문단으로"
-        else:
-            length_guide = "2~3문단으로 구체적으로 (각 문단은 빈 줄로 구분)"
-
-        prompt = (
-            f"다음 팝업스토어 소개 글을 {length_guide} 작성해줘.\n"
-            f"장소명: {title}\n위치: {location}"
-            f"{blog_block}"
-            f"{road_block}\n\n"
-            f"조건: 방문자 입장에서, 이모지 없이, 마크다운 기호 없이, 선택지/옵션 없이 소개 문구만 출력. "
-            f"블로그 후기 제목이 있다면 그 분위기와 특징을 반드시 녹여낼 것."
-        )
-
-        resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        generated = (resp.text or "").strip()[:600]
-    except Exception as e:
-        raise RuntimeError(f"Gemini 생성 실패: {e}")
-
-    # 4. DB 저장 — content 업데이트 + blog_reviews 저장 + 갱신 시각 기록
-    # blog_reviews가 빈 배열([])일 때 "if blog_reviews else None"이 False로 평가돼 NULL로 저장되던 버그 —
-    # 실제로 리뷰가 0건인 장소가 영원히 "미처리(NULL)"로 보여서 자동갱신 스케줄러가 같은 곳을 무한 재시도했음.
-    # 스크래핑이 실행됐다는 사실 자체를 항상 빈 배열로라도 기록해 "처리 완료"를 구분할 수 있게 함.
-    with engine.connect() as conn:
-        conn.execute(
-            text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, updated_at = NOW() WHERE id = :id"),
-            {
-                "content": generated,
-                "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False),
-                "id": place_id,
-            }
-        )
-        conn.commit()
-
-    # content가 바뀌었으니 영문/중문 번역도 백그라운드로 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
-    threading.Thread(target=_translate_and_save, args=(place_id, None, generated), daemon=True).start()
-
-    # 상세 페이지가 5분 ISR 캐시라 이걸 안 부르면 캐시 만료 전까지 옛 내용이 계속 보임(일반 저장 플로우는 이미 호출 중)
-    threading.Thread(target=_revalidate_place, args=(place_id,), daemon=True).start()
-
-    return {
-        "content": generated,
-        "blog_reviews": blog_reviews,
-        "has_road": bool(road_text),
-    }
-
 
 @app.post("/places/{place_id}/enrich")
 async def enrich_place_content(place_id: int):
@@ -1662,70 +1177,19 @@ async def get_admin_stats():
         "storage_percent": storage["percent"],
     }
 
-refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
+ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
 # 서버는 UTC 기준 — 한국시간(KST=UTC+9) 4시간 간격(0/4/8/12/16/20시)에 맞춰 UTC 15/19/23/03/07/11시에 실행
-scheduler.add_job(refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_0000', kwargs={'is_cron': True})
-scheduler.add_job(refresh_place_popularity, 'cron', hour=19, minute=5, id='ranking_kst_0400', kwargs={'is_cron': True})
-scheduler.add_job(refresh_place_popularity, 'cron', hour=23, minute=5, id='ranking_kst_0800', kwargs={'is_cron': True})
-scheduler.add_job(refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_1200', kwargs={'is_cron': True})
-scheduler.add_job(refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600', kwargs={'is_cron': True})
-scheduler.add_job(refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=15, minute=5, id='ranking_kst_0000', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=19, minute=5, id='ranking_kst_0400', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=23, minute=5, id='ranking_kst_0800', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_1200', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600', kwargs={'is_cron': True})
+scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000', kwargs={'is_cron': True})
 scheduler.start()
 
-# 신규 팝업 자동 블로그갱신 — 10분마다 blog_reviews가 비어있는 네이버 팝업(공연/축제/코피스/비짓제주 등
-# 레거시 소스 제외)을 찾아 자동으로 갱신. Playwright가 로컬에만 있어 프로덕션에선 절대 켜면 안 됨 —
-# 로컬 .env에만 AUTO_ENRICH_POPUPS=true를 넣어서 게이트.
-# created_at 7일(지난주치까지) 이내로 한정 — 매주 목요일 스크래핑분만 대상으로 하고 그보다 예전부터
-# 쌓인 미갱신 백로그는 안 건드림(백로그는 기존처럼 어드민/텔레그램 수동 트리거로 처리).
-_auto_enrich_success_count = 0
-_auto_enrich_fail_count = 0
-
-def _auto_enrich_new_popups() -> None:
-    import asyncio as _asyncio
-    global _auto_enrich_success_count, _auto_enrich_fail_count
-    BATCH_LIMIT = 1  # 10분마다 1건 — 안전하게 천천히
-    ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
-    with engine.connect() as conn:
-        rows = conn.execute(text("""
-            SELECT id FROM seongsu_places
-            WHERE blog_reviews IS NULL
-              AND COALESCE(category, 'popup') = 'popup'
-              AND region NOT IN ('공연', '축제')
-              AND naver_place_id NOT LIKE 'kopis_%'
-              AND naver_place_id NOT LIKE 'jeju_%'
-              AND naver_place_id NOT LIKE 'culture_%'
-              AND naver_place_id NOT LIKE 'visitjeju_%'
-              AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-              AND created_at >= NOW() - INTERVAL '7 days'
-            ORDER BY created_at ASC
-            LIMIT :limit
-        """), {"limit": BATCH_LIMIT}).fetchall()
-
-    if not rows:
-        # 처리할 게 없어짐 = 이번 배치 종료. 뭔가 했었으면(카운터>0) 요약 알림 후 리셋, 이미 0이면(계속 idle) 조용히 넘어감
-        if _auto_enrich_success_count or _auto_enrich_fail_count:
-            from notification import send_alert
-            send_alert(
-                f"[신규 팝업 자동 블로그갱신] 배치 완료 — 성공 {_auto_enrich_success_count}건, 실패 {_auto_enrich_fail_count}건"
-            )
-            _auto_enrich_success_count = 0
-            _auto_enrich_fail_count = 0
-        return
-
-    for row in rows:
-        try:
-            _asyncio.run(_asyncio.wait_for(_enrich_place_core(row.id), timeout=ITEM_TIMEOUT_SEC))
-            logger.info("[auto_enrich] 완료 (place_id=%s)", row.id)
-            _auto_enrich_success_count += 1
-        except _asyncio.TimeoutError:
-            logger.error("[auto_enrich] 타임아웃(%ss 초과) — 건너뜀 (place_id=%s)", ITEM_TIMEOUT_SEC, row.id)
-            _auto_enrich_fail_count += 1
-        except Exception as e:
-            logger.error("[auto_enrich] 실패 (place_id=%s): %s", row.id, e)
-            _auto_enrich_fail_count += 1
 
 if os.getenv("AUTO_ENRICH_POPUPS") == "true":
     scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
