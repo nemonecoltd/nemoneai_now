@@ -41,6 +41,17 @@ def _verify_supabase_user(authorization: Optional[str] = Header(None)) -> dict:
         raise HTTPException(status_code=401, detail="로그인 확인에 실패했습니다")
 
 
+def _verify_supabase_user_optional(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """_verify_supabase_user의 비필수 버전 — 토큰이 없거나 유효하지 않아도 401 대신 None.
+    코스 상세처럼 '공개면 누구나, 비공개면 소유자만'인 화면에서 소유자 판별용으로 사용."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        return _verify_supabase_user(authorization)
+    except HTTPException:
+        return None
+
+
 def _client_ip(request: Request) -> str:
     # nginx가 /api-now/를 FastAPI로 직접 프록시하며 X-Forwarded-For를 항상 세팅함(단일 홉이라 신뢰 가능)
     xff = request.headers.get("x-forwarded-for")

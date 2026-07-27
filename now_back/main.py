@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 import ranking_service as ranking
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
-from routers import admin, ai, magazine, places, rankings, social
+from routers import admin, ai, courses, magazine, places, rankings, social
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
 
@@ -57,10 +57,12 @@ def update_db_schema():
 update_db_schema()
 
 # --- 라우터 등록 ---
-# rankings(/places/popular*, /places/closing-soon)는 places(/places/{place_id})보다 반드시 먼저 —
-# 뒤바뀌면 'popular'/'closing-soon'이 place_id(int)로 파싱돼 422가 남
+# rankings(/places/popular*, /places/closing-soon)와 courses(/places/search)는 반드시
+# places(/places/{place_id})보다 먼저 — 뒤바뀌면 'popular'/'closing-soon'/'search'가
+# place_id(int)로 파싱돼 422가 남
 app.include_router(social.router)
 app.include_router(rankings.router)
+app.include_router(courses.router)
 app.include_router(ai.router)
 app.include_router(magazine.router)
 app.include_router(places.router)

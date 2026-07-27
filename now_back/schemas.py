@@ -62,6 +62,34 @@ class CourseLikeToggle(BaseModel):
     user_id: str
     course_id: int
 
+class CourseDraftCreate(BaseModel):
+    """3시간코스/자유코스 생성 — user_id는 인증 토큰(viewer)에서 가져오므로 여기 없음.
+    user_name/user_image는 Supabase 세션의 표시정보(클라이언트 로컬 상태)라 body로 받음."""
+    user_name: Optional[str] = "User"
+    user_image: Optional[str] = None
+    companion: Optional[str] = "solo"  # scope=timed일 때만 사용
+
+class CourseUpdate(BaseModel):
+    """편집화면 임시저장 — is_public은 여기서 바꾸지 않음(전용 publish 엔드포인트로만 전환)."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    steps: Optional[List[dict]] = None
+
+class CoursePublish(BaseModel):
+    title: Optional[str] = None  # 미입력 시 서버가 자동 제안
+
+class PlaceReportCreate(BaseModel):
+    query: str
+    region: Optional[str] = None
+
+    @field_validator("query")
+    @classmethod
+    def _validate_query(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("query는 비어 있을 수 없습니다.")
+        return v[:200]
+
 class ThemeSave(BaseModel):
     user_id: str
     user_name: Optional[str] = "User"

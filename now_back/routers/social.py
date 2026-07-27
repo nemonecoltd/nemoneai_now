@@ -52,15 +52,18 @@ async def get_user_likes(user_id: str):
 
 @router.post("/courses/save")
 async def save_course(course: CourseSave):
+    """[하위호환] 구 AI투어 저장 버튼 — /courses/draft?scope=timed 도입 후에도 구 프론트가
+    당분간 이 경로를 쓸 수 있어 유지. 기존 동작(저장=즉시 공개)을 그대로 보존하기 위해
+    scope='timed', source='ai_draft', is_public=true로 명시(신규 draft의 기본값 false와 다름)."""
     import json
     try:
         with engine.connect() as conn:
             query = text("""
-                INSERT INTO saved_courses (user_id, user_name, user_image, title, description, steps, region)
-                VALUES (:user_id, :user_name, :user_image, :title, :description, :steps, :region)
+                INSERT INTO saved_courses (user_id, user_name, user_image, title, description, steps, region, scope, source, is_public)
+                VALUES (:user_id, :user_name, :user_image, :title, :description, :steps, :region, 'timed', 'ai_draft', true)
             """)
             conn.execute(query, {
-                "user_id": course.user_id, 
+                "user_id": course.user_id,
                 "user_name": course.user_name,
                 "user_image": course.user_image,
                 "title": course.title,
@@ -81,12 +84,14 @@ async def get_user_courses(user_id: str):
 
 @router.get("/courses")
 async def get_all_courses():
-    """[랭킹] 모든 코스 조회 (자체 보관된 유저 정보 사용)"""
+    """[랭킹] 공개 코스 조회 (자체 보관된 유저 정보 사용).
+    기존엔 title이 '[퍼감]'으로 시작하는지로 공개 여부를 판별하는 임시방편이었는데,
+    is_public 컬럼이 생겨서 이제 그걸로 명시적으로 판별."""
     query = text("""
         SELECT c.*, COUNT(cl.id) as like_count
         FROM saved_courses c
         LEFT JOIN course_likes cl ON c.id = cl.course_id
-        WHERE c.title NOT LIKE '[퍼감]%'
+        WHERE c.is_public = true
           AND c.created_at >= NOW() - INTERVAL '45 days'
         GROUP BY c.id
         ORDER BY like_count DESC, c.created_at DESC

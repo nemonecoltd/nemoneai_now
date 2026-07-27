@@ -15,6 +15,13 @@ from schemas import Question, TourRequest
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# companion을 자연어 쿼리로 매핑해 pgvector 유사도 검색에 사용 — /itinerary와 /courses/draft(scope=timed)가 공유
+COMPANION_QUERY = {
+    "solo": "혼자 조용히 둘러보기 좋은 감성적인 장소",
+    "couple": "연인과 함께 가기 좋은 로맨틱한 데이트 장소",
+    "friends": "친구들과 함께 즐겁게 놀기 좋은 활기찬 장소",
+}
+
 @router.post("/ask")
 async def ask_question(question: Question, region: str = "성수", lang: str = "ko", viewer: dict = Depends(_verify_supabase_user)):
     """[핵심] RAG 기반 다국어 질문 답변 — 로그인 필요(스팸/트래픽 공격 방지, 과거 무인증 남용 이력 있음)"""
@@ -89,92 +96,105 @@ async def search_places(q: str, region: str = "성수", lang: str = "ko"):
         logger.error(f"❌ Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def check_daily_ai_limit(user_id: str) -> None:
+    """user_ai_usages에서 오늘 'itinerary_generate' 사용 횟수를 확인, 2회 이상이면 403.
+    /itinerary(구 AI투어)와 /courses/draft(scope=timed, 신규 3시간코스)가 하나의 일일 한도를
+    공유한다 — 명칭이 바뀌어도 한도 우회 창구가 되지 않도록."""
+    with engine.connect() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS user_ai_usages (
+                id SERIAL PRIMARY KEY,
+                user_id VARCHAR(255) NOT NULL,
+                action_type VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        conn.commit()
+        usage_count = conn.execute(text("""
+            SELECT COUNT(*) FROM user_ai_usages
+            WHERE user_id = :user_id AND action_type = 'itinerary_generate'
+              AND DATE(created_at) = CURRENT_DATE
+        """), {"user_id": user_id}).scalar()
+        if usage_count and usage_count >= 2:
+            logger.warning(f"🚫 [Rate Limit] {user_id} exceeded daily course generation limit.")
+            raise HTTPException(status_code=403, detail="오늘 제공된 3시간코스 생성 기회(2회)를 모두 사용하셨습니다. 내일 다시 이용해주세요!")
+
+
+def log_ai_usage(user_id: str) -> None:
+    try:
+        with engine.connect() as conn:
+            conn.execute(
+                text("INSERT INTO user_ai_usages (user_id, action_type) VALUES (:user_id, 'itinerary_generate')"),
+                {"user_id": user_id},
+            )
+            conn.commit()
+    except Exception as e:
+        logger.error(f"❌ Usage logging failed: {e}")
+
+
+async def generate_timed_course(region: str, companion: str, lang: str = "ko") -> dict:
+    """3시간 코스 AI 생성 — 후보 선정(pgvector 유사도 + 카테고리 round-robin) + Gemini 호출.
+    /itinerary(캐시 있음)와 /courses/draft(캐시 없음, 매번 새 saved_courses row가 목적)가 공유."""
+    title_field = _lang_col(lang, "title")
+    content_field = _lang_col(lang, "content")
+
+    # companion을 자연어 쿼리로 바꿔 pgvector 임베딩 유사도로 정렬하고,
+    # 카테고리별 ROW_NUMBER round-robin으로 한 카테고리 쏠림 방지
+    companion_query_text = COMPANION_QUERY.get(companion.strip().lower(), "누구와 가도 좋은 인기 장소")
+    companion_embedding = await asyncio.to_thread(get_embedding, companion_query_text)
+    companion_embedding_str = f"[{','.join(map(str, companion_embedding))}]"
+
+    search_query = text(f"""
+        WITH ranked AS (
+            SELECT id, {title_field} AS title, {content_field} AS content, location, date_range,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY COALESCE(category, 'popup')
+                       ORDER BY embedding <-> :embedding
+                   ) AS rn,
+                   COALESCE(category, 'popup') AS cat
+            FROM seongsu_places
+            WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+              AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
+        )
+        SELECT id, title, content, location, date_range FROM ranked
+        ORDER BY rn ASC, cat ASC
+        LIMIT 15
+    """)
+    with engine.connect() as conn:
+        result = conn.execute(search_query, {"region": region, "embedding": companion_embedding_str})
+        rows = result.fetchall()
+        context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
+
+    from gemini_service import generate_walking_tour
+    return await asyncio.to_thread(generate_walking_tour, companion, context_text, region=region, lang=lang)
+
+
 @router.post("/itinerary")
 async def create_itinerary(req: TourRequest, region: str = "성수", lang: str = "ko", viewer: dict = Depends(_verify_supabase_user)):
+    """[구 AI투어] 로그인 유저에게 임시 3시간 코스 미리보기 제공(저장은 /courses/save 별도 호출).
+    신규 흐름은 /courses/draft?scope=timed로 대체됐지만 하위호환을 위해 유지."""
     import json
     from datetime import date
     if lang not in ("ko", "en", "zh"):
         lang = "ko"
     try:
         today = date.today()
-        
-        # [NEW LOGIC] Rate Limiting (하루 2회 제한)
+
         if req.user_id:
-            with engine.connect() as conn:
-                # 테이블이 없다면 자동 생성
-                conn.execute(text("""
-                    CREATE TABLE IF NOT EXISTS user_ai_usages (
-                        id SERIAL PRIMARY KEY,
-                        user_id VARCHAR(255) NOT NULL,
-                        action_type VARCHAR(50) NOT NULL,
-                        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );
-                """))
-                conn.commit()
-
-                # 오늘 사용 횟수 조회
-                usage_query = text("""
-                    SELECT COUNT(*) FROM user_ai_usages 
-                    WHERE user_id = :user_id AND action_type = 'itinerary_generate' 
-                    AND DATE(created_at) = CURRENT_DATE
-                """)
-                usage_count = conn.execute(usage_query, {"user_id": req.user_id}).scalar()
-
-                # 2회 이상 사용 시 차단
-                if usage_count and usage_count >= 2:
-                    logger.warning(f"🚫 [Rate Limit] {req.user_id} exceeded daily itinerary generation limit.")
-                    raise HTTPException(status_code=403, detail="오늘 제공된 AI 코스 생성 기회(2회)를 모두 사용하셨습니다. 내일 다시 이용해주세요!")
+            check_daily_ai_limit(req.user_id)
 
         # 1. 캐시 확인 (지역 및 언어 정보 포함)
         with engine.connect() as conn:
             # 캐시 키에 언어 추가 (현재는 단순 companion/date 기반이나 확장이 필요할 수 있음)
             cache_query = text("SELECT itinerary_json FROM ai_itinerary_cache WHERE companion = :companion AND created_at = :today")
             cached_result = conn.execute(cache_query, {"companion": req.companion, "today": today}).fetchone()
-            
+
             if cached_result:
                 logger.info(f"✨ [Cache Hit] Returning cached itinerary for {req.companion}")
                 return cached_result[0]
 
-        # 2. 캐시 없으면 Gemini 호출 (언어에 맞는 필드 가져옴)
-        title_field = _lang_col(lang, "title")
-        content_field = _lang_col(lang, "content")
-
-        # 후보 장소 선정: 기존엔 ORDER BY RANDOM()이라 매번 완전히 무작위였음(편향 버그의 응급조치였을 뿐,
-        # "이 동행에 맞는 장소를 고른다"는 문제 자체는 회피한 상태) — companion을 자연어 쿼리로 바꿔
-        # pgvector 임베딩 유사도로 정렬하고, 카테고리별 ROW_NUMBER round-robin으로 한 카테고리 쏠림 방지
-        _COMPANION_QUERY = {
-            "solo": "혼자 조용히 둘러보기 좋은 감성적인 장소",
-            "couple": "연인과 함께 가기 좋은 로맨틱한 데이트 장소",
-            "friends": "친구들과 함께 즐겁게 놀기 좋은 활기찬 장소",
-        }
-        companion_query_text = _COMPANION_QUERY.get(req.companion.strip().lower(), "누구와 가도 좋은 인기 장소")
-        companion_embedding = await asyncio.to_thread(get_embedding, companion_query_text)
-        companion_embedding_str = f"[{','.join(map(str, companion_embedding))}]"
-
-        search_query = text(f"""
-            WITH ranked AS (
-                SELECT id, {title_field} AS title, {content_field} AS content, location, date_range,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY COALESCE(category, 'popup')
-                           ORDER BY embedding <-> :embedding
-                       ) AS rn,
-                       COALESCE(category, 'popup') AS cat
-                FROM seongsu_places
-                WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-                  AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
-            )
-            SELECT id, title, content, location, date_range FROM ranked
-            ORDER BY rn ASC, cat ASC
-            LIMIT 15
-        """)
-        with engine.connect() as conn:
-            result = conn.execute(search_query, {"region": region, "embedding": companion_embedding_str})
-            rows = result.fetchall()
-            context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
-        
-        from gemini_service import generate_walking_tour
-        # 프롬프트에 지역 및 언어 정보 전달 (동기 함수라 스레드로 오프로딩)
-        itinerary = await asyncio.to_thread(generate_walking_tour, req.companion, context_text, region=region, lang=lang)
+        # 2. 캐시 없으면 Gemini 호출
+        itinerary = await generate_timed_course(region, req.companion, lang)
 
         # 3. 결과 캐싱
         try:
@@ -194,18 +214,8 @@ async def create_itinerary(req: TourRequest, region: str = "성수", lang: str =
         except Exception as cache_err:
             logger.error(f"❌ Cache save failed: {cache_err}")
 
-        # [NEW LOGIC] 성공 시 사용 이력 저장
         if req.user_id:
-            try:
-                with engine.connect() as conn:
-                    insert_usage = text("""
-                        INSERT INTO user_ai_usages (user_id, action_type) 
-                        VALUES (:user_id, 'itinerary_generate')
-                    """)
-                    conn.execute(insert_usage, {"user_id": req.user_id})
-                    conn.commit()
-            except Exception as usage_err:
-                logger.error(f"❌ Usage logging failed: {usage_err}")
+            log_ai_usage(req.user_id)
 
         return itinerary
     except Exception as e:
