@@ -843,3 +843,35 @@ now_back/
 - 기존: `scp main.py` 단일 파일 → **이제 금지.** 모듈 세트가 어긋나면 서버 즉사.
 - 변경: `tar czf ... main.py deps.py schemas.py ranking_service.py enrich_service.py routers/` 로 py 세트 전체를 묶어 배포. 파일 목록을 명시한 tar라 서버 `.env`는 안 건드림.
 - 로컬 launchd 텔레그램 봇도 같은 main.py를 쓰므로 배포 후 `launchctl kickstart -k`로 재기동 필요(이번에 재기동해 새 구조로 정상 폴링 확인 완료).
+
+### 2026-07-28 — 코스 기능 개편 1차 완료 (3시간코스/자유코스 생성·편집·발행)
+
+`/Users/hansjung/Desktop/course_feature_spec.md`(외부 지시서)를 코드베이스 실사와 대조해 실행전략(`course_feature_실행전략.md`)으로 재정리 후 구현. 핵심: **AI가 만들어주는 코스를 유저가 재편집해서 발행**. 테마지도(themes 테이블·`?tab=theme`)는 완전히 손대지 않고 격리.
+
+#### 전략 수정(원본 스펙과 다르게 간 부분)
+- **저장 위치를 themes가 아니라 saved_courses로 변경** — 실제 AI코스가 이미 여기 살고 있었고, themes에 얹으면 테마지도와 뒤엉킴. 스펙대로 갔으면 비공개 [퍼감] 테마가 "전부 is_public=true 백필" 지시로 공개 노출되는 사고로 직결됐을 것
+- API 위치를 main.py가 아니라 신설 `routers/courses.py`로 (전날 리팩토링한 라우터 구조에 맞춤)
+- 장소 검색은 어드민 걸 재사용하는 대신 신규 ILIKE 경량 엔드포인트 신설(벡터 검색은 임베딩 호출 비용 때문에 자동완성 용도로 부적합, 어드민 검색은 애초에 서버 엔드포인트가 없었음 — 브라우저 필터링 방식이었음)
+
+#### 백엔드
+- `saved_courses`에 `scope`(timed/free) / `source`(ai_draft/fork/manual/likes) / `forked_from` / `is_public` / `updated_at` 추가
+- `POST /courses/draft` — scope=timed(AI 생성, 지역+동행 반영)/free(빈 코스)/source=likes(찜한 장소로 구성) 3갈래. AI 생성 2회/일 한도는 기존 `/itinerary`와 **공유**(명칭이 "3시간코스"로 바뀌어도 한도 우회 창구가 안 되도록)
+- `routers/ai.py`에서 후보선정(pgvector)+Gemini 호출 로직을 `generate_timed_course()`로, 레이트리밋을 `check_daily_ai_limit()`/`log_ai_usage()`로 분리해 `/itinerary`(기존, 캐시 있음)와 `/courses/draft`(신규, 매번 새 row 생성이 목적이라 캐시 없음)가 공유
+- steps 저장 규칙: `time` 필드는 저장하지 않음 — 시작 14:00 + duration 누적으로 상세 페이지가 렌더 시 계산. **순서를 바꿔도 AI 재호출 없이 시간표가 재배열되는 핵심 장치**
+- `POST /courses/{id}/publish` — 제목 미입력 시 "{지역} {상위 카테고리} {개수}곳" 자동 제안(카테고리 최빈값 집계)
+- `GET /places/search` — ILIKE 기반, 임베딩 호출 없는 경량 검색
+- `POST /place_reports` — 검색 0건 제보 로그, IP 레이트리밋(ranking_share와 동일 패턴)
+- 기존 33건 백필(`migrate_courses_v2.py`, 일회성 스크립트 — 기존 관례인 `migrate_*.py`를 그대로 따름): [퍼감] 10건→`source=fork/is_public=false`, 나머지 23건→`source=ai_draft/is_public=true`(기존 노출 동작 그대로 보존), scope 전부 timed
+- `GET /courses`(코스 랭킹) 필터를 `title NOT LIKE '[퍼감]%'`에서 `is_public=true`로 교체
+- 구 `POST /courses/save`(AITour)는 하위호환 유지하되 `scope=timed/source=ai_draft/is_public=true` 명시해 기존 동작(저장=즉시공개) 보존
+- 로컬에서 실제 함수 호출로 전체 플로우 검증(생성→소유자조회→타인차단 404/403→편집→발행→자동제목→빈코스발행차단→찜기반draft→제보→레이트리밋 403) 후 배포
+
+#### 프론트
+- `/course`(코스 홈): 3시간코스(지역+동행 선택 모달)/자유코스 CTA + 내 코스 목록 + 일일 생성 잔여 횟수
+- `/course/[id]/edit`: 제목/설명 인라인, 스텝 순서(위아래 버튼, 드래그 라이브러리 없어 이 방식 채택)/삭제, 장소 추가 검색 오버레이(0건 시 제보 폼), 임시저장/발행(발행 시 PUT으로 먼저 저장 후 publish 호출)
+- `/course/[id]`: SSR + generateMetadata(발행 코스만, 비공개는 404). 스텝을 실시간 장소 데이터로 보강해 이미지/만료여부("종료됨" 배지) 표시, 시간 라벨은 백엔드와 동일하게 14:00+duration 누적으로 렌더 시 계산(값이 아니라 로직을 프론트에도 복제)
+- **기존 홈 '코스' 탭의 AI코스 서브탭을 전면 교체** — 클릭 시 `/course`로 리다이렉트, `AITour.tsx` 컴포넌트 삭제. '테마' 서브탭(테마지도)은 그대로 유지. `?tab=tour` 딥링크도 `/course`로 리다이렉트
+- 마이페이지 코스 카드: 클릭 시 기존 모달 대신 `/course/{id}/edit`로 이동, scope/공개여부 배지 추가(기존 코스 상세 모달 dead code 제거)
+
+#### 이번 범위 제외(2차)
+fork(복사), 인기 코스 목록, 찜 넛지 배너, place_reports 어드민 UI, 발행 코스 grounding — API는 이미 있는 것도 있어(`source=likes` draft, `GET /courses` is_public 필터) 2차는 프론트 노출만 남은 상태
