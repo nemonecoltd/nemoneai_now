@@ -191,6 +191,13 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   return (
     <div className="h-full flex flex-col bg-zinc-50 relative">
       <div className="flex-1 overflow-y-auto px-6 pt-6 pb-32 no-scrollbar">
+        <button
+          onClick={() => { if (!user) return signInWithGoogle(); setIsCreating(true); }}
+          className="w-full mb-8 py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg"
+        >
+          <Plus size={18} /> 코스 생성하기
+        </button>
+
         {/* Top 5 랭킹 */}
         {top5.length > 0 && (
           <div className="mb-10">
@@ -266,11 +273,6 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
           </div>
         )}
       </div>
-
-      {/* Floating Create Button */}
-      <button onClick={() => { if(!user) return signInWithGoogle(); setIsCreating(true); }} className="fixed bottom-28 left-6 w-12 h-12 bg-blue-500 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-blue-600 transition-all z-40">
-        <Plus size={24} />
-      </button>
 
       {/* Detail Modal */}
       <AnimatePresence>

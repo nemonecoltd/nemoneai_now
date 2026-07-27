@@ -314,7 +314,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="px-6 py-4">
         <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Courses' : lang === 'zh' ? '路线' : '코스'}
+            {lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : '3시간'}
           </button>
           <button onClick={() => setActiveTab('theme')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : '테마'}

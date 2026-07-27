@@ -94,8 +94,8 @@ const dict = {
     navList: '장소',
     navCourse: '코스',
     navMagazine: '매거진',
-    courseSubAi: '코스',
-    courseSubTheme: '테마',
+    courseSubAi: '3시간코스',
+    courseSubTheme: '자유코스',
     my: '마이',
     footer: '© 네모네 주식회사, 당신 시간의 알찬 소비',
     feedback: '피드백'
@@ -110,8 +110,8 @@ const dict = {
     navList: 'Spot',
     navCourse: 'Course',
     navMagazine: 'Magazine',
-    courseSubAi: 'Course',
-    courseSubTheme: 'Theme',
+    courseSubAi: '3-Hour Course',
+    courseSubTheme: 'Free Course',
     my: 'My',
     footer: '© Nemone Co., Ltd. Make every moment count.',
     feedback: 'Feedback'
@@ -126,8 +126,8 @@ const dict = {
     navList: '地点',
     navCourse: '路线',
     navMagazine: '杂志',
-    courseSubAi: '路线',
-    courseSubTheme: '主题',
+    courseSubAi: '3小时路线',
+    courseSubTheme: '自由路线',
     my: '我的',
     footer: '© Nemone Co., Ltd. 让每一刻都有意义',
     feedback: '反馈'
@@ -558,10 +558,7 @@ function Home() {
         />
         <NavButton
           active={activeTab === 'course'}
-          onClick={() => {
-            if (region === '공연' || region === '축제') setRegion('성수');
-            setActiveTab('course');
-          }}
+          onClick={() => router.push('/course')}
           icon={<RouteIcon size={22} />}
           label={t.navCourse}
         />

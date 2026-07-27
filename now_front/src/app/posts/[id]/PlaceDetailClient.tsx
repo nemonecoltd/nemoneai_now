@@ -10,6 +10,7 @@ import {
 import { InArticleAd } from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
+import RecommendedCoursePromo from '@/components/RecommendedCoursePromo';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -773,6 +774,8 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         </div>
 
         <InArticleAd />
+
+        <RecommendedCoursePromo />
 
         {suggestions.length > 0 && (
           <div className="space-y-4">

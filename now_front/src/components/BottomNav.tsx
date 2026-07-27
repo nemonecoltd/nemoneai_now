@@ -55,7 +55,7 @@ export default function BottomNav({ region = '성수', lang = 'ko', isPerformanc
           label={t.navList}
         />
         <NavButton
-          onClick={() => router.push(`/?region=${encodedRegion}&tab=course&lang=${lang}`)}
+          onClick={() => router.push(`/course?lang=${lang}`)}
           icon={<RouteIcon size={22} />}
           label={t.navCourse}
         />

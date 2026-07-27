@@ -4,11 +4,12 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Clock, Compass, Info, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Info, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
+import StoreBanner from '@/components/StoreBanner';
 
 const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
@@ -115,38 +116,31 @@ function CourseHubContent() {
         <BrandTagline lang={lang} />
       </header>
 
-      <main className="px-6 py-6 space-y-8 pb-28">
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setShowTimedModal(true)}
-            disabled={isCreating}
-            className="flex flex-col items-center justify-center gap-2 py-6 bg-zinc-900 text-white rounded-3xl font-bold shadow-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
-          >
-            <Sparkles size={24} />
-            <span className="text-sm">3시간코스 만들기</span>
+      <main className="px-6 py-6 space-y-6 pb-28">
+        <div className="flex gap-2">
+          <button className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all bg-zinc-900 text-white shadow-sm">
+            3시간코스
           </button>
           <button
-            onClick={() => {
-              if (!user) return signInWithGoogle();
-              router.push(`/?tab=theme&action=create&lang=${lang}`);
-            }}
-            className="flex flex-col items-center justify-center gap-2 py-6 bg-white border border-zinc-200 text-zinc-700 rounded-3xl font-bold hover:border-emerald-200 hover:text-emerald-600 transition-all"
+            onClick={() => router.push(`/?tab=theme&lang=${lang}`)}
+            className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all bg-zinc-100 text-zinc-400"
           >
-            <Compass size={24} />
-            <span className="text-sm">자유롭게 만들기</span>
+            자유코스
           </button>
         </div>
 
-        {user && (
-          <p className="text-center text-[11px] font-bold text-zinc-400 flex items-center justify-center gap-1.5">
-            <Info size={12} /> 오늘 남은 3시간코스 생성 횟수: {Math.max(usage.limit - usage.usage_count, 0)}/{usage.limit}
-          </p>
-        )}
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowTimedModal(true)}
+            className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg"
+          >
+            <Sparkles size={18} /> AI 자동코스 생성
+          </button>
+          <p className="text-center text-xs text-zinc-400 font-medium">생성된 AI 자동코스를 저장하고 재편집해보세요</p>
+        </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">내 코스</h2>
-          </div>
+          <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">내가 저장한 코스 재편집</h2>
 
           {!user && !authLoading ? (
             <button onClick={() => signInWithGoogle()} className="w-full py-10 bg-white border border-dashed border-zinc-200 rounded-3xl text-center text-zinc-400 text-sm font-medium hover:border-emerald-200 hover:text-emerald-600 transition-all">
@@ -154,9 +148,9 @@ function CourseHubContent() {
             </button>
           ) : isLoading ? (
             <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-zinc-300" /></div>
-          ) : myCourses.length > 0 ? (
+          ) : myCourses.filter((c: any) => c.scope === 'timed').length > 0 ? (
             <div className="space-y-3">
-              {myCourses.map((c: any) => (
+              {myCourses.filter((c: any) => c.scope === 'timed').map((c: any) => (
                 <button
                   key={c.id}
                   onClick={() => router.push(`/course/${c.id}/edit`)}
@@ -164,30 +158,39 @@ function CourseHubContent() {
                 >
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-zinc-900 text-sm truncate">{c.title || '제목 없는 코스'}</h3>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
-                        {c.scope === 'timed' ? '3시간코스' : '자유코스'}
-                      </span>
-                      {c.is_public && <span className="text-[9px] font-black text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase">공개</span>}
-                    </div>
+                    {c.is_public && (
+                      <span className="inline-block mt-1 text-[9px] font-black text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase">공개</span>
+                    )}
                   </div>
-                  <ChevronRight size={18} className="text-zinc-300 flex-shrink-0" />
+                  <span className="flex-shrink-0 flex items-center gap-0.5 text-xs font-bold text-emerald-600">
+                    편집 <ChevronRight size={14} />
+                  </span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="py-10 text-center text-zinc-400 text-sm font-medium bg-white border border-zinc-100 rounded-3xl">
-              아직 만든 코스가 없어요. 위 버튼으로 첫 코스를 만들어보세요!
+            <div className="py-10 text-center bg-white border border-zinc-100 rounded-3xl space-y-4 px-6">
+              <p className="text-zinc-400 text-sm font-medium leading-relaxed">
+                저장된 코스가 없습니다. 인기 코스를 저장하거나 AI로 생성된 코스를 저장한 후 편집할 수 있습니다.
+              </p>
+              <Link href="/ranking/course" className="inline-block px-5 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-all">
+                코스 랭킹 바로가기
+              </Link>
             </div>
           )}
         </div>
+
+        <StoreBanner />
       </main>
 
       <AnimatePresence>
         {showTimedModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={() => !isCreating && setShowTimedModal(false)}>
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-xl font-black text-zinc-900 tracking-tight mb-6">3시간코스 만들기</h2>
+              <h2 className="text-xl font-black text-zinc-900 tracking-tight mb-2">AI생성</h2>
+              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5 mb-6">
+                <Info size={12} /> 오늘 남은 3시간코스 생성 횟수: {Math.max(usage.limit - usage.usage_count, 0)}/{usage.limit}
+              </p>
 
               <div className="space-y-3 mb-6">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">지역</label>
