@@ -813,3 +813,33 @@ Main 로직 구현: main.py를 완성해. 성수동 팝업 정보를 입력받�
 #### 6. '이런 곳도 있어요' 추천 카테고리 분리
 - 목적: 위와 동일(체류시간 증대) — 기존엔 지역만 맞추고 카테고리(팝업/클래스/쇼핑/전시)는 안 가리고 섞어서 추천하던 것을, 팝업 / 클래스+쇼핑("상시 운영" 성격이 같아 하나로 묶음) / 전시 3개 독립 그룹으로 분리해 같은 성격끼리만 추천되도록 수정
 - 공연 장르(연극/뮤지컬/음악/종합)·제주 행사(카테고리값 `행사`) 등은 이번 범위 밖이라 기존처럼 지역 전체에서 추천하는 동작 유지
+
+### 2026-07-27 — now_back main.py 리팩토링 완료 (1,897줄 → 98줄, 모듈 분리)
+
+오래 미뤄왔던 main.py 분리(처음 계획 시점엔 1,053줄이었는데 그새 1,897줄까지 커짐)를 3단계 커밋으로 진행. 각 단계마다 로컬 uvicorn 기동 + 주요 엔드포인트 curl 스모크 테스트 → 서버 배포 → 라이브 검증 순서로 안전하게 완료.
+
+#### 새 구조
+```
+now_back/
+├── main.py               앱 조립 전용(98줄): FastAPI 생성/CORS/스키마 업데이트/라우터 등록/스케줄러/봇 게이트
+├── deps.py               공용 유틸(순환참조 기준점): _lang_col, _verify_supabase_user, _client_ip, ADMIN_EMAIL, 지역 상수
+├── schemas.py            Pydantic 모델 12종
+├── ranking_service.py    랭킹 캐시 6종 + _popularity_rows + refresh_place_popularity + 마감임박
+├── enrich_service.py     _enrich_place_core + 백그라운드 번역/ISR 재검증 + 신규 팝업 자동갱신 잡
+└── routers/
+    ├── social.py         좋아요/코스/테마/피드백
+    ├── rankings.py       /places/popular* 5종 + closing-soon + /ranking/share*
+    ├── ai.py             /ask, /search, /itinerary, usage
+    ├── magazine.py       /magazine (맛매치 프록시)
+    ├── places.py         장소 CRUD/조회/이미지업로드/enrich 트리거
+    └── admin.py          어드민 테마/랭킹/장소/배너/통계
+```
+
+#### 이 리팩토링에서 조심했던 두 가지 함정 (다음에 또 만질 때 필독)
+1. **랭킹 캐시는 변수 직접 import 금지**: `refresh_place_popularity()`가 캐시 리스트를 global 재할당으로 통째로 갈아끼우는 구조라, `from ranking_service import _place_popularity_cache`처럼 이름을 직접 import하면 갱신 전 리스트에 영원히 고정됨(문법 오류가 아니라 배포 후에야 드러남). 반드시 `ranking.get_popular()` 등 접근자 함수로만 읽을 것 — ranking_service.py docstring에도 명시해둠.
+2. **라우터 include 순서**: rankings(/places/popular*, /places/closing-soon)를 places(/places/{place_id})보다 먼저 include해야 함. 뒤바뀌면 'popular'가 place_id(int)로 파싱돼 422 — main.py 등록부에 주석으로 박아둠.
+
+#### 배포 절차 변경 (중요)
+- 기존: `scp main.py` 단일 파일 → **이제 금지.** 모듈 세트가 어긋나면 서버 즉사.
+- 변경: `tar czf ... main.py deps.py schemas.py ranking_service.py enrich_service.py routers/` 로 py 세트 전체를 묶어 배포. 파일 목록을 명시한 tar라 서버 `.env`는 안 건드림.
+- 로컬 launchd 텔레그램 봇도 같은 main.py를 쓰므로 배포 후 `launchctl kickstart -k`로 재기동 필요(이번에 재기동해 새 구조로 정상 폴링 확인 완료).
