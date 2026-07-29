@@ -109,9 +109,15 @@ def _end_date_actual(period: str) -> date | None:
     rng = _active_range(period)
     if rng is None:
         return None
-    (_, _), (end_year, end_month) = rng
-    if end_year is None:  # 매년 반복 — 구체적 종료일 없음
-        return None
+    (start_year, start_month), (end_year, end_month) = rng
+    if end_year is None:
+        # 매년 반복 행사(구체적 연도 없음) — 종료일을 NULL로 두면 랭킹 필터(end_date IS NULL을
+        # "무기한 활성"으로 취급)에서 영원히 안 빠지는 버그가 있었음. 올해 회차 기준으로 종료월의
+        # 말일을 잠정 종료일로 채워서, 다음 수집 때 갱신되기 전까진 최소 유한한 시점에 랭킹에서
+        # 빠지도록 함(정확한 날짜는 아니지만 무기한 노출보단 훨씬 나음).
+        end_year = date.today().year
+        if start_month is not None and end_month < start_month:  # 연말~연초 걸치는 경우(예: 12~1월)
+            end_year += 1
     last_day = monthrange(end_year, end_month)[1]
     return date(end_year, end_month, last_day)
 

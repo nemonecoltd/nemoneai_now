@@ -10,6 +10,7 @@ type AuthContextType = {
   isLoading: boolean
   signInWithGoogle: () => Promise<void>
   signInWithKakao: () => Promise<void>
+  signInWithNaver: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<{ error: any }>
   signUpWithEmail: (email: string, password: string, metadata: any) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -74,6 +75,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${authUrl}/login?provider=kakao&next=${encodeURIComponent(currentUrl)}`
   }
 
+  const signInWithNaver = async () => {
+    if (!isProdDomain()) {
+      const returnTo = window.location.pathname + window.location.search
+      await supabaseRef.current!.auth.signInWithOAuth({
+        provider: 'custom:naver' as any,
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnTo)}` },
+      })
+      return
+    }
+    const authUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'
+    const currentUrl = window.location.origin
+    window.location.href = `${authUrl}/login?provider=naver&next=${encodeURIComponent(currentUrl)}`
+  }
+
   const signInWithEmail = async (email: string, password: string) => {
     const { error } = await supabaseRef.current!.auth.signInWithPassword({ email, password })
     return { error }
@@ -102,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signInWithKakao, signInWithEmail, signUpWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, isLoading, signInWithGoogle, signInWithKakao, signInWithNaver, signInWithEmail, signUpWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   )

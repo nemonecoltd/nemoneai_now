@@ -254,7 +254,7 @@ async def search_places_by_text(q: str = "", region: Optional[str] = None):
         where.append("region = :region")
         params["region"] = region
     query = text(f"""
-        SELECT id, title, location, image_url, region, category, date_range
+        SELECT id, title, title_en, title_zh, content, content_en, content_zh, location, image_url, video_url, region, category, date_range
         FROM seongsu_places
         WHERE {' AND '.join(where)}
         ORDER BY created_at DESC

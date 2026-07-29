@@ -10,6 +10,7 @@ import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
 import StoreBanner from '@/components/StoreBanner';
+import SiteFooter from '@/components/SiteFooter';
 
 const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
@@ -181,6 +182,7 @@ function CourseHubContent() {
         </div>
 
         <StoreBanner />
+        <SiteFooter lang={lang} />
       </main>
 
       <AnimatePresence>

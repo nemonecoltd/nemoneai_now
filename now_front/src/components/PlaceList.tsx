@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Clock, ChevronRight, Heart } from 'lucide-react';
+import { Clock, ChevronRight, ChevronDown, Heart, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import React, { useState, useEffect } from 'react';
@@ -30,7 +30,7 @@ interface Place {
   category?: string | null;
 }
 
-export type PlaceSort = 'popular' | 'latest' | 'closing';
+export type PlaceSort = 'random' | 'popular' | 'latest' | 'closing';
 
 export default function PlaceList({ places: initialPlaces, region, lang = 'ko', category = 'popup', sort = null, onSortChange }: { places: Place[], region: string, lang?: string, category?: string, sort?: PlaceSort | null, onSortChange?: (sort: PlaceSort) => void }) {
   const { user, signInWithGoogle } = useAuth();
@@ -40,13 +40,32 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Place[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const isSearchMode = searchQuery.trim().length > 0;
+
   useEffect(() => {
     setPlaces(initialPlaces);
     setHasMore(initialPlaces.length >= PAGE_SIZE);
   }, [initialPlaces]);
 
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) { setSearchResults([]); return; }
+    setIsSearching(true);
+    const t = setTimeout(() => {
+      fetch(`/api-now/places/search?q=${encodeURIComponent(q)}&region=${encodeURIComponent(region)}`)
+        .then(res => (res.ok ? res.json() : []))
+        .then((data: Place[]) => setSearchResults(data))
+        .catch(err => { console.error('Failed to search places', err); setSearchResults([]); })
+        .finally(() => setIsSearching(false));
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery, region]);
+
   const loadMore = React.useCallback(async () => {
-    if (isLoadingMore || !hasMore) return;
+    if (isLoadingMore || !hasMore || isSearchMode) return;
     setIsLoadingMore(true);
     try {
       const categoryParam = `&category=${category}`;
@@ -62,7 +81,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, region, lang, places.length, category, sort]);
+  }, [isLoadingMore, hasMore, isSearchMode, region, lang, places.length, category, sort]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -103,34 +122,64 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
   };
 
   const sortOptions: { key: PlaceSort; ko: string; en: string; zh: string }[] = [
+    { key: 'random', ko: '랜덤순', en: 'Random', zh: '随机排序' },
     { key: 'popular', ko: '인기순', en: 'Popular', zh: '人气排序' },
     { key: 'latest', ko: '최신순', en: 'Latest', zh: '最新排序' },
     { key: 'closing', ko: '마감임박순', en: 'Closing Soon', zh: '即将结束' },
   ];
 
+  const displayPlaces = isSearchMode ? searchResults : places;
+
   return (
     <div className="p-6 space-y-6 pb-24">
       {onSortChange && (
         <div className="flex items-center gap-2">
-          {sortOptions.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => onSortChange(opt.key)}
+          <div className="flex-1 relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={lang === 'en' ? 'Search places...' : lang === 'zh' ? '搜索地点...' : '장소 검색'}
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border border-zinc-200 bg-white outline-none focus:border-emerald-400 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-300 hover:text-zinc-600 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="relative flex-shrink-0">
+            <select
+              value={sort ?? 'random'}
+              onChange={(e) => onSortChange(e.target.value as PlaceSort)}
+              disabled={isSearchMode}
               className={cn(
-                "flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border",
-                sort === opt.key
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-white text-zinc-400 border-zinc-200 hover:border-zinc-300"
+                "appearance-none py-2.5 pl-3 pr-8 rounded-xl text-xs font-bold border bg-white outline-none transition-all cursor-pointer",
+                isSearchMode ? "opacity-40 cursor-not-allowed border-zinc-200 text-zinc-300" : "border-zinc-200 text-zinc-600 hover:border-zinc-300"
               )}
             >
-              {lang === 'en' ? opt.en : lang === 'zh' ? opt.zh : opt.ko}
-            </button>
-          ))}
+              {sortOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {lang === 'en' ? opt.en : lang === 'zh' ? opt.zh : opt.ko}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          </div>
         </div>
       )}
 
       <div className="space-y-4">
-        {places.map((place, idx) => (
+        {isSearchMode && isSearching && (
+          <div className="flex justify-center py-10">
+            <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+          </div>
+        )}
+        {displayPlaces.map((place, idx) => (
           <React.Fragment key={place.id}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -198,12 +247,14 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
           {idx === 0 && <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />}
           </React.Fragment>
         ))}
-        {places.length === 0 && (
+        {!isSearching && displayPlaces.length === 0 && (
           <div className="text-center py-20 text-zinc-400 italic">
-            {lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : '데이터가 없습니다.'}
+            {isSearchMode
+              ? (lang === 'en' ? 'No matching places.' : lang === 'zh' ? '没有匹配的地点。' : '검색 결과가 없습니다.')
+              : (lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : '데이터가 없습니다.')}
           </div>
         )}
-        {hasMore && (
+        {hasMore && !isSearchMode && (
           <div ref={sentinelRef} className="flex justify-center py-6">
             {isLoadingMore && (
               <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />

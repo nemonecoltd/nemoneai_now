@@ -8,6 +8,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
+import SiteFooter from '@/components/SiteFooter';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -255,6 +256,8 @@ export default function FeedbackPage() {
             ))
           )}
         </div>
+
+        <SiteFooter />
       </main>
     </div>
   );
