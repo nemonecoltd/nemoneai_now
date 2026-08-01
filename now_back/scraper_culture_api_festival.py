@@ -38,6 +38,8 @@ def _fetch_thumbnail(detail_url: str) -> str | None:
 _FULL_DATE_PATTERN = re.compile(r"(\d{4})\s*[.년]\s*(\d{1,2})")
 _BARE_MONTH_AFTER_TILDE_PATTERN = re.compile(r"~[^0-9]*(\d{1,2})\s*[.\s월]")
 _RECURRING_MONTH_PATTERN = re.compile(r"(\d{1,2})\s*월")
+# "~ 7. 12." 같은 종료 월.일 표기에서 정확한 종료일을 뽑기 위한 패턴(월 단위 근사 대신 사용)
+_END_DAY_AFTER_TILDE_PATTERN = re.compile(r"~\s*(\d{1,2})\s*[.\s]\s*(\d{1,2})\b")
 
 
 def _clean_period(period: str) -> str:
@@ -118,6 +120,16 @@ def _end_date_actual(period: str) -> date | None:
         end_year = date.today().year
         if start_month is not None and end_month < start_month:  # 연말~연초 걸치는 경우(예: 12~1월)
             end_year += 1
+    else:
+        # 구체적 연도가 있는 경우 — "~ 7. 12." 처럼 종료 일(day)까지 나와있으면 월말 근사 대신
+        # 정확한 날짜 사용. 예전엔 항상 월말로 근사해서, 중순에 끝난 축제가 월말까지 최대 3주
+        # 가까이 랭킹에 남아있는 문제가 있었음(예: 7.10~7.12 종료인데 end_date=7.31로 채워짐).
+        day_match = _END_DAY_AFTER_TILDE_PATTERN.search(_clean_period(period))
+        if day_match and int(day_match.group(1)) == end_month:
+            try:
+                return date(end_year, end_month, int(day_match.group(2)))
+            except ValueError:
+                pass
     last_day = monthrange(end_year, end_month)[1]
     return date(end_year, end_month, last_day)
 
