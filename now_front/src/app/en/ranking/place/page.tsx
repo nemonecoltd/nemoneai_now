@@ -10,6 +10,7 @@ export const revalidate = 3600;
 interface PopularPlace {
   id: number;
   title: string;
+  title_en?: string | null;
   region: string;
   location?: string;
   date_range?: string;
@@ -19,6 +20,17 @@ interface PopularPlace {
   score?: number;
   is_new?: boolean;
 }
+
+// 백엔드가 아직 번역 못 넣은 로우 대비 — title_en 없으면 한국어 title로 폴백
+const REGION_LABEL_EN: Record<string, string> = {
+  '성수': 'Seongsu',
+  '홍대': 'Hongdae',
+  '강북': 'Gangbuk',
+  '강남': 'Gangnam',
+  '제주': 'Jeju',
+  '공연': 'Concert',
+  '축제': 'Festival',
+};
 
 async function getPopularPlaces(): Promise<PopularPlace[]> {
   try {
@@ -32,14 +44,14 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
-  const top = places.slice(0, 5).map(p => p.title).join(', ');
-  const title = '실시간 인기 핫플 TOP 25 | 지금여기';
-  const description = `성수·홍대·강북·제주·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const top = places.slice(0, 5).map(p => p.title_en || p.title).join(', ');
+  const title = 'Real-Time Popular Pop-ups & Hot Spots in Seoul & Jeju TOP 25 | NOW HERE';
+  const description = `Live ranking of the most popular pop-up stores, exhibitions, and events across Seongsu, Hongdae, Gangbuk, Gangnam, and Jeju. ${top || 'Check out the hottest spots right now.'}`;
   return {
     title,
     description,
     alternates: {
-      canonical: 'https://now.nemoneai.com/ranking/place',
+      canonical: 'https://now.nemoneai.com/en/ranking/place',
       languages: {
         'ko': 'https://now.nemoneai.com/ranking/place',
         'en': 'https://now.nemoneai.com/en/ranking/place',
@@ -47,11 +59,11 @@ export async function generateMetadata(): Promise<Metadata> {
         'x-default': 'https://now.nemoneai.com/ranking/place',
       },
     },
-    openGraph: { title, description, url: 'https://now.nemoneai.com/ranking/place', type: 'website' },
+    openGraph: { title, description, url: 'https://now.nemoneai.com/en/ranking/place', type: 'website' },
   };
 }
 
-export default async function PlaceRankingPage() {
+export default async function PlaceRankingPageEn() {
   const places = await getPopularPlaces();
 
   return (
@@ -61,9 +73,9 @@ export default async function PlaceRankingPage() {
           <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
             <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 인기 핫플</h1>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">Popular Hot Spots</h1>
           <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400">
-            <Link href="/en/ranking/place" className="hover:text-zinc-700">EN</Link>
+            <Link href="/ranking/place" className="hover:text-zinc-700">KO</Link>
             <Link href="/zh/ranking/place" className="hover:text-zinc-700">中文</Link>
           </div>
         </div>
@@ -72,11 +84,11 @@ export default async function PlaceRankingPage() {
 
       <main className="px-6 pt-6 space-y-3">
         <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·제주·공연·축제 통합 실시간 TOP 25입니다.
+          Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Jeju, concerts, and festivals.
         </p>
 
         {places.length === 0 && (
-          <p className="text-center text-zinc-400 text-sm py-20">데이터를 준비 중입니다.</p>
+          <p className="text-center text-zinc-400 text-sm py-20">Data is being prepared.</p>
         )}
 
         {places.map((place, idx) => (
@@ -90,15 +102,15 @@ export default async function PlaceRankingPage() {
             </span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title}</h2>
+                <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title_en || place.title}</h2>
                 {place.category === 'class' && (
-                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">클래스</span>
+                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">Class</span>
                 )}
                 {place.is_new && (
                   <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-400">{place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
+              <p className="text-[10px] text-zinc-400">{REGION_LABEL_EN[place.region] || place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
             </div>
             <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
               <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count ?? 0}
