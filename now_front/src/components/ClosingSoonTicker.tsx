@@ -47,7 +47,7 @@ export default function ClosingSoonTicker({ lang = 'ko' }: { lang?: string }) {
 
   if (places.length === 0) return null;
 
-  const label = lang === 'en' ? 'Closing Soon' : lang === 'zh' ? '即将结束' : '마감임박';
+  const label = lang === 'en' ? 'Closing Soon' : lang === 'zh' ? '即将结束' : lang === 'ja' ? '終了間近' : '마감임박';
   const loop = [...places, ...places]; // 이어붙여서 끊김 없이 순환
 
   return (

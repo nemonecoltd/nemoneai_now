@@ -40,17 +40,17 @@ def ai_generate_intro(title: str, location: str, category: Optional[str] = None)
         return ""
 
 
-def _existing_translation(naver_place_id: str) -> tuple[str, str, str, str]:
-    """DB에 이미 저장된 title_en/content_en/title_zh/content_zh 반환. 없으면 빈 문자열 튜플."""
+def _existing_translation(naver_place_id: str) -> tuple[str, str, str, str, str, str]:
+    """DB에 이미 저장된 title_en/content_en/title_zh/content_zh/title_ja/content_ja 반환. 없으면 빈 문자열 튜플."""
     try:
         with engine.connect() as conn:
             row = conn.execute(
-                text("SELECT title_en, content_en, title_zh, content_zh FROM seongsu_places WHERE naver_place_id = :id"),
+                text("SELECT title_en, content_en, title_zh, content_zh, title_ja, content_ja FROM seongsu_places WHERE naver_place_id = :id"),
                 {"id": naver_place_id}
             ).fetchone()
-            return (row.title_en or "", row.content_en or "", row.title_zh or "", row.content_zh or "") if row else ("", "", "", "")
+            return (row.title_en or "", row.content_en or "", row.title_zh or "", row.content_zh or "", row.title_ja or "", row.content_ja or "") if row else ("", "", "", "", "", "")
     except Exception:
-        return "", "", "", ""
+        return "", "", "", "", "", ""
 
 
 def build_content(item: dict, intro: str) -> str:
@@ -100,21 +100,21 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
         if intro:
             print(f"    소개: {intro[:60]}...")
 
-        existing_title_en, existing_content_en, existing_title_zh, existing_content_zh = _existing_translation(naver_place_id)
+        existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja = _existing_translation(naver_place_id)
         if category is None:
             # 팝업(category=None)만 신규 팝업 자동 블로그갱신 스케줄러(_enrich_place_core)가 며칠 내로
             # content를 통째로 재생성하고 번역도 다시 하므로, 1차 스크래핑에서의 번역은 곧 버려질 헛수고임 —
             # 여기서는 API 호출 없이 기존 번역(있으면)만 재사용하고, 없으면 한글 그대로 폴백(enrich 전까지 임시 노출)
             # class/shopping 등 명시적으로 태깅된 카테고리는 재작업 대상이 아니므로 기존대로 번역 진행.
-            title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja
         elif not regenerated and existing_title_en and existing_content_en and existing_title_zh and existing_content_zh:
-            title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja
         else:
-            title_en, content_en, title_zh, content_zh = ai_translate(title, content)
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = ai_translate(title, content)
             if not title_en:
-                title_en, content_en, title_zh, content_zh = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh
+                title_en, content_en, title_zh, content_zh, title_ja, content_ja = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja
             elif title_en:
-                print(f"    🌐 번역(EN/ZH): {title_en[:40]} / {title_zh[:20]}...")
+                print(f"    🌐 번역(EN/ZH/JA): {title_en[:40]} / {title_zh[:20]} / {title_ja[:20]}...")
 
         try:
             embedding = get_embedding(content)
@@ -131,9 +131,11 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 "title":          title,
                 "title_en":       title_en or title,
                 "title_zh":       title_zh or title,
+                "title_ja":       title_ja or title,
                 "content":        content,
                 "content_en":     content_en,
                 "content_zh":     content_zh,
+                "content_ja":     content_ja,
                 "location":       item.get("location", ""),
                 "latitude":       item.get("latitude"),
                 "longitude":      item.get("longitude"),
@@ -161,9 +163,11 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                             title          = :title,
                             title_en       = :title_en,
                             title_zh       = :title_zh,
+                            title_ja       = :title_ja,
                             content        = :content,
                             content_en     = :content_en,
                             content_zh     = :content_zh,
+                            content_ja     = :content_ja,
                             location       = :location,
                             latitude       = COALESCE(:latitude, latitude),
                             longitude      = COALESCE(:longitude, longitude),
@@ -180,10 +184,10 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
-                        (title, title_en, title_zh, content, content_en, content_zh, location, latitude, longitude,
+                        (title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja, location, latitude, longitude,
                          naver_place_id, video_url, image_url, embedding, end_date, date_range, region, category)
                         VALUES
-                        (:title, :title_en, :title_zh, :content, :content_en, :content_zh, :location, :latitude, :longitude,
+                        (:title, :title_en, :title_zh, :title_ja, :content, :content_en, :content_zh, :content_ja, :location, :latitude, :longitude,
                          :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :category)
                     """), params)
                     new_count += 1

@@ -12,7 +12,7 @@ import HeaderControls from '@/components/HeaderControls';
 import StoreBanner from '@/components/StoreBanner';
 import SiteFooter from '@/components/SiteFooter';
 
-const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
+const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE', ja: 'NOW HERE' };
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 type Region = typeof PLACE_REGIONS[number];

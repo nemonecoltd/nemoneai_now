@@ -6,7 +6,7 @@ import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
-const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
+const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE', ja: 'NOW HERE' };
 
 interface Step {
   place_id: number;
@@ -101,7 +101,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function CourseDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string }> }) {
   const { id } = await params;
   const { lang: rawLang } = await searchParams;
-  const lang = rawLang === 'en' || rawLang === 'zh' ? rawLang : 'ko';
+  const lang = rawLang === 'en' || rawLang === 'zh' || rawLang === 'ja' ? rawLang : 'ko';
   const course = await getCourse(id);
 
   if (!course) {

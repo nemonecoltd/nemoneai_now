@@ -27,11 +27,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }))
 
   // 3. 고정 페이지 URL 생성 (홈 화면 + 랭킹 페이지)
-  // /ranking/place만 title_en/title_zh 데이터가 있어 en/zh 버전 존재 — course/theme는 유저생성 콘텐츠라 번역본 없음
+  // /ranking/place만 title_en/title_zh/title_ja 데이터가 있어 en/zh/ja 버전 존재 — course/theme는 유저생성 콘텐츠라 번역본 없음
   const placeRankingLanguages = {
     ko: `${baseUrl}/ranking/place`,
     en: `${baseUrl}/en/ranking/place`,
     zh: `${baseUrl}/zh/ranking/place`,
+    ja: `${baseUrl}/ja/ranking/place`,
   }
   const staticUrls = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 1.0 },
@@ -40,6 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8, alternates: { languages: placeRankingLanguages } },
     { url: `${baseUrl}/en/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.6, alternates: { languages: placeRankingLanguages } },
     { url: `${baseUrl}/zh/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.6, alternates: { languages: placeRankingLanguages } },
+    { url: `${baseUrl}/ja/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.6, alternates: { languages: placeRankingLanguages } },
   ]
 
   return [...staticUrls, ...placeUrls]

@@ -37,30 +37,30 @@ const PAGE_SIZE = 20;
 type Tab = 'rec' | 'map' | 'list' | 'course' | 'magazine' | 'chat';
 type CourseSub = 'ai' | 'theme';
 type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | '축제';
-type Lang = 'ko' | 'en' | 'zh';
+type Lang = 'ko' | 'en' | 'zh' | 'ja';
 // 우선순위 고정 목록 — 실제 서브탭 노출 여부는 /places/categories로 지역별 DISTINCT 조회해 결정
 // '전시'=성수/홍대/강북/강남(Visit Seoul), '행사'=제주(비짓제주) 전용 — 지역별 DISTINCT라 서로 섞이지 않음
 const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
 type PlaceCategory = typeof CATEGORY_ORDER[number];
-const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ko: string }> = {
-  popup: { en: 'Pop-up', zh: '快闪店', ko: '팝업' },
-  class: { en: 'Class', zh: '体验课程', ko: '클래스' },
-  shopping: { en: 'Shopping', zh: '购物', ko: '쇼핑' },
-  '전시': { en: 'Exhibit', zh: '展览', ko: '전시' },
-  '행사': { en: 'Event', zh: '活动', ko: '행사' },
+const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string; ko: string }> = {
+  popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
+  class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
+  shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
+  '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
+  '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
 };
 
 // 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 const EVENT_REGIONS = ['공연', '축제'] as const;
-const REGION_LABEL: Record<Region, { en: string; zh: string }> = {
-  '성수': { en: 'SEONGSU', zh: '圣水洞' },
-  '홍대': { en: 'HONGDAE', zh: '弘大' },
-  '강북': { en: 'GANGBUK', zh: '江北' },
-  '강남': { en: 'GANGNAM', zh: '江南' },
-  '제주': { en: 'JEJU', zh: '济州' },
-  '공연': { en: 'CONCERT', zh: '演出' },
-  '축제': { en: 'FESTIVAL', zh: '节庆' },
+const REGION_LABEL: Record<Region, { en: string; zh: string; ja: string }> = {
+  '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
+  '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
+  '강북': { en: 'GANGBUK', zh: '江北', ja: 'カンブク' },
+  '강남': { en: 'GANGNAM', zh: '江南', ja: 'カンナム' },
+  '제주': { en: 'JEJU', zh: '济州', ja: '済州' },
+  '공연': { en: 'CONCERT', zh: '演出', ja: '公演' },
+  '축제': { en: 'FESTIVAL', zh: '节庆', ja: '祭り' },
 };
 // 제주 대표색 — 이전 '공연>제주' 서브탭 시절 쓰던 블루를 지역 자체 대표색으로 승격
 const REGION_ACCENT: Record<Region, string> = {
@@ -131,6 +131,22 @@ const dict = {
     my: '我的',
     footer: '© Nemone Co., Ltd. 让每一刻都有意义',
     feedback: '反馈'
+  },
+  ja: {
+    title: 'NOW HERE',
+    desc: 'あなたの3時間を充実させる',
+    totalRec: 'リアルタイム統合ランキング',
+    regionGuide: 'リアルタイム{region}ガイド',
+    navRec: '人気',
+    navMap: '地図',
+    navList: 'スポット',
+    navCourse: 'コース',
+    navMagazine: 'マガジン',
+    courseSubAi: '3時間コース',
+    courseSubTheme: 'フリーコース',
+    my: 'マイ',
+    footer: '© Nemone Co., Ltd. 充実した時間の使い方を。',
+    feedback: 'フィードバック'
   }
 };
 
@@ -281,7 +297,7 @@ function Home() {
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
             <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 mr-1 shadow-inner">
-              {(['ko', 'en', 'zh'] as Lang[]).map((l) => (
+              {(['ko', 'en', 'zh', 'ja'] as Lang[]).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
@@ -336,7 +352,7 @@ function Home() {
                       region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
                     )}
                   >
-                    {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+                    {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
                   </button>
                 ))}
                 {(activeTab !== 'map' && activeTab !== 'chat') && (
@@ -351,7 +367,7 @@ function Home() {
                           region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent hover:text-zinc-500"
                         )}
                       >
-                        {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+                        {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
                       </button>
                     ))}
                   </>
@@ -385,7 +401,9 @@ function Home() {
                             ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
                             : lang === 'zh'
                               ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
-                              : c}
+                              : lang === 'ja'
+                                ? (c === '연극' ? '演劇' : c === '뮤지컬' ? 'ミュージカル' : c === '음악' ? '音楽' : 'その他')
+                                : c}
                         </button>
                       );
                     })}
@@ -414,7 +432,7 @@ function Home() {
                             : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                         )}
                       >
-                        {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : CATEGORY_LABEL[c].ko}
+                        {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : lang === 'ja' ? CATEGORY_LABEL[c].ja : CATEGORY_LABEL[c].ko}
                       </button>
                     ))}
                   </motion.div>

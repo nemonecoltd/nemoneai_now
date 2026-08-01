@@ -12,8 +12,8 @@ _PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '제주']
 
 
 def _lang_col(lang: str, base: str) -> str:
-    """lang(ko/en/zh)에 맞는 컬럼명 반환. 예: _lang_col('zh', 'title') -> 'title_zh'"""
-    return f"{base}_{lang}" if lang in ("en", "zh") else base
+    """lang(ko/en/zh/ja)에 맞는 컬럼명 반환. 예: _lang_col('zh', 'title') -> 'title_zh'"""
+    return f"{base}_{lang}" if lang in ("en", "zh", "ja") else base
 
 
 def _verify_supabase_user(authorization: Optional[str] = Header(None)) -> dict:

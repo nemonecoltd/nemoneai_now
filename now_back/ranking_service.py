@@ -55,7 +55,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
             region_clause += f" AND p.region = '{only_region}'"
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
-        SELECT p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews,
+        SELECT p.id, p.title, p.title_en, p.title_zh, p.title_ja, p.content, p.content_en, p.content_zh, p.content_ja, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews,
                COUNT(DISTINCT l.id) AS like_count,
                COUNT(DISTINCT v.id) AS view_count,
                COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) AS score
@@ -305,7 +305,7 @@ def refresh_closing_soon():
     global _closing_soon_cache
     with engine.connect() as conn:
         result = conn.execute(text("""
-            SELECT id, title, title_en, title_zh, image_url, region
+            SELECT id, title, title_en, title_zh, title_ja, image_url, region
             FROM seongsu_places
             WHERE end_date IS NOT NULL
               AND end_date >= CURRENT_DATE

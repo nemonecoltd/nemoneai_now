@@ -5,8 +5,8 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-const LANGS = ['ko', 'en', 'zh'] as const;
-const MY_LABEL: Record<string, string> = { ko: '마이', en: 'My', zh: '我的' };
+const LANGS = ['ko', 'en', 'zh', 'ja'] as const;
+const MY_LABEL: Record<string, string> = { ko: '마이', en: 'My', zh: '我的', ja: 'マイ' };
 
 export default function HeaderControls() {
   const { user, signInWithGoogle } = useAuth();

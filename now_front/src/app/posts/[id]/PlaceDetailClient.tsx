@@ -22,14 +22,14 @@ function cn(...inputs: ClassValue[]) {
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 const EVENT_REGIONS = ['공연', '축제'] as const;
-const REGION_LABEL: Record<string, { en: string; zh: string }> = {
-  '성수': { en: 'SEONGSU', zh: '圣水洞' },
-  '홍대': { en: 'HONGDAE', zh: '弘大' },
-  '강북': { en: 'GANGBUK', zh: '江北' },
-  '강남': { en: 'GANGNAM', zh: '江南' },
-  '제주': { en: 'JEJU', zh: '济州' },
-  '공연': { en: 'CONCERT', zh: '演出' },
-  '축제': { en: 'FESTIVAL', zh: '节庆' },
+const REGION_LABEL: Record<string, { en: string; zh: string; ja: string }> = {
+  '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
+  '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
+  '강북': { en: 'GANGBUK', zh: '江北', ja: 'カンブク' },
+  '강남': { en: 'GANGNAM', zh: '江南', ja: 'カンナム' },
+  '제주': { en: 'JEJU', zh: '济州', ja: '済州' },
+  '공연': { en: 'CONCERT', zh: '演出', ja: '公演' },
+  '축제': { en: 'FESTIVAL', zh: '节庆', ja: '祭り' },
 };
 const REGION_ACCENT: Record<string, string> = {
   '성수': 'text-emerald-600 border-emerald-500',
@@ -50,12 +50,12 @@ const REGION_PILL_ACTIVE: Record<string, string> = {
   '축제': 'bg-amber-500 text-white border-amber-500',
 };
 const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
-const CATEGORY_LABEL: Record<string, { en: string; zh: string; ko: string }> = {
-  popup: { en: 'Pop-up', zh: '快闪店', ko: '팝업' },
-  class: { en: 'Class', zh: '体验课程', ko: '클래스' },
-  shopping: { en: 'Shopping', zh: '购物', ko: '쇼핑' },
-  '전시': { en: 'Exhibit', zh: '展览', ko: '전시' },
-  '행사': { en: 'Event', zh: '活动', ko: '행사' },
+const CATEGORY_LABEL: Record<string, { en: string; zh: string; ja: string; ko: string }> = {
+  popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
+  class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
+  shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
+  '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
+  '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
 };
 
 export interface BlogReview {
@@ -125,6 +125,16 @@ const T = {
     linkCopied: '链接已复制！',
     my: '我的',
     tagline: '为您3小时的充实安排',
+  },
+  ja: {
+    prevPlace: '前のスポット', nextPlace: '次のスポット', spotlight: 'ホットプレイス詳細',
+    hotVerified: '人気認証', closingSoon: '終了間近', new: 'NEW', updatedAt: '基準',
+    duration: '運営期間', openDaily: '常時営業', status: 'ステータス', active: '営業中', ended: '終了',
+    details: '詳細情報', moreToExplore: 'こんな場所も', location: '位置案内',
+    locationSyncing: '位置情報を準備中', watchVideo: 'ライブ映像を見る', nowHere: 'NOW HERE',
+    linkCopied: 'リンクをコピーしました！',
+    my: 'マイ',
+    tagline: 'あなたの3時間を充実させる',
   },
 } as const;
 
@@ -394,7 +404,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
           <div className="flex items-center gap-2">
             <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 shadow-inner">
-              {(['ko', 'en', 'zh'] as const).map((l) => (
+              {(['ko', 'en', 'zh', 'ja'] as const).map((l) => (
                 <button
                   key={l}
                   onClick={() => setLang(l)}
@@ -438,7 +448,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
               )}
             >
-              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
             </button>
           ))}
           <span className="text-zinc-200 font-bold select-none shrink-0">|</span>
@@ -451,7 +461,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 place.region === r ? REGION_ACCENT[r] : "text-zinc-300 border-transparent"
               )}
             >
-              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : r}
+              {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
             </button>
           ))}
         </div>
@@ -499,7 +509,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                     : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                 )}
               >
-                {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : CATEGORY_LABEL[c].ko}
+                {lang === 'en' ? CATEGORY_LABEL[c].en : lang === 'zh' ? CATEGORY_LABEL[c].zh : lang === 'ja' ? CATEGORY_LABEL[c].ja : CATEGORY_LABEL[c].ko}
               </button>
             ))}
           </div>

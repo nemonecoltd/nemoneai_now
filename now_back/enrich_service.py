@@ -36,17 +36,19 @@ def _translate_and_save(place_id: int, new_title: Optional[str], new_content: Op
                 return
             title = new_title if new_title is not None else row.title
             content = new_content if new_content is not None else row.content
-            title_en, content_en, title_zh, content_zh = ai_translate(title, content)
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = ai_translate(title, content)
             if title_en:
                 conn.execute(
                     text("""
                         UPDATE seongsu_places SET
                             title_en = :title_en, content_en = :content_en,
-                            title_zh = :title_zh, content_zh = :content_zh
+                            title_zh = :title_zh, content_zh = :content_zh,
+                            title_ja = :title_ja, content_ja = :content_ja
                         WHERE id = :id
                     """),
                     {"title_en": title_en, "content_en": content_en,
-                     "title_zh": title_zh, "content_zh": content_zh, "id": place_id}
+                     "title_zh": title_zh, "content_zh": content_zh,
+                     "title_ja": title_ja, "content_ja": content_ja, "id": place_id}
                 )
                 conn.commit()
     except Exception as e:

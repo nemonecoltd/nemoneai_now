@@ -56,6 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
         'ko': 'https://now.nemoneai.com/ranking/place',
         'en': 'https://now.nemoneai.com/en/ranking/place',
         'zh': 'https://now.nemoneai.com/zh/ranking/place',
+        'ja': 'https://now.nemoneai.com/ja/ranking/place',
         'x-default': 'https://now.nemoneai.com/ranking/place',
       },
     },
@@ -77,6 +78,7 @@ export default async function PlaceRankingPageZh() {
           <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400">
             <Link href="/ranking/place" className="hover:text-zinc-700">KO</Link>
             <Link href="/en/ranking/place" className="hover:text-zinc-700">EN</Link>
+            <Link href="/ja/ranking/place" className="hover:text-zinc-700">日本語</Link>
           </div>
         </div>
         <BrandTagline />

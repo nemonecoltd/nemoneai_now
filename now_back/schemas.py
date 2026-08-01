@@ -100,7 +100,7 @@ class ThemeSave(BaseModel):
     region: Optional[str] = "성수"
 
 _ALLOWED_RANKING_SHARE_TABS = {"place", "concert", "festival", "theme", "shopping", "exhibition"}
-_ALLOWED_RANKING_SHARE_ITEM_KEYS = {"id", "title", "title_en", "title_zh", "image_url", "region", "category", "date_range", "score"}
+_ALLOWED_RANKING_SHARE_ITEM_KEYS = {"id", "title", "title_en", "title_zh", "title_ja", "image_url", "region", "category", "date_range", "score"}
 _RANKING_SHARE_MAX_STR_LEN = 300
 
 class RankingShareCreate(BaseModel):

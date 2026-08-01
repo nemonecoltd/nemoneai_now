@@ -15,6 +15,7 @@ const LABELS = {
   ko: { navRec: '핫플', navMap: '지도', navList: '장소', navCourse: '코스', navMagazine: '매거진' },
   en: { navRec: 'Hot', navMap: 'Map', navList: 'Spot', navCourse: 'Course', navMagazine: 'Magazine' },
   zh: { navRec: '热门', navMap: '地图', navList: '地点', navCourse: '路线', navMagazine: '杂志' },
+  ja: { navRec: '人気', navMap: '地図', navList: 'スポット', navCourse: 'コース', navMagazine: 'マガジン' },
 } as const;
 
 interface BottomNavProps {

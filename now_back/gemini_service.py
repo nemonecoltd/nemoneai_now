@@ -77,17 +77,18 @@ def generate_walking_tour(companion: str, context: str, region: str = "성수", 
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     return json.loads(clean_json)
 
-def ai_translate(title: str, content: str) -> tuple[str, str, str, str]:
-    """한국어 title/content를 영어+중국어로 번역. 실패 시 빈 문자열 튜플 반환."""
+def ai_translate(title: str, content: str) -> tuple[str, str, str, str, str, str]:
+    """한국어 title/content를 영어+중국어+일본어로 번역. 실패 시 빈 문자열 튜플 반환."""
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=(
-                f"다음 한국어 팝업스토어 정보를 자연스러운 영어와 중국어(간체)로 각각 번역해줘.\n"
+                f"다음 한국어 팝업스토어 정보를 자연스러운 영어, 중국어(간체), 일본어로 각각 번역해줘.\n"
                 f"제목: {title}\n내용: {content}\n\n"
                 f"조건: 아래 JSON 형식으로만 출력 (설명이나 코드블록 없이 순수 JSON만).\n"
                 f'{{"title_en": "English title", "content_en": "English content", '
-                f'"title_zh": "中文标题", "content_zh": "中文内容"}}'
+                f'"title_zh": "中文标题", "content_zh": "中文内容", '
+                f'"title_ja": "日本語タイトル", "content_ja": "日本語の内容"}}'
             ),
         )
         raw = (response.text or "").strip()
@@ -98,10 +99,35 @@ def ai_translate(title: str, content: str) -> tuple[str, str, str, str]:
             (data.get("content_en", "") or "").strip(),
             (data.get("title_zh", "") or "").strip(),
             (data.get("content_zh", "") or "").strip(),
+            (data.get("title_ja", "") or "").strip(),
+            (data.get("content_ja", "") or "").strip(),
         )
     except Exception as e:
         print(f"    ⚠️ 번역 실패: {e}")
-        return "", "", "", ""
+        return "", "", "", "", "", ""
+
+def ai_translate_ja(title: str, content: str) -> tuple[str, str]:
+    """한국어 title/content를 일본어로만 번역 (en/zh 백필 완료된 기존 row에 ja만 추가할 때, 불필요한 en/zh 재번역 비용 방지용)."""
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=(
+                f"다음 한국어 팝업스토어 정보를 자연스러운 일본어로 번역해줘.\n"
+                f"제목: {title}\n내용: {content}\n\n"
+                f"조건: 아래 JSON 형식으로만 출력 (설명이나 코드블록 없이 순수 JSON만).\n"
+                f'{{"title_ja": "日本語タイトル", "content_ja": "日本語の内容"}}'
+            ),
+        )
+        raw = (response.text or "").strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+        return (
+            (data.get("title_ja", "") or "").strip(),
+            (data.get("content_ja", "") or "").strip(),
+        )
+    except Exception as e:
+        print(f"    ⚠️ 일본어 번역 실패: {e}")
+        return "", ""
 
 def get_embedding(text: str):
     """텍스트 벡터화 (최신 다국어 모델 사용). 일시적 서버 과부하(503 등) 대비 짧은 재시도 포함."""

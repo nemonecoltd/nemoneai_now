@@ -314,25 +314,25 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="px-6 py-4">
         <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : '3시간'}
+            {lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : lang === 'ja' ? '3時間' : '3시간'}
           </button>
           <button onClick={() => setActiveTab('theme')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : '테마'}
+            {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
           </button>
           <button onClick={() => setActiveTab('place')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Pop-ups' : lang === 'zh' ? '快闪店' : '팝업'}
+            {lang === 'en' ? 'Pop-ups' : lang === 'zh' ? '快闪店' : lang === 'ja' ? 'ポップアップ' : '팝업'}
           </button>
           <button onClick={() => setActiveTab('shopping')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'shopping' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Shopping' : lang === 'zh' ? '购物' : '쇼핑'}
+            {lang === 'en' ? 'Shopping' : lang === 'zh' ? '购物' : lang === 'ja' ? 'ショッピング' : '쇼핑'}
           </button>
           <button onClick={() => setActiveTab('exhibition')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'exhibition' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : '전시'}
+            {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : lang === 'ja' ? '展示' : '전시'}
           </button>
           <button onClick={() => setActiveTab('concert')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : '공연'}
+            {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : lang === 'ja' ? '公演' : '공연'}
           </button>
           <button onClick={() => setActiveTab('festival')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : '축제'}
+            {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : lang === 'ja' ? '祭り' : '축제'}
           </button>
         </div>
         {activeTab === 'place' && (
@@ -347,16 +347,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 )}
               >
                 {r === '종합'
-                  ? (lang === 'en' ? 'All' : lang === 'zh' ? '综合' : '종합')
+                  ? (lang === 'en' ? 'All' : lang === 'zh' ? '综合' : lang === 'ja' ? '総合' : '종합')
                   : r === '홍대'
-                    ? (lang === 'en' ? 'Hongdae' : lang === 'zh' ? '弘大' : '홍대')
+                    ? (lang === 'en' ? 'Hongdae' : lang === 'zh' ? '弘大' : lang === 'ja' ? 'ホンデ' : '홍대')
                     : r === '강북'
-                      ? (lang === 'en' ? 'Gangbuk' : lang === 'zh' ? '江北' : '강북')
+                      ? (lang === 'en' ? 'Gangbuk' : lang === 'zh' ? '江北' : lang === 'ja' ? 'カンブク' : '강북')
                       : r === '강남'
-                        ? (lang === 'en' ? 'Gangnam' : lang === 'zh' ? '江南' : '강남')
+                        ? (lang === 'en' ? 'Gangnam' : lang === 'zh' ? '江南' : lang === 'ja' ? 'カンナム' : '강남')
                         : r === '제주'
-                          ? (lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : '제주')
-                          : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : '성수')}
+                          ? (lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : lang === 'ja' ? '済州' : '제주')
+                          : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : lang === 'ja' ? 'ソンス' : '성수')}
               </button>
             ))}
           </div>
