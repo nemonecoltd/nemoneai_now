@@ -24,11 +24,13 @@ export default function MyPage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('place');
-  const [likedPlaces, setLikedPlaces] = useState([]);
+  const [likedPlaces, setLikedPlaces] = useState<any[]>([]);
   const [savedCourses, setSavedCourses] = useState([]);
   const [userThemes, setUserThemes] = useState([]);
   const [savedRankings, setSavedRankings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [placePage, setPlacePage] = useState(1);
+  const PLACE_PAGE_SIZE = 10;
 
   // Modal States
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
@@ -71,6 +73,27 @@ export default function MyPage() {
       const res = await fetch(`/api-now/ranking/share/${rankingId}?user_id=${user?.id}`, { method: 'DELETE' });
       if (res.ok) {
         setSavedRankings((prev) => prev.filter((r: any) => r.id !== rankingId));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUnlikePlace = async (placeId: number) => {
+    if (!user?.id) return;
+    try {
+      const res = await fetch('/api-now/likes/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: user.id, place_id: placeId }),
+      });
+      if (res.ok) {
+        setLikedPlaces((prev: any[]) => {
+          const next = prev.filter((p: any) => p.id !== placeId);
+          const maxPage = Math.max(1, Math.ceil(next.length / PLACE_PAGE_SIZE));
+          setPlacePage((page) => Math.min(page, maxPage));
+          return next;
+        });
       }
     } catch (e) {
       console.error(e);
@@ -188,7 +211,7 @@ export default function MyPage() {
           <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             <Route size={16} /> 코스
           </button>
-          <button onClick={() => setActiveTab('place')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => { setActiveTab('place'); setPlacePage(1); }} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             <Heart size={16} /> 찜
           </button>
           <button onClick={() => setActiveTab('ranking')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'ranking' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
@@ -267,23 +290,66 @@ export default function MyPage() {
 
           {activeTab === 'place' && (
             <motion.div key="place" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              {likedPlaces.length > 0 ? likedPlaces.map((place: any) => (
-                <Link href={`/posts/${place.id}`} key={place.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative no-underline group">
-                  <img
-                    src={place.image_url || `https://picsum.photos/seed/place-${place.id}/400/300`}
-                    className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white"
-                    alt={place.title}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://picsum.photos/seed/place-error-${place.id}/400/300`;
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{place.title}</h4>
-                    <p className="text-[10px] text-zinc-400 truncate mt-1">{place.location}</p>
-                  </div>
-                  <ChevronRight size={20} className="text-zinc-300 group-hover:text-emerald-500 transition-colors" />
-                </Link>
-              )) : (
+              {likedPlaces.length > 0 ? (
+                <>
+                  {likedPlaces.slice((placePage - 1) * PLACE_PAGE_SIZE, placePage * PLACE_PAGE_SIZE).map((place: any) => (
+                    <div key={place.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group">
+                      <Link href={`/posts/${place.id}`} className="flex-1 min-w-0 flex gap-4 items-center no-underline">
+                        <img
+                          src={place.image_url || `https://picsum.photos/seed/place-${place.id}/400/300`}
+                          className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white flex-shrink-0"
+                          alt={place.title}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://picsum.photos/seed/place-error-${place.id}/400/300`;
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{place.title}</h4>
+                          <p className="text-[10px] text-zinc-400 truncate mt-1">{place.location}</p>
+                        </div>
+                      </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleUnlikePlace(place.id); }}
+                        className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors flex-shrink-0"
+                        aria-label="찜 삭제"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  {likedPlaces.length > PLACE_PAGE_SIZE && (
+                    <div className="flex items-center justify-center gap-1.5 pt-2 overflow-x-auto no-scrollbar">
+                      <button
+                        onClick={() => setPlacePage((p) => Math.max(1, p - 1))}
+                        disabled={placePage === 1}
+                        className="p-2 rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 transition-colors flex-shrink-0"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {Array.from({ length: Math.ceil(likedPlaces.length / PLACE_PAGE_SIZE) }, (_, i) => i + 1).map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setPlacePage(n)}
+                          className={cn(
+                            "w-8 h-8 rounded-lg text-xs font-bold transition-colors flex-shrink-0",
+                            placePage === n ? "bg-zinc-900 text-white" : "text-zinc-400 hover:bg-zinc-100"
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setPlacePage((p) => Math.min(Math.ceil(likedPlaces.length / PLACE_PAGE_SIZE), p + 1))}
+                        disabled={placePage === Math.ceil(likedPlaces.length / PLACE_PAGE_SIZE)}
+                        className="p-2 rounded-lg text-zinc-400 disabled:opacity-30 hover:bg-zinc-100 transition-colors flex-shrink-0"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="py-20 text-center space-y-4">
                   <Heart size={48} className="mx-auto text-zinc-200" />
                   <p className="text-zinc-400 text-sm font-medium">찜한 장소가 없습니다.</p>

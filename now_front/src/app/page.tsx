@@ -536,19 +536,22 @@ function Home() {
         </footer>
       </main>
 
-      {/* Floating AI Chat Button (둥둥이) */}
-      <button 
-        onClick={() => setActiveTab('chat')}
-        className={cn(
-          "fixed bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all z-[60] active:scale-90",
-          activeTab === 'chat' ? "bg-emerald-500 text-white scale-110" : "bg-zinc-900 text-white hover:bg-emerald-600"
-        )}
-      >
-        <MessageCircle size={28} className={cn(activeTab === 'chat' && "animate-pulse")} />
-        {activeTab !== 'chat' && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-zinc-50 animate-bounce" />
-        )}
-      </button>
+      {/* Floating AI Chat Button (둥둥이) — 핫플 탭엔 이미 AI가이드 버튼이 있어 중복 노출 방지로 숨김 */}
+      {activeTab !== 'rec' && (
+        <button
+          onClick={() => setActiveTab('chat')}
+          className={cn(
+            "fixed bottom-28 right-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90",
+            activeTab === 'chat' ? "bg-emerald-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-emerald-600"
+          )}
+        >
+          <MessageCircle size={24} className={cn(activeTab === 'chat' && "animate-pulse")} />
+          <span className="text-xs font-black tracking-tight whitespace-nowrap">AI가이드</span>
+          {activeTab !== 'chat' && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-zinc-50 animate-bounce" />
+          )}
+        </button>
+      )}
 
       {/* Bottom Navigation */}
       <nav className="bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-2 pb-4 flex justify-between items-center z-50">

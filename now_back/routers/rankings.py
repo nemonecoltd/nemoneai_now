@@ -150,6 +150,6 @@ async def get_popular_exhibitions(limit: Optional[int] = None, offset: int = 0):
 
 @router.get("/places/closing-soon")
 async def get_closing_soon():
-    """핫플 탭 상단 '마감임박' 전광판용 (하루 1회 갱신 캐시). /places/{place_id}보다 먼저 등록해야
+    """핫플 탭 상단 'NEW팝업' 전광판용 (4시간 주기 갱신 캐시). /places/{place_id}보다 먼저 등록해야
     FastAPI가 'closing-soon'을 place_id로 오인해 파싱 에러를 내는 라우팅 충돌을 피할 수 있음."""
     return ranking.get_closing_soon()

@@ -299,17 +299,15 @@ def refresh_place_popularity(is_cron: bool = False):
 _closing_soon_cache: list = []
 
 def refresh_closing_soon():
-    """핫플 탭 상단 '마감임박' 전광판용 — refresh_place_popularity()와 같은 주기(4시간)로 갱신.
-    14일 이내 마감 예정 중 랜덤 12개를 뽑아 캐시. 팝업 전용(공연/축제/클래스/쇼핑/전시/행사 등은 제외해
+    """핫플 탭 상단 'NEW팝업' 전광판용 — refresh_place_popularity()와 같은 주기(4시간)로 갱신.
+    최근 7일 이내 등록된 신규 팝업 중 랜덤 12개를 뽑아 캐시. 팝업 전용(공연/축제/클래스/쇼핑/전시/행사 등은 제외해
     성수/홍대/강북/강남/제주의 순수 팝업스토어만 노출, 정확도 불필요라 랜덤으로 충분)."""
     global _closing_soon_cache
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT id, title, title_en, title_zh, title_ja, image_url, region
             FROM seongsu_places
-            WHERE end_date IS NOT NULL
-              AND end_date >= CURRENT_DATE
-              AND end_date <= CURRENT_DATE + INTERVAL '14 days'
+            WHERE created_at >= NOW() - INTERVAL '7 days'
               AND COALESCE(category, 'popup') = 'popup'
               AND naver_place_id NOT LIKE 'kopis_%'
               AND naver_place_id NOT LIKE 'jeju_%'

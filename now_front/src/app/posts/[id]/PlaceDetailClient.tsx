@@ -90,7 +90,7 @@ export interface Place {
 }
 
 interface Props {
-  place: Place | null;
+  place: Place;
   lang: string;
   suggestions: Place[];
 }
@@ -228,59 +228,6 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
     router.push(`/posts/${target.id}?${new URLSearchParams({ ...(place?.region ? { region: place.region } : {}), lang }).toString()}`);
   };
 
-  if (!place) {
-    return (
-      <div className="min-h-screen bg-zinc-50 max-w-md mx-auto px-6 py-12 flex flex-col gap-8">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center text-3xl">🏁</div>
-          <div className="space-y-1">
-            <p className="text-lg font-bold text-zinc-800">운영이 종료됐습니다</p>
-            <p className="text-sm text-zinc-400">해당 팝업·행사는 운영 기간이 지났어요.</p>
-          </div>
-        </div>
-
-        {suggestions.length > 0 && (
-          <div className="space-y-4">
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest">지금 가볼 만한 핫플</p>
-            <div className="flex flex-col gap-3">
-              {suggestions.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => router.push(`/posts/${s.id}?${new URLSearchParams({ ...(s.region ? { region: s.region } : {}), lang }).toString()}`)}
-                  className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-zinc-100 shadow-sm text-left hover:shadow-md transition-shadow"
-                >
-                  <img
-                    src={s.image_url}
-                    alt={s.title}
-                    className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/sug-${s.id}/200/200`; }}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-zinc-900 truncate">{s.title}</p>
-                    <p className="text-xs text-zinc-400 mt-0.5 truncate">{s.location}</p>
-                    {s.category !== 'class' && (s.date_range || s.end_date) && (
-                      <p className="text-xs text-emerald-600 font-bold mt-1">
-                        {s.date_range || `~ ${s.end_date}`}
-                      </p>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => router.push(`/?lang=${lang}`)}
-          className="w-full py-3 bg-zinc-900 text-white text-sm font-bold rounded-2xl"
-        >
-          전체 핫플레이스 보기
-        </button>
-      </div>
-    );
-  }
-
   const displayTitle = (lang === 'en' && place.title_en) ? place.title_en
     : (lang === 'zh' && place.title_zh) ? place.title_zh
     : place.title;
@@ -337,7 +284,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
     !place.naver_place_id.startsWith('jeju_') &&
     !place.naver_place_id.startsWith('culture_') &&
     !place.naver_place_id.startsWith('concert_') &&
-    !place.naver_place_id.startsWith('festival_');
+    !place.naver_place_id.startsWith('festival_') &&
+    !place.naver_place_id.startsWith('kakao_');
+  const kakaoPlaceId = place.naver_place_id?.startsWith('kakao_') ? place.naver_place_id.slice('kakao_'.length) : null;
 
   const pageUrl = `https://now.nemoneai.com/posts/${place.id}`;
   const jsonLd = {
@@ -766,6 +715,28 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               <div className="flex items-center gap-2 flex-1 pr-4">
                 <span className="text-base font-black text-[#03C75A]">N</span>
                 <span className="text-sm font-bold text-zinc-800">네이버지도에서 보기</span>
+                <span className="ml-auto text-zinc-300 text-lg">›</span>
+              </div>
+            </a>
+          )}
+
+          {kakaoPlaceId && (
+            <a
+              href={`https://place.map.kakao.com/${kakaoPlaceId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
+              <img
+                src={place.image_url || `https://picsum.photos/seed/kakao-${place.id}/200/200`}
+                alt={displayTitle}
+                className="w-20 h-20 object-cover flex-shrink-0"
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/kakao-${place.id}/200/200`; }}
+              />
+              <div className="flex items-center gap-2 flex-1 pr-4">
+                <span className="text-base font-black text-[#FEE500] [text-shadow:0_0_1px_#3c1e1e]">K</span>
+                <span className="text-sm font-bold text-zinc-800">카카오맵에서 보기</span>
                 <span className="ml-auto text-zinc-300 text-lg">›</span>
               </div>
             </a>

@@ -14,6 +14,23 @@ def dedup_by_title(items: "list[dict]") -> "list[dict]":
     return list(seen.values())
 
 
+def _load_blocklist(conn) -> tuple[set, set]:
+    """관리자가 삭제한 항목의 naver_place_id/title 목록 — 원본 소스에 stale 데이터가
+    남아있어도 재수집 시 upsert_items가 다시 살려내지 않도록 걸러내는 데 사용."""
+    conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS deleted_places_blocklist (
+            id SERIAL PRIMARY KEY,
+            naver_place_id TEXT,
+            title TEXT,
+            deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    """))
+    rows = conn.execute(text("SELECT naver_place_id, title FROM deleted_places_blocklist")).fetchall()
+    ids = {r.naver_place_id for r in rows if r.naver_place_id}
+    titles = {r.title for r in rows if r.title}
+    return ids, titles
+
+
 def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
     """region을 지정하면 모든 항목에 고정 적용, None이면 항목별 item['region']을 사용."""
     deduped = dedup_by_title(combined_data)
@@ -21,12 +38,20 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
     new_count = 0
     updated_count = 0
     fail_count = 0
+    blocked_count = 0
+
+    with engine.connect() as conn:
+        blocked_ids, blocked_titles = _load_blocklist(conn)
+        conn.commit()
 
     # 역순 INSERT: rank1이 마지막에 들어가 created_at이 가장 최신 → 서비스 최상단
     for item in reversed(deduped):
+        title = item["title"].strip()
+        if item.get("naver_place_id") in blocked_ids or title in blocked_titles:
+            blocked_count += 1
+            continue
         with engine.connect() as conn:
             try:
-                title = item["title"].strip()
                 item_region = region or item["region"]
                 print(f"  ✨ [{item_region}] '{title}' 처리 중...")
 
@@ -107,6 +132,9 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                 conn.rollback()
                 fail_count += 1
                 print(f"  ❌ [{item_region}] '{item.get('title', '?')}' 반영 실패: {e}")
+
+    if blocked_count:
+        print(f"  🚫 삭제 블록리스트에 있어 건너뜀: {blocked_count}개")
 
     return new_count, updated_count, fail_count
 

@@ -11,6 +11,7 @@ import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
 import StoreBanner from '@/components/StoreBanner';
 import SiteFooter from '@/components/SiteFooter';
+import AdUnit from '@/components/AdUnit';
 
 const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE', ja: 'NOW HERE' };
 
@@ -240,6 +241,8 @@ function CourseHubContent() {
                   </>
                 )}
               </button>
+
+              <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
             </motion.div>
           </motion.div>
         )}

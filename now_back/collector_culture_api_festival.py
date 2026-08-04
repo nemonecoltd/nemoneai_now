@@ -1,6 +1,7 @@
 import asyncio
 from sqlalchemy import text
 from database import engine
+from collector_base import _load_blocklist
 from scraper_culture_api_festival import scrape_culture_api_festival
 from gemini_service import get_embedding
 from datetime import date, timedelta
@@ -21,12 +22,16 @@ async def run_culture_api_festival_collection():
 
     print(f"📦 총 {len(items)}개의 축제 데이터를 처리합니다.")
 
+    with engine.connect() as conn:
+        blocked_ids, blocked_titles = _load_blocklist(conn)
+        conn.commit()
+
     for item in items:
+        title = item["title"].strip()
+        if not title or item.get("naver_place_id") in blocked_ids or title in blocked_titles:
+            continue
         with engine.connect() as conn:
             try:
-                title = item["title"].strip()
-                if not title:
-                    continue
                 print(f"✨ [{item['region']}] '{title}' 처리 중...")
 
                 embedding = get_embedding(item["content"])

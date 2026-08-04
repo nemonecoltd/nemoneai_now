@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Clock3 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -47,17 +47,17 @@ export default function ClosingSoonTicker({ lang = 'ko' }: { lang?: string }) {
 
   if (places.length === 0) return null;
 
-  const label = lang === 'en' ? 'Closing Soon' : lang === 'zh' ? '即将结束' : lang === 'ja' ? '終了間近' : '마감임박';
+  const label = lang === 'en' ? 'NEW' : lang === 'zh' ? 'NEW' : lang === 'ja' ? 'NEW' : 'NEW팝업';
   const loop = [...places, ...places]; // 이어붙여서 끊김 없이 순환
 
   return (
     <div className="flex items-center bg-zinc-900/60">
-      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-rose-600/60 z-10">
-        <Clock3 size={12} className="text-white" />
+      <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/60 z-10">
+        <Sparkles size={12} className="text-white" />
         <span className="text-[11px] font-black text-white whitespace-nowrap">{label}</span>
       </div>
       <div className="flex-1 overflow-hidden">
-        <div className="flex items-center gap-5 py-2 px-4 w-max animate-marquee hover:[animation-play-state:paused]">
+        <div className="flex items-center gap-5 py-1.5 px-4 w-max animate-marquee hover:[animation-play-state:paused]">
           {loop.map((p, idx) => {
             const title = (lang === 'en' && p.title_en) ? p.title_en : (lang === 'zh' && p.title_zh) ? p.title_zh : p.title;
             return (

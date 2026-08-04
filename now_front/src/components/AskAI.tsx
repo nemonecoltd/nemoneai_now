@@ -156,7 +156,7 @@ function formatMessage(text: string, lang: string = 'ko'): React.ReactNode {
   });
 }
 
-export default function AskAI({ region = '성수', lang = 'ko' }: { region?: string, lang?: string }) {
+export default function AskAI({ region = '성수', lang = 'ko', fullHeight = false }: { region?: string, lang?: string, fullHeight?: boolean }) {
   const { user, session, signInWithGoogle } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setNewInput] = useState("");
@@ -252,7 +252,7 @@ export default function AskAI({ region = '성수', lang = 'ko' }: { region?: str
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-240px)] min-h-[400px]">
+    <div className={cn("flex flex-col", fullHeight ? "h-full" : "h-[calc(100dvh-240px)] min-h-[400px]")}>
       {/* 헤더 */}
       <div className="p-6 pb-2 flex-shrink-0">
         <h2 className="text-xl font-bold font-display flex items-center gap-2 text-zinc-900">

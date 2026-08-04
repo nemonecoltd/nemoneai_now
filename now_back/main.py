@@ -90,11 +90,13 @@ if os.getenv("AUTO_ENRICH_POPUPS") == "true":
 if os.getenv("TELEGRAM_BOT_ENABLED") == "true":
     import asyncio as _asyncio
     from telegram_admin_bot import start_bot
+    from collector_favorite import run_favorite
+    from collector_kakao import run_kakao_keyword
 
     def _enrich_place_sync(place_id: int) -> dict:
         return _asyncio.run(_enrich_place_core(place_id))
 
-    start_bot(_enrich_place_sync)
+    start_bot(_enrich_place_sync, run_favorite, run_kakao_keyword)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8081)

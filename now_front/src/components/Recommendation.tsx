@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame } from 'lucide-react';
+import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame, Bot, Clock, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from './AdUnit';
 import ClosingSoonTicker from './ClosingSoonTicker';
+import AskAI from './AskAI';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -17,9 +19,14 @@ function cn(...inputs: ClassValue[]) {
 type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition';
 const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '제주'] as const;
 type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
+const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
+type Companion = 'solo' | 'couple' | 'friends';
+const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
 
 export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, session, signInWithGoogle } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('place');
   const [courses, setCourses] = useState([]);
   const [themes, setThemes] = useState([]);
@@ -33,6 +40,12 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAskAI, setShowAskAI] = useState(false);
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [courseRegion, setCourseRegion] = useState<AiCourseRegion>('성수');
+  const [courseCompanion, setCourseCompanion] = useState<Companion>('solo');
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+  const [courseUsage, setCourseUsage] = useState({ usage_count: 0, limit: 2 });
 
   useEffect(() => {
     if (placeRegion === '종합') setPlaces(initialPlaces);
@@ -168,6 +181,51 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const openCourseModal = async () => {
+    setShowCourseModal(true);
+    if (!user) return;
+    try {
+      const res = await fetch(`/api-now/users/${user.id}/usage/itinerary`);
+      if (res.ok) setCourseUsage(await res.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const createAiCourse = async () => {
+    if (!user) return signInWithGoogle();
+    setIsCreatingCourse(true);
+    try {
+      const res = await fetch(`/api-now/courses/draft?scope=timed&region=${encodeURIComponent(courseRegion)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token || ''}`,
+        },
+        body: JSON.stringify({
+          user_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          user_image: user.user_metadata?.avatar_url || null,
+          companion: courseCompanion,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowCourseModal(false);
+        router.push(`/course/${data.id}/edit`);
+      } else if (res.status === 403) {
+        const err = await res.json();
+        alert(err.detail || '오늘 제공된 3시간코스 생성 기회를 모두 사용하셨습니다.');
+      } else {
+        alert('코스를 만드는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('코스를 만드는 중 오류가 발생했습니다.');
+    } finally {
+      setIsCreatingCourse(false);
     }
   };
 
@@ -311,32 +369,48 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   return (
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
-      <div className="px-6 py-4">
+      <div className="px-6 pt-2.5 flex gap-2">
+        <button
+          onClick={openCourseModal}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-emerald-600 transition-all shadow-sm"
+        >
+          <Sparkles size={14} />
+          {lang === 'en' ? 'AI Course' : lang === 'zh' ? 'AI路线' : lang === 'ja' ? 'AIコース' : 'AI코스생성'}
+        </button>
+        <button
+          onClick={() => setShowAskAI(true)}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-2xl text-xs font-bold hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm"
+        >
+          <Bot size={14} />
+          {lang === 'en' ? 'AI Guide' : lang === 'zh' ? 'AI导游' : lang === 'ja' ? 'AIガイド' : 'AI가이드'}
+        </button>
+      </div>
+      <div className="px-6 py-2.5">
         <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : lang === 'ja' ? '3時間' : '3시간'}
           </button>
-          <button onClick={() => setActiveTab('theme')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('theme')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
           </button>
-          <button onClick={() => setActiveTab('place')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('place')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Pop-ups' : lang === 'zh' ? '快闪店' : lang === 'ja' ? 'ポップアップ' : '팝업'}
           </button>
-          <button onClick={() => setActiveTab('shopping')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'shopping' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('shopping')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'shopping' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Shopping' : lang === 'zh' ? '购物' : lang === 'ja' ? 'ショッピング' : '쇼핑'}
           </button>
-          <button onClick={() => setActiveTab('exhibition')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'exhibition' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('exhibition')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'exhibition' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : lang === 'ja' ? '展示' : '전시'}
           </button>
-          <button onClick={() => setActiveTab('concert')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('concert')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'concert' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : lang === 'ja' ? '公演' : '공연'}
           </button>
-          <button onClick={() => setActiveTab('festival')} className={cn("flex-shrink-0 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
+          <button onClick={() => setActiveTab('festival')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'festival' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
             {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : lang === 'ja' ? '祭り' : '축제'}
           </button>
         </div>
         {activeTab === 'place' && (
-          <div className="flex gap-1.5 mt-2 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar">
             {PLACE_RANKING_REGIONS.map((r) => (
               <button
                 key={r}
@@ -366,7 +440,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="flex-1 overflow-y-auto px-6 pb-24 no-scrollbar">
         <AnimatePresence mode="wait">
           {activeTab === 'course' ? (
-            <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {courses.slice(0, 25).map((course: any, idx: number) => (
                 <div key={course.id}>
                   <div onClick={() => setSelectedCourse(course)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-emerald-200 transition-all group relative overflow-hidden mb-4">
@@ -430,7 +504,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'theme' ? (
-            <motion.div key="t" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="t" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {themes.slice(0, 25).map((theme: any, idx: number) => (
                 <div key={theme.id}>
                   <div onClick={() => setSelectedTheme(theme)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-blue-200 transition-all group relative overflow-hidden mb-4">
@@ -476,7 +550,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'place' ? (
-            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {places.slice(0, 25).map((place: any, idx: number) => (
                 <div key={place.id}>
                   <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
@@ -554,7 +628,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'concert' ? (
-            <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {concerts.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
                   {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : '아직 공연 랭킹 데이터가 없습니다.'}
@@ -613,7 +687,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'festival' ? (
-            <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {festivals.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
                   {lang === 'en' ? 'No festival ranking data yet.' : lang === 'zh' ? '暂无节庆排行数据。' : '아직 축제 랭킹 데이터가 없습니다.'}
@@ -668,7 +742,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'shopping' ? (
-            <motion.div key="sh" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="sh" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {shopping.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
                   {lang === 'en' ? 'No shopping ranking data yet.' : lang === 'zh' ? '暂无购物排行数据。' : '아직 쇼핑 랭킹 데이터가 없습니다.'}
@@ -738,7 +812,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : (
-            <motion.div key="ex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-2">
+            <motion.div key="ex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {exhibitions.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
                   {lang === 'en' ? 'No exhibition ranking data yet.' : lang === 'zh' ? '暂无展览排行数据。' : '아직 전시 랭킹 데이터가 없습니다.'}
@@ -1006,6 +1080,86 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   </div>
                 )}
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Course Creation Modal */}
+      <AnimatePresence>
+        {showCourseModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={() => !isCreatingCourse && setShowCourseModal(false)}>
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-between items-start mb-2">
+                <h2 className="text-xl font-black text-zinc-900 tracking-tight">AI 자동코스 생성</h2>
+                <button onClick={() => setShowCourseModal(false)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
+              </div>
+              <p className="text-[11px] font-bold text-zinc-400 flex items-center gap-1.5 mb-6">
+                <Info size={12} /> 오늘 남은 3시간코스 생성 횟수: {Math.max(courseUsage.limit - courseUsage.usage_count, 0)}/{courseUsage.limit}
+              </p>
+
+              <div className="space-y-3 mb-6">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">지역</label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {AI_COURSE_REGIONS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setCourseRegion(r)}
+                      className={cn("py-2.5 rounded-xl text-xs font-bold transition-all border", courseRegion === r ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-50 border-transparent text-zinc-500")}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">누구와 함께인가요?</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(Object.keys(COMPANION_LABEL) as Companion[]).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setCourseCompanion(c)}
+                      className={cn("py-3 rounded-2xl text-xs font-bold transition-all border", courseCompanion === c ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-50 border-transparent text-zinc-500")}
+                    >
+                      {COMPANION_LABEL[c]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={createAiCourse}
+                disabled={isCreatingCourse}
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl"
+              >
+                {isCreatingCourse ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    코스 설계 중...
+                  </>
+                ) : (
+                  <>
+                    <Clock size={18} /> 3시간코스 만들기
+                  </>
+                )}
+              </button>
+
+              <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI Guide Modal */}
+      <AnimatePresence>
+        {showAskAI && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowAskAI(false)}>
+            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="w-full max-w-md bg-zinc-50 rounded-t-[40px] h-[88vh] shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex justify-end p-4 pb-0 flex-shrink-0">
+                <button onClick={() => setShowAskAI(false)} className="p-2 bg-white rounded-full shadow-sm border border-zinc-100"><X size={20} /></button>
+              </div>
+              <AskAI region={placeRegion === '종합' ? '성수' : placeRegion} lang={lang} fullHeight />
             </motion.div>
           </motion.div>
         )}

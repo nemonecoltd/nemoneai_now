@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import PlaceDetailClient, { Place } from './PlaceDetailClient';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
@@ -73,12 +74,7 @@ export async function generateMetadata({
   const canonical = `https://now.nemoneai.com/posts/${id}`;
 
   if (!place) {
-    return {
-      title: `운영 종료된 팝업·행사 #${id}`,
-      description: `#${id} 팝업·행사는 운영 기간이 종료되어 더 이상 조회할 수 없습니다. 지금 가볼 만한 다른 핫플을 확인해보세요.`,
-      alternates: { canonical },
-      robots: { index: false, follow: true },
-    };
+    notFound();
   }
 
   const title = (place.title_en && place.title_en !== place.title)
@@ -118,7 +114,10 @@ export default async function PostDetailPage({
   const { lang = 'ko' } = await searchParams;
 
   const place = await getPlace(id);
-  const suggestions = place ? await getSuggestions(id, place.region || '성수', popupCategoryGroup(place.category)) : [];
+  if (!place) {
+    notFound();
+  }
+  const suggestions = await getSuggestions(id, place.region || '성수', popupCategoryGroup(place.category));
 
   return <PlaceDetailClient place={place} lang={lang} suggestions={suggestions} />;
 }

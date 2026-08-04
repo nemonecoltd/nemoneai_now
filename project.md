@@ -917,3 +917,50 @@ fork(복사), 인기 코스 목록, 찜 넛지 배너, place_reports 어드민 U
 
 #### 네이버 로그인
 - Supabase가 네이버를 기본 제공 안 해서 Custom Provider(`custom:naver`)로 연동 — 실제 작업은 `nemone-auth` 레포(통합 인증 센터)에서 진행, 여기서는 `AuthContext.tsx`에 `signInWithNaver` 추가만(일관성 목적, 실제 버튼은 auth 서버에만 존재)
+
+### 2026-08-04 — SEO 소프트404 전환, 핫플 AI버튼(코스/가이드), 마이페이지 찜 페이지네이션, 네이버 즐겨찾기·카카오맵 수집기 + 테마 자동생성
+
+#### 네이버 서치어드바이저 "description 중복" 재점검 — 소프트404 → 진짜404 전환
+- 삭제된 팝업 URL(`/posts/[id]`)이 `#id 운영종료` 템플릿 문구로 매번 200을 반환하고 있었음(6/10에 이미 noindex+고유 description 처리는 돼 있었음, 회귀 아님) — 다만 45일 유예 후 영구 삭제된 팝업은 앞으로도 영원히 이 소프트404를 반환해 크롤 예산을 갉아먹는 구조적 문제 발견
+- `posts/[id]/page.tsx`: place가 null이면 `notFound()` 호출로 전환. `posts/[id]/not-found.tsx` 신규(같은 "운영종료" UI 유지 + `/places/popular`에서 실제 추천 장소 6개 채워 넣음 — 기존엔 이 자리가 항상 빈 배열이었음)
+- `PlaceDetailClient.tsx`의 이제 도달 불가능해진 null 분기 제거, `place` prop 타입 `Place|null` → `Place`
+
+#### 만료 팝업 재수집 방지 — 삭제 블록리스트
+- `아차산토요한마당`(2014년 데이터 그대로 남아있는 문체부 축제API 항목)이 삭제해도 재수집 때마다 부활하는 문제 — `upsert_items()`가 naver_place_id/title로만 매칭해 삭제된 행은 재수집 시 새 INSERT로 취급되던 게 원인
+- `deleted_places_blocklist` 테이블 신설, 관리자 삭제(`DELETE /places/{id}`) 시 자동 기록. `collector_base.py`의 공용 `upsert_items()`(kopis/naver/visitjeju/visitseoul/seoul_exhibition/culture 전부 경유)가 재수집 전 블록리스트를 걸러내도록 수정
+
+#### 핫플 상단 — AI코스생성 / AI가이드 버튼
+- `Recommendation.tsx`: NEW팝업 티커와 카테고리 탭 사이에 버튼 2개 신설. AI코스생성은 `/course` 페이지의 기존 모달(지역+동행 선택 → `/courses/draft`)을 그대로 이식, AI가이드는 기존 `AskAI` 컴포넌트에 `fullHeight` prop을 추가해 바텀시트 모달 안에서도 레이아웃이 깨지지 않게 함
+- 로그인 요구 시점 수정: 버튼 클릭 시 바로 로그인 강제하던 것 → 모달부터 열고 실제 "생성/전송" 액션에서만 로그인 요청(`/course` 페이지의 기존 패턴과 통일)
+- 우하단 플로팅 AI버튼("둥둥이")은 핫플 탭에서 인라인 버튼과 중복이라 숨김 처리, 다른 탭에서는 아이콘+"AI가이드" 텍스트 라벨이 있는 알약 형태로 변경(기존엔 아이콘만 있어 역할이 불명확했음)
+- 버튼 추가로 줄어든 광고 노출 공간 확보를 위해 NEW팝업 티커/버튼바/탭/지역필터 패딩을 순서대로 조금씩 축소
+- 두 AI코스생성 모달(핫플 탭, `/course` 페이지) 모두 "3시간코스 만들기" 버튼 아래에 랭킹리스트용 광고(`5769413560`) 추가
+
+#### 마이페이지 — 찜 목록 페이지네이션 + 삭제
+- `/my` 찜(place) 탭에 10개 단위 페이지네이션(숫자 버튼+화살표) 추가, 항목별 삭제 버튼 신설(기존 `/likes/toggle` 재사용해 찜 해제)
+
+#### 네이버 지도 "즐겨찾기(공유폴더)" 스크래퍼 신규
+- `map.naver.com/p/favorite/.../folder/{id}` 링크가 내부적으로 쓰는 `pages.map.naver.com` 공개 API(로그인/봇방지 토큰 불필요, Playwright 불필요)를 직접 호출
+- `scraper_naver_favorite.py`(수집) + `collector_favorite.py`(DB 반영) 신규. 큐레이터가 남긴 개인 메모는 저작권 리스크로 DB에 절대 저장하지 않고, title/location/네이버 세부업종만으로 AI가 소개문을 새로 작성(메모 없이 생성해 표현이 겹치지 않음을 확인)
+- end_date는 항상 NULL로 저장(팝업이 아니라 상시 매장이라 `cleanup_expired_data()`의 45일 자동삭제 대상에서 자연히 빠짐)
+- 실행은 정기 스케줄 없이 텔레그램 `/fav <폴더URL> <지역> [카테고리]`로 온디맨드(로컬 텔레그램 봇에 명령 추가, `telegram_admin_bot.py`)
+
+#### 카카오맵 키워드 검색 스크래퍼 신규
+- `map.kakao.com`의 `search.map.kakao.com/mapsearch/map.daum` API가 네이버와 달리 브라우저/봇방지 토큰 없이 순수 HTTP만으로 전체 페이지 수집 가능함을 확인, 광고는 응답의 `place` 배열과 이미 분리되어 있어 별도 필터링 불필요. 정렬은 정확도순이 아니라 실제 "인기도순" 토글과 동일한 `msFlag=S&sort=1` 사용
+- `scraper_kakao.py`(수집, AI/번역 없이 카카오 원본 정보 그대로 content 구성 — 업체 등록 정형정보라 저작권 이슈 없음) + `collector_kakao.py`(DB 반영)
+- 서울처럼 넓은 키워드는 결과가 여러 구에 흩어지는데, now는 아직 성수/홍대/강북/강남 4개 권역만 다루므로 구(區) 단위로 자동 매핑(`DISTRICT_REGION_MAP`) — 성동구→성수, 마포구→홍대, 강남·서초·송파→강남, **그 외 모든 구는 강북**(기타 서울 편의상 버킷)
+- 업체 홈페이지는 `link_url` 컬럼에 분리 저장(기존 "공식 페이지" 박스가 그대로 렌더링) — 이전엔 content 안에 plain text로 박혀 있어 클릭이 안 됐음
+- 텔레그램 `/kakao <키워드> <카테고리> [지역]` — 지역 생략 시 구 자동매핑, 매핑표에 없는 지역(제주 등) 키워드는 명시 필수
+- 실 사용: "서울 독립서점" 150곳 전량 수집(강북100/홍대34/강남13/성수3), 프로덕션 반영 확인
+
+#### 수집기 완료 시 테마지도 자동 생성
+- `theme_helper.py` 신규(`create_theme()`) — `/fav`, `/kakao` 완료 후 이번에 수집한 장소들을 묶어 테마 자동 생성, system user_id(`now-collector-system`)로 소유
+- 카카오는 전체는 DB에 등록하되 테마에는 인기도순 상위 15개만 포함, 즐겨찾기는 폴더 전체 포함(폴더명을 테마 제목으로 사용)
+
+#### 플레이스 상세페이지 — 네이버/카카오맵 링크 박스 정리
+- `hasValidNaverId`에서 `kakao_` 접두사 제외(그동안 카카오 소스 항목이 잘못된 네이버지도 링크를 만들고 있었음), "카카오맵에서 보기" 박스 신설(네이버 박스와 동일 스타일)
+- `collector_favorite.py`/`collector_kakao.py`의 content에서 "OO 지도 바로가기: URL" plain text 줄 제거(각 소스 전용 링크 박스가 이미 렌더링하므로 중복)
+
+#### 기타
+- matmatch: 어드민 회원현황에 네이버(`custom:naver`) 로그인 카운트 추가, 카드 5개로 재배치(`Total Members`→`Total` 등 라벨 축약해 한 줄 유지)
+- matmatch: 기사 상세페이지에 같은 섹션(카테고리) 내 이전/다음 글로 이동하는 좌우 화살표 신설(`ArticleNavArrows.tsx`), 백엔드 `/posts/{id}/adjacent`를 전체 글 기준 → 같은 category 내에서만 조회하도록 수정

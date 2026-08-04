@@ -227,7 +227,22 @@ async def delete_place(place_id: int, viewer: dict = Depends(_verify_supabase_us
     if viewer["email"] != ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="관리자만 삭제할 수 있습니다")
     with engine.connect() as conn:
-        row = conn.execute(text("SELECT image_url FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id}).fetchone()
+        row = conn.execute(text("SELECT image_url, title, naver_place_id FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id}).fetchone()
+        if row:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS deleted_places_blocklist (
+                    id SERIAL PRIMARY KEY,
+                    naver_place_id TEXT,
+                    title TEXT,
+                    deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                )
+            """))
+            # 관리자가 지운 항목은 title/naver_place_id로 블록리스트에 남겨, 원본 소스(오픈API 등)에
+            # stale 데이터가 계속 남아있어도 재수집(upsert_items) 때 다시 살아나지 않도록 함.
+            conn.execute(
+                text("INSERT INTO deleted_places_blocklist (naver_place_id, title) VALUES (:naver_place_id, :title)"),
+                {"naver_place_id": row.naver_place_id, "title": row.title},
+            )
         conn.execute(text("DELETE FROM seongsu_places WHERE id = :place_id"), {"place_id": place_id})
         conn.commit()
     if row and row[0]:
