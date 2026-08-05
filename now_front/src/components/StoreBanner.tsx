@@ -7,7 +7,7 @@ export default function StoreBanner() {
         href="https://smartstore.naver.com/nemone24"
         target="_blank"
         rel="noopener noreferrer"
-        className="block w-full overflow-hidden rounded-3xl border border-zinc-100 hover:border-emerald-300 transition-all shadow-sm"
+        className="block w-full overflow-hidden rounded-3xl border border-zinc-100 hover:border-pace-300 transition-all shadow-sm"
       >
         <img
           src="/nemone_banner2.jpg"

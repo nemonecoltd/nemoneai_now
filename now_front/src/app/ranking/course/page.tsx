@@ -97,7 +97,7 @@ export default async function CourseRankingPage() {
                     {step.place_name}
                   </span>
                   {step.place_id && (
-                    <Link href={`/posts/${step.place_id}`} className="text-emerald-600 flex items-center flex-shrink-0">
+                    <Link href={`/posts/${step.place_id}`} className="text-pace-600 flex items-center flex-shrink-0">
                       <ChevronRight size={14} />
                     </Link>
                   )}

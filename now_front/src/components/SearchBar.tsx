@@ -24,7 +24,7 @@ export default function SearchBar() {
 
   return (
     <form onSubmit={handleSearch} className="relative w-full mt-4 group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-emerald-500 transition-colors">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-pace-500 transition-colors">
         <Search size={18} />
       </div>
       <input 
@@ -32,7 +32,7 @@ export default function SearchBar() {
         placeholder="어디로 떠나볼까요?"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full bg-zinc-100 border-none rounded-2xl py-3.5 pl-12 pr-10 text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-emerald-500/20 focus:bg-white transition-all text-sm font-medium"
+        className="w-full bg-zinc-100 border-none rounded-2xl py-3.5 pl-12 pr-10 text-zinc-900 placeholder:text-zinc-400 focus:ring-2 focus:ring-pace-500/20 focus:bg-white transition-all text-sm font-medium"
       />
       {query && (
         <button 

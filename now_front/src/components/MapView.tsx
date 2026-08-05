@@ -189,15 +189,15 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
       <div className="absolute bottom-28 right-6 z-[60] flex flex-col gap-1 shadow-2xl rounded-2xl overflow-hidden border border-zinc-200">
         <button
           onClick={() => mapInstance?.setZoom((mapInstance.getZoom() ?? 15) + 1)}
-          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-pace-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
         >+</button>
         <button
           onClick={() => mapInstance?.setZoom((mapInstance.getZoom() ?? 15) - 1)}
-          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-pace-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center text-xl font-bold border-b border-zinc-100"
         >−</button>
         <button
           onClick={handleMyLocation}
-          className="w-11 h-11 bg-white text-zinc-600 hover:text-emerald-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center"
+          className="w-11 h-11 bg-white text-zinc-600 hover:text-pace-500 hover:bg-zinc-50 transition-all active:scale-95 flex items-center justify-center"
           aria-label="My Location"
         >
           <Navigation size={18} />
@@ -207,7 +207,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-50 z-10">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-pace-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs font-bold text-zinc-400 animate-pulse">
               {lang === 'en' ? 'Syncing Map...' : lang === 'zh' ? '地图同步中...' : '지도를 연동 중입니다...'}
             </p>
@@ -260,7 +260,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
               )}
 
               {selectedPlace.date_range && (
-                <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-bold mb-4">
+                <div className="flex items-center gap-1.5 text-xs text-pace-600 font-bold mb-4">
                   <Calendar size={12} />
                   <span>{selectedPlace.date_range}</span>
                 </div>

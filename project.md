@@ -964,3 +964,35 @@ fork(복사), 인기 코스 목록, 찜 넛지 배너, place_reports 어드민 U
 #### 기타
 - matmatch: 어드민 회원현황에 네이버(`custom:naver`) 로그인 카운트 추가, 카드 5개로 재배치(`Total Members`→`Total` 등 라벨 축약해 한 줄 유지)
 - matmatch: 기사 상세페이지에 같은 섹션(카테고리) 내 이전/다음 글로 이동하는 좌우 화살표 신설(`ArticleNavArrows.tsx`), 백엔드 `/posts/{id}/adjacent`를 전체 글 기준 → 같은 category 내에서만 조회하도록 수정
+
+### 2026-08-05 — "PACE" 브랜드 전면 리브랜딩 (색상/로고/파비콘/안드로이드/카피)
+
+now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 진단 결과, "기존 골드 테마"라는 전제와 달리 실제 대표색은 에메랄드 그린이었음(골드는 matmatch 색) — 에메랄드를 Jeju Blue(`#35577A`)로 교체하는 작업으로 재정의하고 진행.
+
+#### 컬러 토큰화
+- `tailwind.config.js`에 `pace` 커스텀 팔레트(50~950) 추가, 600을 스펙값 `#35577A`에 정확히 고정, 나머지는 HSL 보간으로 생성
+- 코드베이스 전체(25개 파일)의 `emerald-*` 클래스를 `pace-*`로 일괄 치환 — 단, 제주 지역색(`#0369a1`)·카카오/네이버 버튼 브랜드색·지도 마커색은 emerald가 아니었으므로 영향 없음
+- **부작용 발견 및 수정**: 일괄 치환 때문에 지역별 색상 매핑(`REGION_ACCENT`/`REGION_PILL_ACTIVE`, `regionBorder`/`regionText`, 랭킹 뱃지 fallback)에서 "성수"(및 같은 슬롯을 쓰던 "공연") 전용 색까지 Jeju Blue로 바뀌어 제주와 구분이 안 되는 문제 발생 — `page.tsx`/`PlaceDetailClient.tsx`/`ClosingSoonTicker.tsx`/`Recommendation.tsx` 5곳에서 성수·공연만 다시 emerald로 되돌림(전역 브랜드색과 지역 고유색은 같은 토큰을 공유하면 안 된다는 교훈)
+
+#### 로고/파비콘
+- `public/brand/`에 SVG 6종 배치, 공용 `Logo.tsx` 신설 → 텍스트로 8곳에 중복돼 있던 헤더 타이틀을 이미지 로고로 교체(`page.tsx`, `course/page.tsx`, `course/[id]/page.tsx`, `course/[id]/edit/page.tsx`, `PlaceDetailClient.tsx`, `signup/page.tsx`)
+- 어드민/매거진 헤더처럼 페이지 고유 타이틀("지금 여기 관리자", "매거진")은 브랜드 마크 자리가 아니라고 판단해 로고로 안 바꾸고 텍스트 유지(지시서가 카피 문구는 범위 밖이라 명시)
+- 파비콘: `brew install librsvg`(rsvg-convert)로 SVG→PNG 변환, Python Pillow로 `favicon.ico`(16/32/48 멀티사이즈)까지 생성해 `layout.tsx`에 ico/svg/png 우선순위로 연결. 기존 `matmatch-icon.png`(now_front에 잘못 들어와 있던 파일)·구 `favicon.png` 정리
+
+#### 안드로이드 앱(Capacitor)
+- 완전 커스터마이징 안 된 기본 템플릿 아이콘(청록 그리드 패턴)이 그대로 남아있던 걸 발견 — `pace-icon-solid.svg` 기준으로 레거시 아이콘(36~192px 6단계) + 어댑티브 아이콘(배경 Jeju Blue 단색 + 전경 흰 마크, 81~432px 6단계) 전부 재생성
+- 앱 이름 "NowHere" → "NEMONE PACE"(`strings.xml`, `capacitor.config.ts`), `applicationId`(`com.nemoneai.now`)는 스토어 등록 유지 위해 그대로
+- `versionCode` 4→5, `versionName` "1.0.3"→"1.1.0"(최신 배포 버전 다음으로) — 실제 APK/AAB 빌드·서명·Play Console 업로드는 로컬에 Android SDK가 없어 사용자가 직접 진행해야 함
+
+#### SEO 타이틀/카피 통일
+- `<title>`을 하나로 길게 쓰면(약 73자) 검색결과에서 잘려서, title 30자("NEMONE PACE, 당신의 다음 3시간을 설계합니다") + description 40자("성수, 홍대 팝업 등 지역별 지금 당장 즐길 수 있는 플레이스 코스 추천")로 분리(OG/Twitter/JSON-LD도 동일하게 통일)
+- 상단 슬로건(`BrandTagline.tsx`)과 하단 풋터(`SiteFooter.tsx`, `page.tsx` 인라인 풋터) 태그라인도 같은 문구로 통일, 풋터 서비스명("지금여기"/"NOW HERE")도 "NEMONE PACE"로 교체
+
+#### 헤더 뒤로가기 버튼 — 핫플 탭에서만 숨김
+- 홈(메인) 진입 시 뒤로가기 화살표가 갈 곳이 없어 불필요하다는 피드백으로 제거했다가, 핫플/지도/장소/코스/매거진 탭이 전부 `page.tsx` 하나의 헤더를 공유하는 구조라 전체 탭에서 사라지는 부작용 발생
+- `activeTab !== 'rec'` 조건으로 핫플 탭에서만 숨기고 나머지 탭에서는 복원 — 완전 제거가 아니라 조건부 렌더링으로 해결
+
+#### 연관 작업 (다른 저장소)
+- matmatch(nemoneai.com) 헤더의 "Nowhere" 초록 뱃지 버튼을 다크배경용 가로형 PACE 로고 버튼으로 교체(`pace-logo-horizontal-40-dark.svg`)
+- home.nemoneai.com(정적 export, GitHub Actions 배포가 구 서버 시크릿을 그대로 물고 있어 실패 — msm VM의 `~/apps/home_dist/dist`에 직접 rsync로 배포)와 matmatch 전체에서 "지금여기"/"NOW HERE" 잔존 텍스트 정리. matmatch는 UI 라벨뿐 아니라 실제 발행된 기사 8건의 제목/본문/태그에도 박혀있어 DB 직접 수정 + 랭킹 인메모리 캐시(`_top_ranking_cache`, 백엔드 재시작 전까지 안 갱신) 재기동 + 프론트 `.next/cache` 삭제 후 재빌드까지 필요했음(자세한 내용은 matmatch 저장소 기록 참고)
+- home.nemoneai.com 어드민(`/admin`)에 소식 수정(PUT) 기능이 없어서 추가 — matmatch 백엔드에 `PUT /news/{id}` 신설, 어드민 페이지에 연필 아이콘 버튼으로 기존 "새 소식 작성" 모달을 수정 모드로 재사용

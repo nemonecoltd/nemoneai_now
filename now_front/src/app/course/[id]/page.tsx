@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
+import Logo from '@/components/Logo';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE', ja: 'NOW HERE' };
@@ -125,9 +126,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
             <Link href="/course" className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
               <ChevronLeft size={20} strokeWidth={2.5} />
             </Link>
-            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
-              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang]} <span className="text-emerald-500">.</span></Link>
-            </h1>
+            <Logo />
           </div>
           <HeaderControls />
         </div>
@@ -137,7 +136,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
 
       <main className="px-6 pt-6 pb-28 space-y-6">
         <div className="space-y-2">
-          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase">
+          <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase">
             {course.scope === 'timed' ? '3시간코스' : '자유코스'} · {course.region}
           </span>
           {course.description && <p className="text-sm text-zinc-500 leading-relaxed">{course.description}</p>}
@@ -146,7 +145,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
         <div className="relative space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-100">
           {steps.map((step, idx) => (
             <div key={`${step.place_id}-${idx}`} className="relative pl-10">
-              <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-emerald-500 z-10" />
+              <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-pace-500 z-10" />
               <div className="space-y-2">
                 {course.scope === 'timed' && (
                   <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-400 font-mono">
@@ -166,7 +165,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
                     </div>
                     {step.activity && <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{step.activity}</p>}
                     {step.active && (
-                      <Link href={`/posts/${step.place_id}`} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600 mt-1.5">
+                      <Link href={`/posts/${step.place_id}`} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-pace-600 mt-1.5">
                         자세히 보기 <ChevronRight size={12} />
                       </Link>
                     )}

@@ -141,7 +141,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={lang === 'en' ? 'Search places...' : lang === 'zh' ? '搜索地点...' : '장소 검색'}
-              className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border border-zinc-200 bg-white outline-none focus:border-emerald-400 transition-colors"
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border border-zinc-200 bg-white outline-none focus:border-pace-400 transition-colors"
             />
             {searchQuery && (
               <button
@@ -176,7 +176,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
       <div className="space-y-4">
         {isSearchMode && isSearching && (
           <div className="flex justify-center py-10">
-            <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+            <span className="w-5 h-5 border-2 border-pace-500 border-t-transparent rounded-full animate-spin inline-block" />
           </div>
         )}
         {displayPlaces.map((place, idx) => (
@@ -206,7 +206,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
                 }}
               />
               <div className="absolute top-4 left-4 flex gap-2">
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-emerald-500 flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-pace-500 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   {lang === 'en' ? 'Live' : lang === 'zh' ? '营业中' : '운영 중'}
                 </span>
@@ -227,7 +227,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
                   <h3 className="text-lg font-bold text-zinc-900">
                     {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
                   </h3>
-                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{place.location}</p>
+                  <p className="text-[10px] font-bold text-pace-600 uppercase tracking-widest mt-1">{place.location}</p>
                 </div>
                 <span className="flex-shrink-0 p-2 rounded-full bg-zinc-50 text-zinc-400">
                   <ChevronRight size={20} />
@@ -257,7 +257,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
         {hasMore && !isSearchMode && (
           <div ref={sentinelRef} className="flex justify-center py-6">
             {isLoadingMore && (
-              <span className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin inline-block" />
+              <span className="w-5 h-5 border-2 border-pace-500 border-t-transparent rounded-full animate-spin inline-block" />
             )}
           </div>
         )}

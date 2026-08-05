@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, ArrowRight, Loader2, Globe } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -69,14 +70,14 @@ export default function SignupPage() {
       <button 
         type="button"
         onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
-        className="absolute top-6 right-6 p-2 bg-white rounded-full shadow-sm border border-zinc-200 text-zinc-500 hover:text-emerald-500 transition"
+        className="absolute top-6 right-6 p-2 bg-white rounded-full shadow-sm border border-zinc-200 text-zinc-500 hover:text-pace-500 transition"
       >
         <Globe size={20} />
       </button>
 
       <div className="w-full bg-white rounded-[40px] p-8 shadow-sm border border-zinc-100 mt-8">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-black text-zinc-900 tracking-tight mb-2">{t.title} <span className="text-emerald-500">.</span></h1>
+        <div className="mb-10 text-center flex flex-col items-center">
+          <Logo className="h-10 mb-2" />
           <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{t.subtitle}</p>
         </div>
 
@@ -96,7 +97,7 @@ export default function SignupPage() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
                 placeholder={t.namePlaceholder}
               />
             </div>
@@ -111,7 +112,7 @@ export default function SignupPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
                 placeholder={t.emailPlaceholder}
               />
             </div>
@@ -127,7 +128,7 @@ export default function SignupPage() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl pl-12 pr-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
                 placeholder={t.passwordPlaceholder}
               />
             </div>
@@ -139,7 +140,7 @@ export default function SignupPage() {
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
               >
                 <option value="">{lang === 'ko' ? '선택 안함' : 'None'}</option>
                 <option value="male">{lang === 'ko' ? '남성' : 'Male'}</option>
@@ -153,7 +154,7 @@ export default function SignupPage() {
               <select
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
-                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
               >
                 <option value="">{lang === 'ko' ? '선택 안함' : 'None'}</option>
                 <option value="10s">10{lang === 'ko' ? '대' : 's'}</option>
@@ -170,7 +171,7 @@ export default function SignupPage() {
               type="text"
               value={nationality}
               onChange={(e) => setNationality(e.target.value)}
-              className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-zinc-50 border border-zinc-200 rounded-2xl px-4 py-4 text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-pace-500 focus:ring-1 focus:ring-pace-500 transition-all"
               placeholder={lang === 'ko' ? '예: 한국, USA, Japan...' : 'e.g. Korea, USA, Japan...'}
             />
           </div>
@@ -178,7 +179,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-emerald-500 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-xl disabled:opacity-50 disabled:hover:bg-emerald-500 mt-8"
+            className="w-full bg-pace-500 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all shadow-xl disabled:opacity-50 disabled:hover:bg-pace-500 mt-8"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
               <>{t.signupBtn} <ArrowRight className="w-5 h-5" /></>

@@ -132,7 +132,7 @@ function formatMessage(text: string, lang: string = 'ko'): React.ReactNode {
         <p key={i} className="mb-1">
           {parts.map((part, j) =>
             /^https?:\/\//.test(part)
-              ? <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">{linkLabel}</a>
+              ? <a key={j} href={part} target="_blank" rel="noopener noreferrer" className="text-pace-600 underline font-bold">{linkLabel}</a>
               : part
           )}
         </p>
@@ -256,7 +256,7 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
       {/* 헤더 */}
       <div className="p-6 pb-2 flex-shrink-0">
         <h2 className="text-xl font-bold font-display flex items-center gap-2 text-zinc-900">
-          <Sparkles className="text-emerald-500" size={20} /> {t.title}
+          <Sparkles className="text-pace-500" size={20} /> {t.title}
         </h2>
         <p className="text-xs text-zinc-500 mt-1">{t.subtitle.replace('{region}', displayRegion)}</p>
       </div>
@@ -271,12 +271,12 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
               value={input}
               onChange={(e) => setNewInput(e.target.value)}
               placeholder={t.placeholder}
-              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
+              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-pace-500/50 shadow-sm"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-emerald-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-pace-600"
             >
               <Send size={18} />
             </button>
@@ -291,8 +291,8 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
       >
         {isEmpty && (
           <div className="flex flex-col items-center justify-center text-center space-y-4 opacity-40 px-10 pt-8">
-            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center">
-              <Bot className="text-emerald-500" size={32} />
+            <div className="w-16 h-16 bg-pace-50 rounded-2xl flex items-center justify-center">
+              <Bot className="text-pace-500" size={32} />
             </div>
             <div className="space-y-2">
               {currentExamples.map((ex, i) => (
@@ -311,7 +311,7 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
           >
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-              msg.role === 'user' ? "bg-zinc-900 text-white" : "bg-emerald-50 text-emerald-600"
+              msg.role === 'user' ? "bg-zinc-900 text-white" : "bg-pace-50 text-pace-600"
             )}>
               {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
             </div>
@@ -330,7 +330,7 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
                     <Link
                       key={p.id}
                       href={`/posts/${p.id}?region=${encodeURIComponent(region)}&lang=${lang}`}
-                      className="flex items-center justify-between gap-2 bg-white border border-zinc-100 rounded-xl px-3 py-2 text-xs hover:border-emerald-300 transition-colors"
+                      className="flex items-center justify-between gap-2 bg-white border border-zinc-100 rounded-xl px-3 py-2 text-xs hover:border-pace-300 transition-colors"
                     >
                       <span className="min-w-0">
                         <span className="font-bold text-zinc-800 truncate block">{p.title}</span>
@@ -344,7 +344,7 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
                     disabled={savingIdx === idx || msg.saved}
                     className={cn(
                       "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors disabled:opacity-60",
-                      msg.saved ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-zinc-900 text-white hover:bg-emerald-600"
+                      msg.saved ? "bg-pace-50 text-pace-600 border border-pace-100" : "bg-zinc-900 text-white hover:bg-pace-600"
                     )}
                   >
                     {savingIdx === idx ? (
@@ -364,11 +364,11 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
 
         {isLoading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-pace-50 text-pace-600 flex items-center justify-center flex-shrink-0">
               <Bot size={16} />
             </div>
             <div className="bg-white border border-zinc-100 p-4 rounded-2xl rounded-tl-none shadow-sm">
-              <Loader2 className="animate-spin text-emerald-500" size={16} />
+              <Loader2 className="animate-spin text-pace-500" size={16} />
             </div>
           </div>
         )}
@@ -385,12 +385,12 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
               value={input}
               onChange={(e) => setNewInput(e.target.value)}
               placeholder={t.placeholder}
-              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500/50 shadow-sm"
+              className="w-full bg-white border border-zinc-200 rounded-2xl pl-5 pr-14 py-4 text-sm text-zinc-900 focus:outline-none focus:border-pace-500/50 shadow-sm"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-emerald-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-zinc-900 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all hover:bg-pace-600"
             >
               <Send size={18} />
             </button>

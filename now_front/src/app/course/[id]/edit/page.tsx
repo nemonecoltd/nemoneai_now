@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import BrandTagline from '@/components/BrandTagline';
 import HeaderControls from '@/components/HeaderControls';
+import Logo from '@/components/Logo';
 
 const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
 
@@ -224,15 +225,13 @@ export default function CourseEditPage() {
             <button onClick={() => router.push('/course')} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
-              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang] || BRAND_TITLE.ko} <span className="text-emerald-500">.</span></Link>
-            </h1>
+            <Logo />
           </div>
           <HeaderControls />
         </div>
         <div className="flex items-center justify-between mb-1">
           <span className="text-sm font-bold text-zinc-500 truncate">코스 편집</span>
-          <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase flex-shrink-0">
+          <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase flex-shrink-0">
             {course.scope === 'timed' ? '3시간코스' : '자유코스'}
           </span>
         </div>
@@ -244,7 +243,7 @@ export default function CourseEditPage() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="코스 제목을 입력하세요 (비워두면 발행 시 자동 생성)"
-          className="w-full text-xl font-bold text-zinc-900 bg-transparent border-b border-zinc-200 focus:border-emerald-400 outline-none py-2"
+          className="w-full text-xl font-bold text-zinc-900 bg-transparent border-b border-zinc-200 focus:border-pace-400 outline-none py-2"
         />
 
         <textarea
@@ -252,7 +251,7 @@ export default function CourseEditPage() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="코스에 대한 소개를 적어주세요"
           rows={3}
-          className="w-full text-sm text-zinc-600 bg-white border border-zinc-100 rounded-2xl p-4 outline-none focus:border-emerald-200 resize-none"
+          className="w-full text-sm text-zinc-600 bg-white border border-zinc-100 rounded-2xl p-4 outline-none focus:border-pace-200 resize-none"
         />
 
         <div className="space-y-3">
@@ -282,7 +281,7 @@ export default function CourseEditPage() {
                   value={step.activity}
                   onChange={(e) => updateStepActivity(idx, e.target.value)}
                   placeholder="이곳에서 무엇을 할까요?"
-                  className="w-full text-xs text-zinc-600 bg-zinc-50 rounded-xl px-3 py-2 outline-none focus:bg-emerald-50"
+                  className="w-full text-xs text-zinc-600 bg-zinc-50 rounded-xl px-3 py-2 outline-none focus:bg-pace-50"
                 />
               </div>
             </div>
@@ -290,7 +289,7 @@ export default function CourseEditPage() {
 
           <button
             onClick={() => setShowSearch(true)}
-            className="w-full py-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 font-bold text-sm flex items-center justify-center gap-2 hover:border-emerald-200 hover:text-emerald-600 transition-all"
+            className="w-full py-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 font-bold text-sm flex items-center justify-center gap-2 hover:border-pace-200 hover:text-pace-600 transition-all"
           >
             <Plus size={18} /> 장소 추가
           </button>
@@ -308,7 +307,7 @@ export default function CourseEditPage() {
         <button
           onClick={() => setShowPublishConfirm(true)}
           disabled={isSaving || isPublishing}
-          className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 text-sm shadow-xl"
+          className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all disabled:opacity-50 text-sm shadow-xl"
         >
           <Send size={18} /> 발행하기
         </button>
@@ -341,7 +340,7 @@ export default function CourseEditPage() {
                         <MessageSquarePlus size={14} /> 이 장소 제보하기
                       </button>
                     ) : (
-                      <p className="text-xs text-emerald-600 font-bold">제보해주셔서 감사합니다!</p>
+                      <p className="text-xs text-pace-600 font-bold">제보해주셔서 감사합니다!</p>
                     )}
                   </div>
                 )}

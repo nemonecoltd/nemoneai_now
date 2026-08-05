@@ -43,7 +43,7 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
     <div className="p-6 space-y-6 pb-24">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <Newspaper size={18} className="text-emerald-600" />
+          <Newspaper size={18} className="text-pace-600" />
           <h2 className="text-lg font-black text-zinc-800">{t.title}</h2>
         </div>
         <p className="text-xs text-zinc-400 font-bold">{t.desc}</p>
@@ -80,7 +80,7 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
                       </div>
                     )}
                     <div className="absolute top-4 left-4 flex gap-2">
-                      <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-emerald-500">
+                      <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-pace-500">
                         {t.title}
                       </span>
                     </div>

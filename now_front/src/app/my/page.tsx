@@ -150,11 +150,11 @@ export default function MyPage() {
   };
 
 
-  if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>;
+  if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-pace-500" /></div>;
   
   if (!user) return (
     <div className="h-screen flex flex-col items-center justify-center p-8 text-center space-y-6 max-w-md mx-auto bg-white shadow-2xl">
-      <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-500 mb-4">
+      <div className="w-20 h-20 bg-pace-50 rounded-3xl flex items-center justify-center text-pace-500 mb-4">
         <User size={40} />
       </div>
       <h2 className="text-2xl font-bold font-display">로그인이 필요합니다</h2>
@@ -174,7 +174,7 @@ export default function MyPage() {
           <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">MY PAGE</h1>
           <div className="ml-auto flex items-center gap-2">
             {user.email === 'nemonecoltd@gmail.com' && (
-              <Link href="/admin" className="px-3 py-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-all">
+              <Link href="/admin" className="px-3 py-1.5 bg-pace-50 text-pace-600 text-[10px] font-black rounded-lg border border-pace-100 hover:bg-pace-100 transition-all">
                 ADMIN
               </Link>
             )}
@@ -188,7 +188,7 @@ export default function MyPage() {
 
       <div className="bg-white px-8 pt-28 pb-10 rounded-b-[40px] shadow-sm">
         <div className="flex items-center gap-6 mb-8">
-          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg flex-shrink-0 bg-zinc-100">
+          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-pace-50 shadow-lg flex-shrink-0 bg-zinc-100">
             <img 
               src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`} 
               alt={user.user_metadata?.full_name || ""} 
@@ -199,7 +199,7 @@ export default function MyPage() {
             <h2 className="text-2xl font-black tracking-tight truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</h2>
             <p className="text-zinc-400 text-xs font-medium truncate">{user.email}</p>
           </div>
-          <Link href="/my/edit" className="p-3 bg-zinc-100 text-zinc-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-500 transition-all shadow-sm">
+          <Link href="/my/edit" className="p-3 bg-zinc-100 text-zinc-500 rounded-2xl hover:bg-pace-50 hover:text-pace-500 transition-all shadow-sm">
             <Settings size={20} />
           </Link>
         </div>
@@ -245,7 +245,7 @@ export default function MyPage() {
                       </div>
                       <div className="flex gap-1 absolute top-6 right-6" onClick={e => e.stopPropagation()}>
                         {!theme.title.startsWith('[퍼감]') && (
-                          <button onClick={() => startEditTheme(theme)} className="p-2 text-zinc-400 hover:text-emerald-500 bg-zinc-50 rounded-lg transition-colors"><Edit3 size={16} /></button>
+                          <button onClick={() => startEditTheme(theme)} className="p-2 text-zinc-400 hover:text-pace-500 bg-zinc-50 rounded-lg transition-colors"><Edit3 size={16} /></button>
                         )}
                         <button onClick={() => handleDeleteTheme(theme.id)} className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
                       </div>
@@ -269,11 +269,11 @@ export default function MyPage() {
           {activeTab === 'course' && (
             <motion.div key="course" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {savedCourses.length > 0 ? savedCourses.map((course: any) => (
-                <div key={course.id} onClick={() => router.push(`/course/${course.id}/edit`)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-emerald-200 transition-colors">
+                <div key={course.id} onClick={() => router.push(`/course/${course.id}/edit`)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-pace-200 transition-colors">
                   <h4 className="font-bold text-zinc-900 tracking-tight">{course.title || '제목 없는 코스'}</h4>
                   <p className="text-xs text-zinc-500 line-clamp-1">{course.description}</p>
                   <div className="flex items-center gap-2 pt-2 border-t border-zinc-50">
-                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase">{course.scope === 'timed' ? '3시간코스' : '자유코스'}</span>
+                    <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase">{course.scope === 'timed' ? '3시간코스' : '자유코스'}</span>
                     {course.is_public && <span className="text-[10px] font-black text-zinc-400 bg-zinc-100 px-2 py-1 rounded-md uppercase">공개</span>}
                     <span className="text-[10px] font-bold text-zinc-400 ml-auto">{new Date(course.created_at).toLocaleDateString()}</span>
                   </div>
@@ -304,7 +304,7 @@ export default function MyPage() {
                           }}
                         />
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{place.title}</h4>
+                          <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-pace-600 transition-colors">{place.title}</h4>
                           <p className="text-[10px] text-zinc-400 truncate mt-1">{place.location}</p>
                         </div>
                       </Link>
@@ -371,7 +371,7 @@ export default function MyPage() {
                       alt={ranking.label}
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{ranking.label}</h4>
+                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-pace-600 transition-colors">{ranking.label}</h4>
                       <p className="text-[10px] text-zinc-400 truncate mt-1">{new Date(ranking.created_at).toLocaleString()} 기준 · {items.length}개 장소</p>
                     </div>
                     <button onClick={(e) => { e.preventDefault(); handleDeleteRanking(ranking.id); }} className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors">
@@ -404,17 +404,17 @@ export default function MyPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">제목</label>
-                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-emerald-500" />
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">설명</label>
-                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm h-24 resize-none focus:outline-none focus:border-emerald-500" />
+                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm h-24 resize-none focus:outline-none focus:border-pace-500" />
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">장소 리스트 ({editPlaces.length})</label>
-                    <button onClick={() => setEditPlaces([...editPlaces, { title: '', location: '', content: '', image_url: '', video_url: '', date_range: '' }])} className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> 추가</button>
+                    <button onClick={() => setEditPlaces([...editPlaces, { title: '', location: '', content: '', image_url: '', video_url: '', date_range: '' }])} className="text-[10px] bg-pace-50 text-pace-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> 추가</button>
                   </div>
                   {editPlaces.map((p, idx) => (
                     <div key={idx} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-3 relative">
@@ -429,7 +429,7 @@ export default function MyPage() {
                   ))}
                 </div>
 
-                <button onClick={handleUpdateTheme} className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all">
+                <button onClick={handleUpdateTheme} className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all">
                   <Save size={20} /> 수정 내용 저장
                 </button>
               </div>
@@ -460,7 +460,7 @@ export default function MyPage() {
 
               <div className="space-y-4 mb-10">
                 {(Array.isArray(selectedTheme.places) ? selectedTheme.places : JSON.parse(selectedTheme.places)).map((place: any, idx: number) => (
-                  <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-emerald-200 transition-colors">
+                  <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-pace-200 transition-colors">
                     <img 
                       src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`} 
                       className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white" 
@@ -470,11 +470,11 @@ export default function MyPage() {
                       }}
                     />
                     <div className="flex-1 min-w-0 pr-6">
-                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{place.title}</h4>
+                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-pace-600 transition-colors">{place.title}</h4>
                       <p className="text-[10px] text-zinc-400 mt-0.5 truncate">{place.location}</p>
                       <p className="text-[11px] text-zinc-600 mt-2 line-clamp-2">{place.content}</p>
                     </div>
-                    <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 group-hover:text-emerald-500 transition-colors" />
+                    <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 group-hover:text-pace-500 transition-colors" />
                   </div>
                 ))}
               </div>
@@ -506,7 +506,7 @@ export default function MyPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-start gap-2 text-sm text-emerald-600 font-bold bg-emerald-50 p-3 rounded-xl">
+                  <div className="flex items-start gap-2 text-sm text-pace-600 font-bold bg-pace-50 p-3 rounded-xl">
                     <MapPin size={16} className="mt-0.5 flex-shrink-0" />
                     <span>{selectedPlace.location || '위치 정보 없음'}</span>
                   </div>

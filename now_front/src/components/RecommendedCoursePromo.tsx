@@ -126,7 +126,7 @@ export default function RecommendedCoursePromo() {
       <div className="w-full max-w-md bg-white rounded-t-[40px] p-6 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-start mb-4">
           <div>
-            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
+            <span className="text-[9px] font-black text-pace-600 bg-pace-50 px-1.5 py-0.5 rounded uppercase">
               {pick.type === 'course' ? '3시간코스' : '테마'} 1위
             </span>
             <h3 className="text-lg font-black text-zinc-900 tracking-tight mt-1">{pick.data.title}</h3>
@@ -139,7 +139,7 @@ export default function RecommendedCoursePromo() {
           <div className="relative space-y-6 mb-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-100">
             {items.slice(0, 10).map((step: any, idx: number) => (
               <div key={idx} className="relative pl-10">
-                <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-emerald-500 z-10" />
+                <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-pace-500 z-10" />
                 <div className="space-y-2">
                   <p className="text-[10px] font-black text-zinc-400 font-mono uppercase">{times[idx]} • {step.duration}MIN</p>
                   <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
@@ -147,14 +147,14 @@ export default function RecommendedCoursePromo() {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-zinc-900 text-sm">{step.place_name}</h4>
                         {step.date_range && (
-                          <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{step.date_range}</p>
+                          <p className="text-[10px] text-pace-600 font-bold mt-0.5">{step.date_range}</p>
                         )}
                         {step.activity && <p className="text-[11px] text-zinc-500 mt-1">{step.activity}</p>}
                       </div>
                       {step.place_id && (
                         <Link
                           href={`/posts/${step.place_id}`}
-                          className="flex-shrink-0 w-7 h-7 bg-white border border-zinc-200 rounded-xl flex items-center justify-center text-zinc-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
+                          className="flex-shrink-0 w-7 h-7 bg-white border border-zinc-200 rounded-xl flex items-center justify-center text-zinc-400 hover:bg-pace-50 hover:text-pace-500 hover:border-pace-200 transition-all"
                         >
                           <ChevronRight size={14} />
                         </Link>
@@ -171,7 +171,7 @@ export default function RecommendedCoursePromo() {
               <Link
                 key={idx}
                 href={place.place_id ? `/posts/${place.place_id}` : '#'}
-                className="flex items-center gap-3 bg-zinc-50 rounded-2xl p-3 hover:bg-emerald-50 transition-colors"
+                className="flex items-center gap-3 bg-zinc-50 rounded-2xl p-3 hover:bg-pace-50 transition-colors"
               >
                 {place.image_url && (
                   <img src={place.image_url} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" alt="" referrerPolicy="no-referrer" />
@@ -193,7 +193,7 @@ export default function RecommendedCoursePromo() {
           <button onClick={handleShare} className="flex flex-col items-center gap-1 py-3 bg-zinc-100 text-zinc-700 rounded-2xl font-bold text-xs hover:bg-zinc-200 transition-all">
             <Share2 size={16} /> 공유하기
           </button>
-          <button onClick={() => router.push('/course')} className="flex flex-col items-center gap-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-xs hover:bg-emerald-600 transition-all">
+          <button onClick={() => router.push('/course')} className="flex flex-col items-center gap-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-xs hover:bg-pace-600 transition-all">
             <Sparkles size={16} /> 코스생성
           </button>
         </div>
@@ -204,7 +204,7 @@ export default function RecommendedCoursePromo() {
   return (
     <div className="space-y-3">
       <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-        <Sparkles size={14} className="text-emerald-500" /> 추천! 인기코스
+        <Sparkles size={14} className="text-pace-500" /> 추천! 인기코스
       </p>
       <button
         onClick={() => setShowModal(true)}
@@ -213,13 +213,13 @@ export default function RecommendedCoursePromo() {
         {thumbnail ? (
           <img src={thumbnail} alt={pick.data.title} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" referrerPolicy="no-referrer" />
         ) : (
-          <div className="w-16 h-16 rounded-xl flex-shrink-0 bg-emerald-50 flex items-center justify-center">
-            <Sparkles className="text-emerald-400" size={24} />
+          <div className="w-16 h-16 rounded-xl flex-shrink-0 bg-pace-50 flex items-center justify-center">
+            <Sparkles className="text-pace-400" size={24} />
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">
+            <span className="text-[9px] font-black text-pace-600 bg-pace-50 px-1.5 py-0.5 rounded uppercase">
               {pick.type === 'course' ? '3시간' : '테마'}
             </span>
             <span className="text-[9px] font-black text-zinc-400">1위</span>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" height="48" width="165" viewBox="0 0 165 48">
+  <g>
+    <rect x="0" y="0" width="48" height="48" rx="10.56" fill="#35577A"></rect>
+    <g transform="translate(0,0) scale(0.48)" fill="#fff">
+    <ellipse cx="36" cy="60" rx="17" ry="9" transform="rotate(-22 36 60)" fill="#fff" opacity="0.55"></ellipse>
+    <ellipse cx="64" cy="42" rx="17" ry="9" transform="rotate(-22 64 42)" fill="#fff"></ellipse></g>
+  </g>
+  <text x="65" y="24" dominant-baseline="central" font-family="system-ui,-apple-system,&#39;Helvetica Neue&#39;,Arial,sans-serif" font-size="20" font-weight="800" letter-spacing="1" fill="#ffffff">PACE</text>
+</svg>

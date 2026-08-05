@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">NowHere</string>
-    <string name="title_activity_main">NowHere</string>
+    <string name="app_name">NEMONE PACE</string>
+    <string name="title_activity_main">NEMONE PACE</string>
     <string name="package_name">com.nemoneai.now</string>
     <string name="custom_url_scheme">com.nemoneai.now</string>
 </resources>

@@ -13,10 +13,10 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500", "700"],
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
   title: {
-    default: "당신 3시간의 알찬 설계, 지금 여기 | 성수·홍대·강북·강남·제주 팝업·공연·축제",
-    template: "%s | 지금 여기"
+    default: "NEMONE PACE, 당신의 다음 3시간을 설계합니다",
+    template: "%s | NEMONE PACE"
   },
-  description: "지금 바로 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·행사, 서울 공연·전시, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.",
+  description: "성수, 홍대 팝업 등 지역별 지금 당장 즐길 수 있는 플레이스 코스 추천",
   alternates: {
     canonical: 'https://now.nemoneai.com',
     languages: {
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: '지금 여기 | 당신 3시간의 알찬 설계',
-    description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
+    title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
+    description: '성수, 홍대 팝업 등 지역별 지금 당장 즐길 수 있는 플레이스 코스 추천',
     url: 'https://now.nemoneai.com',
     images: ['/og-image.jpg'],
     type: 'website',
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: '지금 여기 | 당신 3시간의 알찬 설계',
-    description: 'Stop wasting time searching. AI-powered guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
+    title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
+    description: '성수, 홍대 팝업 등 지역별 지금 당장 즐길 수 있는 플레이스 코스 추천',
     images: ['/og-image.jpg'],
   },
   robots: {
@@ -53,9 +53,9 @@ export const metadata: Metadata = {
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'NOW HERE | 지금 여기',
+  name: 'NEMONE PACE',
   url: 'https://now.nemoneai.com',
-  description: '지금 바로 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·행사, 서울 공연·전시, 전국 축제 정보를 한 눈에! AI-driven real-time guide for Seoul & Jeju pop-ups, shopping, performances, and festivals nationwide.',
+  description: '성수, 홍대 팝업 등 지역별 지금 당장 즐길 수 있는 플레이스 코스 추천',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -74,7 +74,11 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head>
-        <link rel="icon" href="/favicon.png" type="image/png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/brand/pace-icon-solid.svg" type="image/svg+xml" />
+        <link rel="icon" href="/brand/pace-icon-32.png" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/brand/pace-icon-16.png" type="image/png" sizes="16x16" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         {/* Google Analytics */}
         <Script

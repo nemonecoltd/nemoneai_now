@@ -33,7 +33,7 @@ export default function BottomNav({ region = '성수', lang = 'ko', isPerformanc
     <div className="fixed inset-x-0 bottom-0 max-w-md mx-auto z-50 pointer-events-none">
       <button
         onClick={() => router.push(`/?region=${encodedRegion}&tab=chat&lang=${lang}`)}
-        className="pointer-events-auto absolute bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-zinc-900 text-white hover:bg-emerald-600 active:scale-90 transition-all"
+        className="pointer-events-auto absolute bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-zinc-900 text-white hover:bg-pace-600 active:scale-90 transition-all"
       >
         <MessageCircle size={28} />
       </button>
@@ -77,7 +77,7 @@ function NavButton({ onClick, icon, label, disabled }: { onClick: () => void; ic
       disabled={disabled}
       className={cn(
         "flex flex-col items-center gap-1 transition-all",
-        disabled ? "text-zinc-300 cursor-not-allowed" : "text-zinc-400 hover:text-emerald-600"
+        disabled ? "text-zinc-300 cursor-not-allowed" : "text-zinc-400 hover:text-pace-600"
       )}
     >
       {icon}

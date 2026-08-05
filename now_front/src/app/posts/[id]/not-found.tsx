@@ -59,7 +59,7 @@ export default async function PlaceNotFound() {
                   <p className="text-sm font-bold text-zinc-900 truncate">{s.title}</p>
                   <p className="text-xs text-zinc-400 mt-0.5 truncate">{s.location}</p>
                   {s.date_range && (
-                    <p className="text-xs text-emerald-600 font-bold mt-1">{s.date_range}</p>
+                    <p className="text-xs text-pace-600 font-bold mt-1">{s.date_range}</p>
                   )}
                 </div>
               </Link>

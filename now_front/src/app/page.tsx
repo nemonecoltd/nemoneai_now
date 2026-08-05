@@ -24,6 +24,7 @@ import AskAI from '@/components/AskAI';
 import ThemeMenu from '@/components/ThemeMenu';
 import MagazineList from '@/components/MagazineList';
 import BrandTagline from '@/components/BrandTagline';
+import Logo from '@/components/Logo';
 import Recommendation from '@/components/Recommendation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -86,7 +87,7 @@ const REGION_PILL_ACTIVE: Record<Region, string> = {
 const dict = {
   ko: {
     title: '지금 여기',
-    desc: '당신 3시간의 알찬 설계',
+    desc: '당신의 다음 3시간을 설계합니다',
     totalRec: '통합 실시간 랭킹',
     regionGuide: '실시간 {region} 가이드',
     navRec: '핫플',
@@ -171,7 +172,6 @@ function Home() {
       router.push('/');
     }
   };
-
   const [lang, setLang] = useState<Lang>('ko');
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -282,17 +282,15 @@ function Home() {
       <header className="px-6 pt-4 pb-1 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={handleBack}
-              className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
-            >
-              <ChevronLeft size={20} strokeWidth={2.5} />
-            </button>
-            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
-              <Link href="/" className="no-underline text-inherit">
-                {t.title} <span className="text-emerald-500">.</span>
-              </Link>
-            </h1>
+            {activeTab !== 'rec' && (
+              <button
+                onClick={handleBack}
+                className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
+              >
+                <ChevronLeft size={20} strokeWidth={2.5} />
+              </button>
+            )}
+            <Logo />
           </div>
           <div className="flex items-center gap-3">
             {/* Language Toggle */}
@@ -506,7 +504,7 @@ function Home() {
         <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-4">
           <div className="flex flex-col items-center text-center gap-1">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
-              {lang === 'en' || lang === 'zh' ? 'NOW HERE' : '지금여기'}
+              NEMONE PACE
             </span>
             <span className="text-[10px] font-bold text-zinc-500 tracking-wide">
               {t.desc}
@@ -527,7 +525,7 @@ function Home() {
                 href={item.href}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-[9px] font-black text-zinc-500 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+                className="text-[9px] font-black text-zinc-500 hover:text-pace-600 tracking-[0.25em] uppercase transition-colors"
               >
                 {item.name}
               </Link>
@@ -542,13 +540,13 @@ function Home() {
           onClick={() => setActiveTab('chat')}
           className={cn(
             "fixed bottom-28 right-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90",
-            activeTab === 'chat' ? "bg-emerald-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-emerald-600"
+            activeTab === 'chat' ? "bg-pace-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-pace-600"
           )}
         >
           <MessageCircle size={24} className={cn(activeTab === 'chat' && "animate-pulse")} />
           <span className="text-xs font-black tracking-tight whitespace-nowrap">AI가이드</span>
           {activeTab !== 'chat' && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-zinc-50 animate-bounce" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-pace-500 rounded-full border-2 border-zinc-50 animate-bounce" />
           )}
         </button>
       )}
@@ -605,12 +603,12 @@ function NavButton({ active, onClick, icon, label, disabled }: { active: boolean
       disabled={disabled}
       className={cn(
         "flex flex-col items-center gap-1 transition-all",
-        disabled ? "text-zinc-300 cursor-not-allowed" : (active ? "text-emerald-600" : "text-zinc-400")
+        disabled ? "text-zinc-300 cursor-not-allowed" : (active ? "text-pace-600" : "text-zinc-400")
       )}
     >
       <div className={cn(
         "p-1 rounded-xl transition-all",
-        active && !disabled && "bg-emerald-50",
+        active && !disabled && "bg-pace-50",
         disabled && "opacity-50"
       )}>
         {icon}

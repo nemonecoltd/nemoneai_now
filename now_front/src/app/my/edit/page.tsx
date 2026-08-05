@@ -169,7 +169,7 @@ export default function EditProfilePage() {
   };
 
   if (isLoading || authLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500 w-8 h-8" /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-pace-500 w-8 h-8" /></div>;
   }
 
   return (
@@ -194,7 +194,7 @@ export default function EditProfilePage() {
         {/* Profile Image */}
         <div className="flex flex-col items-center">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-emerald-50 shadow-lg bg-zinc-100 flex items-center justify-center">
+            <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-pace-50 shadow-lg bg-zinc-100 flex items-center justify-center">
               {previewUrl ? (
                 <img src={previewUrl} alt="Profile" className="w-full h-full object-cover" />
               ) : (
@@ -204,7 +204,7 @@ export default function EditProfilePage() {
             <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera className="text-white w-8 h-8" />
             </div>
-            <div className="absolute bottom-0 right-0 p-2 bg-emerald-500 rounded-full border-2 border-white shadow-sm text-white">
+            <div className="absolute bottom-0 right-0 p-2 bg-pace-500 rounded-full border-2 border-white shadow-sm text-white">
               <Camera size={14} />
             </div>
           </div>
@@ -222,13 +222,13 @@ export default function EditProfilePage() {
         <div className="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:border-emerald-500" placeholder="이름을 입력하세요" />
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold text-zinc-900 focus:outline-none focus:border-pace-500" placeholder="이름을 입력하세요" />
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Gender</label>
-              <select value={gender} onChange={e => setGender(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500">
+              <select value={gender} onChange={e => setGender(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-pace-500">
                 <option value="">선택 안함</option>
                 <option value="male">남성</option>
                 <option value="female">여성</option>
@@ -237,7 +237,7 @@ export default function EditProfilePage() {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Age</label>
-              <select value={age} onChange={e => setAge(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500">
+              <select value={age} onChange={e => setAge(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-pace-500">
                 <option value="">선택 안함</option>
                 <option value="10s">10대</option>
                 <option value="20s">20대</option>
@@ -251,7 +251,7 @@ export default function EditProfilePage() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Nationality</label>
             <div className="relative">
               <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input value={nationality} onChange={e => setNationality(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-10 pr-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-emerald-500" placeholder="예: 한국, USA, Japan..." />
+              <input value={nationality} onChange={e => setNationality(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-10 pr-4 py-3 text-sm font-medium text-zinc-900 focus:outline-none focus:border-pace-500" placeholder="예: 한국, USA, Japan..." />
             </div>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function EditProfilePage() {
         <button 
           onClick={handleSave} 
           disabled={isSaving}
-          className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all disabled:opacity-50"
+          className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all disabled:opacity-50"
         >
           {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> 변경사항 저장</>}
         </button>

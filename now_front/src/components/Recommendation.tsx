@@ -372,14 +372,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
       <div className="px-6 pt-2.5 flex gap-2">
         <button
           onClick={openCourseModal}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-emerald-600 transition-all shadow-sm"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-pace-600 transition-all shadow-sm"
         >
           <Sparkles size={14} />
           {lang === 'en' ? 'AI Course' : lang === 'zh' ? 'AI路线' : lang === 'ja' ? 'AIコース' : 'AI코스생성'}
         </button>
         <button
           onClick={() => setShowAskAI(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-2xl text-xs font-bold hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm"
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-2xl text-xs font-bold hover:border-pace-300 hover:text-pace-600 transition-all shadow-sm"
         >
           <Bot size={14} />
           {lang === 'en' ? 'AI Guide' : lang === 'zh' ? 'AI导游' : lang === 'ja' ? 'AIガイド' : 'AI가이드'}
@@ -443,7 +443,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {courses.slice(0, 25).map((course: any, idx: number) => (
                 <div key={course.id}>
-                  <div onClick={() => setSelectedCourse(course)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-emerald-200 transition-all group relative overflow-hidden mb-4">
+                  <div onClick={() => setSelectedCourse(course)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-pace-200 transition-all group relative overflow-hidden mb-4">
                     <div className="absolute -left-1 -top-1 w-8 h-8 bg-zinc-900 text-white text-[10px] font-black rounded-br-2xl flex items-center justify-center shadow-lg z-10">
                       {idx + 1}
                     </div>
@@ -467,7 +467,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                             : course.region === '공연' ? "bg-purple-50 text-purple-600 border-purple-100"
                             : course.region === '제주' ? "bg-sky-50 text-[#0369a1] border-sky-200"
                             : course.region === '축제' ? "bg-amber-50 text-amber-600 border-amber-100"
-                            : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : "bg-pace-50 text-pace-600 border-pace-100"
                           )}>
                             {lang === 'en'
                               ? (course.region === '홍대' ? 'Hongdae' : course.region === '강북' ? 'Gangbuk' : course.region === '강남' ? 'Gangnam' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
@@ -485,7 +485,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                     
                     <div className="space-y-1">
-                      <h4 className="font-bold text-zinc-900 text-sm tracking-tight group-hover:text-emerald-600 transition-colors">
+                      <h4 className="font-bold text-zinc-900 text-sm tracking-tight group-hover:text-pace-600 transition-colors">
                         {(lang === 'en' && course.title_en) ? course.title_en : course.title}
                       </h4>
                       <p className="text-[11px] text-zinc-500 line-clamp-1">
@@ -613,7 +613,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -672,7 +672,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=공연&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=공연&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -727,7 +727,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=축제&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=축제&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -797,7 +797,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -867,7 +867,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                       </div>
                     </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-emerald-50 group-hover:text-emerald-500 transition-all">
+                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
                       <ChevronRight size={18} />
                     </Link>
                   </div>
@@ -923,7 +923,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               <div className="relative space-y-8 mb-10 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-zinc-100">
                 {(Array.isArray(selectedCourse.steps) ? selectedCourse.steps : JSON.parse(selectedCourse.steps)).map((step: any, idx: number) => (
                   <div key={idx} className="relative pl-10">
-                    <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-emerald-500 z-10" />
+                    <div className="absolute left-0 top-1.5 w-6 h-6 rounded-full bg-white border-4 border-pace-500 z-10" />
                     <div className="space-y-2">
                       <p className="text-[10px] font-black text-zinc-400 font-mono uppercase">{step.time} • {step.duration}MIN</p>
                       <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
@@ -931,7 +931,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-zinc-900 text-sm">{step.place_name}</h4>
                             {step.date_range && (
-                              <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{step.date_range}</p>
+                              <p className="text-[10px] text-pace-600 font-bold mt-0.5">{step.date_range}</p>
                             )}
                             <p className="text-[11px] text-zinc-500 mt-1">{step.activity}</p>
                           </div>
@@ -940,7 +940,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                               href={`/posts/${step.place_id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex-shrink-0 w-7 h-7 bg-white border border-zinc-200 rounded-xl flex items-center justify-center text-zinc-400 hover:bg-emerald-50 hover:text-emerald-500 hover:border-emerald-200 transition-all"
+                              className="flex-shrink-0 w-7 h-7 bg-white border border-zinc-200 rounded-xl flex items-center justify-center text-zinc-400 hover:bg-pace-50 hover:text-pace-500 hover:border-pace-200 transition-all"
                             >
                               <ChevronRight size={14} />
                             </Link>
@@ -954,7 +954,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
               <button 
                 onClick={() => handleForkCourse(selectedCourse)}
-                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all"
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all"
               >
                 <Save size={20} /> 이 코스 내 마이페이지로 퍼가기
               </button>
@@ -986,7 +986,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
               <div className="space-y-4 mb-10">
                 {(Array.isArray(selectedTheme.places) ? selectedTheme.places : JSON.parse(selectedTheme.places)).map((place: any, idx: number) => (
-                  <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-emerald-200 transition-colors">
+                  <div key={idx} onClick={() => setSelectedPlace(place)} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex gap-4 relative group cursor-pointer hover:border-pace-200 transition-colors">
                     <img
                       src={place.image_url || `https://picsum.photos/seed/theme-${selectedTheme.id}-${idx}/400/300`}
                       className="w-16 h-16 rounded-2xl object-cover border border-zinc-200 bg-white"
@@ -996,11 +996,11 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       }}
                     />
                     <div className="flex-1 min-w-0 pr-6">
-                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-emerald-600 transition-colors">{place.title}</h4>
+                      <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-pace-600 transition-colors">{place.title}</h4>
                       <p className="text-[10px] text-zinc-400 mt-0.5 truncate">{place.location}</p>
                       <p className="text-[11px] text-zinc-600 mt-2 line-clamp-2">{place.content}</p>
                     </div>
-                    <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 group-hover:text-emerald-500 transition-colors" />
+                    <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-300 group-hover:text-pace-500 transition-colors" />
                   </div>
                 ))}
               </div>
@@ -1011,7 +1011,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
               <button
                 onClick={() => handleForkTheme(selectedTheme)}
-                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-emerald-600 transition-all"
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all"
               >
                 <Save size={20} /> 이 테마 내 마이페이지로 퍼가기
               </button>
@@ -1043,7 +1043,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-start gap-2 text-sm text-emerald-600 font-bold bg-emerald-50 p-3 rounded-xl">
+                  <div className="flex items-start gap-2 text-sm text-pace-600 font-bold bg-pace-50 p-3 rounded-xl">
                     <MapPin size={16} className="mt-0.5 flex-shrink-0" />
                     <span>{selectedPlace.location || '위치 정보 없음'}</span>
                   </div>
@@ -1105,7 +1105,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     <button
                       key={r}
                       onClick={() => setCourseRegion(r)}
-                      className={cn("py-2.5 rounded-xl text-xs font-bold transition-all border", courseRegion === r ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-50 border-transparent text-zinc-500")}
+                      className={cn("py-2.5 rounded-xl text-xs font-bold transition-all border", courseRegion === r ? "bg-pace-50 border-pace-200 text-pace-700" : "bg-zinc-50 border-transparent text-zinc-500")}
                     >
                       {r}
                     </button>
@@ -1120,7 +1120,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     <button
                       key={c}
                       onClick={() => setCourseCompanion(c)}
-                      className={cn("py-3 rounded-2xl text-xs font-bold transition-all border", courseCompanion === c ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-zinc-50 border-transparent text-zinc-500")}
+                      className={cn("py-3 rounded-2xl text-xs font-bold transition-all border", courseCompanion === c ? "bg-pace-50 border-pace-200 text-pace-700" : "bg-zinc-50 border-transparent text-zinc-500")}
                     >
                       {COMPANION_LABEL[c]}
                     </button>
@@ -1131,7 +1131,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               <button
                 onClick={createAiCourse}
                 disabled={isCreatingCourse}
-                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl"
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all disabled:opacity-50 shadow-xl"
               >
                 {isCreatingCourse ? (
                   <>

@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
+import Logo from '@/components/Logo';
 import StoreBanner from '@/components/StoreBanner';
 import SiteFooter from '@/components/SiteFooter';
 import AdUnit from '@/components/AdUnit';
@@ -109,9 +110,7 @@ function CourseHubContent() {
             <button onClick={handleBack} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <h1 className="text-lg font-black font-display tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0">
-              <Link href="/" className="no-underline text-inherit">{BRAND_TITLE[lang] || BRAND_TITLE.ko} <span className="text-emerald-500">.</span></Link>
-            </h1>
+            <Logo />
           </div>
           <HeaderControls />
         </div>
@@ -134,7 +133,7 @@ function CourseHubContent() {
         <div className="space-y-2">
           <button
             onClick={() => setShowTimedModal(true)}
-            className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg"
+            className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all shadow-lg"
           >
             <Sparkles size={18} /> AI 자동코스 생성
           </button>
@@ -145,7 +144,7 @@ function CourseHubContent() {
           <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest">내가 저장한 코스 재편집</h2>
 
           {!user && !authLoading ? (
-            <button onClick={() => signInWithGoogle()} className="w-full py-10 bg-white border border-dashed border-zinc-200 rounded-3xl text-center text-zinc-400 text-sm font-medium hover:border-emerald-200 hover:text-emerald-600 transition-all">
+            <button onClick={() => signInWithGoogle()} className="w-full py-10 bg-white border border-dashed border-zinc-200 rounded-3xl text-center text-zinc-400 text-sm font-medium hover:border-pace-200 hover:text-pace-600 transition-all">
               로그인하고 내 코스를 확인해보세요
             </button>
           ) : isLoading ? (
@@ -156,7 +155,7 @@ function CourseHubContent() {
                 <button
                   key={c.id}
                   onClick={() => router.push(`/course/${c.id}/edit`)}
-                  className="w-full flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm text-left hover:border-emerald-200 transition-all"
+                  className="w-full flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm text-left hover:border-pace-200 transition-all"
                 >
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-zinc-900 text-sm truncate">{c.title || '제목 없는 코스'}</h3>
@@ -164,7 +163,7 @@ function CourseHubContent() {
                       <span className="inline-block mt-1 text-[9px] font-black text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase">공개</span>
                     )}
                   </div>
-                  <span className="flex-shrink-0 flex items-center gap-0.5 text-xs font-bold text-emerald-600">
+                  <span className="flex-shrink-0 flex items-center gap-0.5 text-xs font-bold text-pace-600">
                     편집 <ChevronRight size={14} />
                   </span>
                 </button>
@@ -202,7 +201,7 @@ function CourseHubContent() {
                     <button
                       key={r}
                       onClick={() => setRegion(r)}
-                      className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${region === r ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-zinc-50 border-transparent text-zinc-500'}`}
+                      className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${region === r ? 'bg-pace-50 border-pace-200 text-pace-700' : 'bg-zinc-50 border-transparent text-zinc-500'}`}
                     >
                       {r}
                     </button>
@@ -217,7 +216,7 @@ function CourseHubContent() {
                     <button
                       key={c}
                       onClick={() => setCompanion(c)}
-                      className={`py-3 rounded-2xl text-xs font-bold transition-all border ${companion === c ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-zinc-50 border-transparent text-zinc-500'}`}
+                      className={`py-3 rounded-2xl text-xs font-bold transition-all border ${companion === c ? 'bg-pace-50 border-pace-200 text-pace-700' : 'bg-zinc-50 border-transparent text-zinc-500'}`}
                     >
                       {COMPANION_LABEL[c]}
                     </button>
@@ -228,7 +227,7 @@ function CourseHubContent() {
               <button
                 onClick={() => createDraft({ scope: 'timed', region, companion })}
                 disabled={isCreating}
-                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all disabled:opacity-50 shadow-xl"
+                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all disabled:opacity-50 shadow-xl"
               >
                 {isCreating ? (
                   <>

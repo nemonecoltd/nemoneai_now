@@ -1,5 +1,5 @@
 const TAGLINE: Record<string, string> = {
-  ko: '당신의 3시간을 알차게 설계합니다',
+  ko: '당신의 다음 3시간을 설계합니다',
   en: 'Designing your next 3 hours, wisely',
   zh: '为您精心设计3小时',
   ja: 'あなたの3時間を賢く設計します',

@@ -10,6 +10,7 @@ import {
 import { InArticleAd } from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
+import Logo from '@/components/Logo';
 import RecommendedCoursePromo from '@/components/RecommendedCoursePromo';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -347,9 +348,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             >
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
-            <Link href="/" className="text-lg font-black tracking-tight text-zinc-900 whitespace-nowrap flex-shrink-0 no-underline">
-              {t.nowHere} <span className="text-emerald-500">.</span>
-            </Link>
+            <Logo />
           </div>
           <div className="flex items-center gap-2">
             <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 shadow-inner">
@@ -504,8 +503,8 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             rel="noopener noreferrer"
             className="absolute top-3 left-4 right-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/20 shadow-lg"
           >
-            <Megaphone size={12} className="text-emerald-400 flex-shrink-0" />
-            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest flex-shrink-0">Notice</span>
+            <Megaphone size={12} className="text-pace-400 flex-shrink-0" />
+            <span className="text-[9px] font-black text-pace-400 uppercase tracking-widest flex-shrink-0">Notice</span>
             <span className="text-[11px] font-medium text-white truncate">{banner.text}</span>
           </a>
         )}
@@ -513,7 +512,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
         <div className="absolute bottom-10 left-8 right-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-pace-400 uppercase tracking-widest">
                 {t.spotlight}
               </span>
               {place.hot_rank && (
@@ -576,7 +575,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
       <div className="px-8 py-10 pb-28 space-y-10 -mt-6 bg-zinc-50 rounded-t-[40px] relative z-10 shadow-2xl">
         <div className="flex gap-4">
           <div className="flex-1 bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm">
-            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 mb-3">
+            <div className="w-10 h-10 bg-pace-50 rounded-xl flex items-center justify-center text-pace-600 mb-3">
               <Calendar size={20} />
             </div>
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
@@ -625,7 +624,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                       line.match(/map\.naver\.com/) ? null :
                       line.match(/https?:\/\/\S+/) ? (
                         <p key={i}>
-                          <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-emerald-600 underline font-bold">
+                          <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-pace-600 underline font-bold">
                             바로가기: 링크 열기
                           </a>
                         </p>
@@ -648,7 +647,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                       const m = line.match(LABEL_RE)!;
                       return (
                         <li key={i} className="flex gap-2 text-sm leading-snug">
-                          <span className="text-emerald-500 font-black flex-shrink-0">•</span>
+                          <span className="text-pace-500 font-black flex-shrink-0">•</span>
                           <span>
                             <span className="font-bold text-zinc-800">{m[1]}</span>
                             <span className="text-zinc-500"> {m[2]}</span>
@@ -671,14 +670,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               href={place.link_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 no-underline hover:bg-emerald-100/70 transition-colors"
+              className="flex items-center gap-2 bg-pace-50 border border-pace-100 rounded-2xl px-4 py-3 no-underline hover:bg-pace-100/70 transition-colors"
             >
-              <Globe size={15} className="text-emerald-600 flex-shrink-0" />
-              <span className="text-sm font-bold text-emerald-800 truncate">
+              <Globe size={15} className="text-pace-600 flex-shrink-0" />
+              <span className="text-sm font-bold text-pace-800 truncate">
                 {place.link_title || (isPerformanceRegion ? '예매하기' : '공식 페이지')}
               </span>
-              <span className="text-sm font-bold text-emerald-600 flex-shrink-0">: 바로가기</span>
-              <ChevronRight size={14} className="ml-auto text-emerald-400 flex-shrink-0" />
+              <span className="text-sm font-bold text-pace-600 flex-shrink-0">: 바로가기</span>
+              <ChevronRight size={14} className="ml-auto text-pace-400 flex-shrink-0" />
             </a>
           )}
 
@@ -688,10 +687,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               <div className="flex flex-col gap-2">
                 {(place.blog_reviews as BlogReview[]).map((r, i) => (
                   <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 shadow-sm hover:border-emerald-200 transition-all no-underline group">
+                    className="flex items-center gap-3 bg-white border border-zinc-100 rounded-2xl p-3 shadow-sm hover:border-pace-200 transition-all no-underline group">
                     <span className="text-xs font-black text-zinc-300 w-4 flex-shrink-0">{i + 1}</span>
-                    <span className="text-xs font-bold text-zinc-700 group-hover:text-emerald-600 flex-grow leading-snug line-clamp-2">{r.title}</span>
-                    <span className="text-zinc-300 flex-shrink-0 group-hover:text-emerald-500">›</span>
+                    <span className="text-xs font-bold text-zinc-700 group-hover:text-pace-600 flex-grow leading-snug line-clamp-2">{r.title}</span>
+                    <span className="text-zinc-300 flex-shrink-0 group-hover:text-pace-500">›</span>
                   </a>
                 ))}
               </div>
@@ -782,7 +781,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                     <p className="text-sm font-bold text-zinc-900 truncate">{s.title}</p>
                     <p className="text-xs text-zinc-400 mt-0.5 truncate">{s.location}</p>
                     {s.category !== 'class' && (s.date_range || s.end_date) && (
-                      <p className="text-xs text-emerald-600 font-bold mt-1">
+                      <p className="text-xs text-pace-600 font-bold mt-1">
                         {s.date_range || `~ ${s.end_date}`}
                       </p>
                     )}
@@ -797,7 +796,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           <h2 className="text-xl font-bold text-zinc-900 tracking-tight">
             {t.location}
           </h2>
-          <div className="flex items-center gap-2 text-sm text-emerald-600 font-bold bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+          <div className="flex items-center gap-2 text-sm text-pace-600 font-bold bg-pace-50 p-4 rounded-2xl border border-pace-100">
             <MapPin size={18} />
             {place.location}
           </div>
@@ -835,7 +834,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         {place.video_url && (
           <div className="pt-4">
-            <button className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-emerald-600 transition-all shadow-xl">
+            <button className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-pace-600 transition-all shadow-xl">
               <Video size={20} /> {t.watchVideo}
             </button>
           </div>
@@ -865,7 +864,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 href={item.href}
                 target={item.href.startsWith('http') ? '_blank' : undefined}
                 rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-[9px] font-black text-zinc-500 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+                className="text-[9px] font-black text-zinc-500 hover:text-pace-600 tracking-[0.25em] uppercase transition-colors"
               >
                 {item.name}
               </a>

@@ -50,7 +50,7 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
             <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
           <span className="text-base font-black tracking-tight text-zinc-900">
-            매거진 <span className="text-emerald-500">.</span>
+            매거진 <span className="text-pace-500">.</span>
           </span>
         </div>
         <BrandTagline lang={lang} />
@@ -63,7 +63,7 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
         )}
         <div className="px-5 py-6">
           <h1 className="text-xl font-black text-zinc-900 leading-snug mb-4">{post.title}</h1>
-          <div className="text-sm text-zinc-700 leading-relaxed [&_img]:rounded-2xl [&_img]:my-3 [&_p]:mb-3 [&_a]:text-emerald-600 [&_a]:underline">
+          <div className="text-sm text-zinc-700 leading-relaxed [&_img]:rounded-2xl [&_img]:my-3 [&_p]:mb-3 [&_a]:text-pace-600 [&_a]:underline">
             {(() => {
               const html = post.body_text || '';
               const paragraphs = html.split('</p>');
@@ -93,13 +93,13 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
               href={`https://nemoneai.com/posts/${post.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700"
+              className="inline-flex items-center gap-1 text-xs font-bold text-pace-600 hover:text-pace-700"
             >
               네모네AIM에서 원문 보기 <ExternalLink size={12} />
             </a>
             <button
               onClick={handleShare}
-              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-zinc-400 hover:text-pace-600 hover:bg-pace-50 transition-all"
               aria-label="공유하기"
             >
               <Share2 size={16} />

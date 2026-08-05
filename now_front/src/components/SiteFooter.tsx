@@ -1,10 +1,10 @@
 const TAGLINE: Record<string, string> = {
-  ko: '당신 3시간의 알찬 설계',
+  ko: '당신의 다음 3시간을 설계합니다',
   en: 'A fulfilling plan for your 3 hours',
   zh: '为您3小时的充实安排',
 };
 
-const BRAND: Record<string, string> = { ko: '지금여기', en: 'NOW HERE', zh: 'NOW HERE' };
+const BRAND: Record<string, string> = { ko: 'NEMONE PACE', en: 'NEMONE PACE', zh: 'NEMONE PACE' };
 
 export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
   return (
@@ -32,7 +32,7 @@ export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
             href={item.href}
             target={item.href.startsWith('http') ? '_blank' : undefined}
             rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-            className="text-[9px] font-black text-zinc-500 hover:text-emerald-600 tracking-[0.25em] uppercase transition-colors"
+            className="text-[9px] font-black text-zinc-500 hover:text-pace-600 tracking-[0.25em] uppercase transition-colors"
           >
             {item.name}
           </a>

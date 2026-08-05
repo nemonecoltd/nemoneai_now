@@ -149,7 +149,7 @@ export default function FeedbackPage() {
         {/* Intro */}
         <div className="space-y-2">
           <h2 className="text-xl font-black text-zinc-900 flex items-center gap-2">
-            <MessageSquare className="text-emerald-500 fill-emerald-100" size={24} /> 소중한 의견을 들려주세요.
+            <MessageSquare className="text-pace-500 fill-pace-100" size={24} /> 소중한 의견을 들려주세요.
           </h2>
           <p className="text-xs text-zinc-500 leading-relaxed font-medium">
             네모네 서비스를 사용하며 느낀 불편함이나 바라는 점을 편하게 남겨주세요. 관리자가 모든 글을 꼼꼼히 읽고 답변해 드립니다!
@@ -157,7 +157,7 @@ export default function FeedbackPage() {
         </div>
 
         {/* Write Form */}
-        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-3xl border border-zinc-200 shadow-sm space-y-3 transition-all focus-within:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-50">
+        <form onSubmit={handleSubmit} className="bg-white p-4 rounded-3xl border border-zinc-200 shadow-sm space-y-3 transition-all focus-within:border-pace-300 focus-within:ring-4 focus-within:ring-pace-50">
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
@@ -165,7 +165,7 @@ export default function FeedbackPage() {
             className="w-full h-24 bg-zinc-50/50 border-none rounded-2xl p-4 text-sm resize-none focus:outline-none focus:bg-white disabled:opacity-50 text-zinc-800 placeholder:text-zinc-400 font-medium"
           />
           <div className="flex justify-end">
-            <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-emerald-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
+            <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-pace-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
               <Send size={14} /> 의견 남기기
             </button>
           </div>
@@ -176,7 +176,7 @@ export default function FeedbackPage() {
         {/* List */}
         <div className="space-y-5 pt-4">
           {isLoading ? (
-            <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-emerald-500" /></div>
+            <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-pace-500" /></div>
           ) : feedbacks.length === 0 ? (
             <div className="py-20 text-center text-zinc-400 text-sm font-medium italic">첫 번째 피드백을 남겨주세요!</div>
           ) : (
@@ -195,7 +195,7 @@ export default function FeedbackPage() {
                     </div>
                     {(isAdmin || user?.id === fb.user_id) && editingId !== fb.id && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => startEdit(fb)} className="p-2 text-zinc-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors">
+                        <button onClick={() => startEdit(fb)} className="p-2 text-zinc-300 hover:text-pace-500 hover:bg-pace-50 rounded-xl transition-colors">
                           <Pencil size={16} />
                         </button>
                         <button onClick={() => handleDelete(fb.id)} className="p-2 text-zinc-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
@@ -210,11 +210,11 @@ export default function FeedbackPage() {
                       <textarea
                         value={editContent}
                         onChange={e => setEditContent(e.target.value)}
-                        className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-sm resize-none focus:outline-none focus:border-emerald-400 text-zinc-800"
+                        className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-sm resize-none focus:outline-none focus:border-pace-400 text-zinc-800"
                       />
                       <div className="flex justify-end gap-2">
                         <button onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-zinc-600">취소</button>
-                        <button onClick={() => handleEditSave(fb.id)} className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-emerald-600">저장</button>
+                        <button onClick={() => handleEditSave(fb.id)} className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-pace-600">저장</button>
                       </div>
                     </div>
                   ) : (
@@ -224,14 +224,14 @@ export default function FeedbackPage() {
 
                 {/* Admin Reply Content */}
                 {fb.admin_reply && (
-                  <div className="bg-emerald-50 p-6 border-t border-emerald-100">
+                  <div className="bg-pace-50 p-6 border-t border-pace-100">
                     <div className="flex gap-3 items-start">
-                      <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white flex-shrink-0 shadow-md">
+                      <div className="w-8 h-8 bg-pace-500 rounded-full flex items-center justify-center text-white flex-shrink-0 shadow-md">
                         <ShieldCheck size={16} />
                       </div>
                       <div className="space-y-1.5 flex-1 pt-1.5">
-                        <p className="text-xs font-black text-emerald-700 tracking-tight">네모네 관리자</p>
-                        <p className="text-sm text-emerald-900 whitespace-pre-line leading-relaxed font-medium">{fb.admin_reply}</p>
+                        <p className="text-xs font-black text-pace-700 tracking-tight">네모네 관리자</p>
+                        <p className="text-sm text-pace-900 whitespace-pre-line leading-relaxed font-medium">{fb.admin_reply}</p>
                       </div>
                     </div>
                   </div>
@@ -245,9 +245,9 @@ export default function FeedbackPage() {
                       value={replyInputs[fb.id] || ''}
                       onChange={e => setReplyInputs(prev => ({...prev, [fb.id]: e.target.value}))}
                       placeholder="이 의견에 관리자 답변 달기..."
-                      className="flex-1 bg-white border border-zinc-200 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-emerald-500 shadow-sm"
+                      className="flex-1 bg-white border border-zinc-200 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-pace-500 shadow-sm"
                     />
-                    <button onClick={() => handleReply(fb.id)} className="px-5 py-3 bg-zinc-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-600 transition-colors">
+                    <button onClick={() => handleReply(fb.id)} className="px-5 py-3 bg-zinc-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-pace-600 transition-colors">
                       답변
                     </button>
                   </div>

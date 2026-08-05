@@ -441,7 +441,7 @@ export default function AdminPage() {
   };
 
 
-  if (!isLocalDev && authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-emerald-500" /></div>;
+  if (!isLocalDev && authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-pace-500" /></div>;
   if (!isLocalDev && user?.email !== 'nemonecoltd@gmail.com') return null;
 
   return (
@@ -449,11 +449,11 @@ export default function AdminPage() {
       <div className="max-w-5xl mx-auto">
         <header className="flex justify-between items-end mb-8">
           <div>
-            <div className="flex items-center gap-2 text-emerald-600 mb-1">
+            <div className="flex items-center gap-2 text-pace-600 mb-1">
               <ShieldCheck size={18} />
               <span className="text-[10px] font-black uppercase tracking-widest">Admin Control Panel</span>
             </div>
-            <h1 className="text-3xl font-bold text-zinc-900">지금 여기 관리자 <span className="text-emerald-500">.</span></h1>
+            <h1 className="text-3xl font-bold text-zinc-900">지금 여기 관리자 <span className="text-pace-500">.</span></h1>
             
             <div className="flex items-center gap-6 mt-6 border-b border-zinc-200">
               <div className="flex items-center gap-4">
@@ -474,7 +474,7 @@ export default function AdminPage() {
                       setRegion(r);
                     }}
                     className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
-                      viewMode === 'spots' && region === r ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
+                      viewMode === 'spots' && region === r ? "text-pace-600 border-pace-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
                     {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
@@ -488,7 +488,7 @@ export default function AdminPage() {
                 <button
                   onClick={() => setViewMode('themes')}
                   className={`flex items-center gap-1.5 text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
-                    viewMode === 'themes' ? "text-emerald-600 border-emerald-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
+                    viewMode === 'themes' ? "text-pace-600 border-pace-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                   }`}
                 >
                   <Palette size={16} /> 테마
@@ -507,7 +507,7 @@ export default function AdminPage() {
                   setEditingId(null);
                   setEditForm({});
                 }}
-                className="bg-zinc-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-emerald-600 transition-all shadow-lg"
+                className="bg-zinc-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-pace-600 transition-all shadow-lg"
               >
                 <Plus size={20} /> 새 장소 등록
               </button>
@@ -518,7 +518,7 @@ export default function AdminPage() {
         {stats && (
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-pace-50 text-pace-600 flex items-center justify-center">
                 <Users size={24} />
               </div>
               <div>
@@ -574,14 +574,14 @@ export default function AdminPage() {
                 value={bannerText}
                 onChange={(e) => setBannerText(e.target.value)}
                 placeholder="공지/기사 제목 (예: 성수 팝업 완전정복 가이드 — 맛매치에서 보기)"
-                className="flex-[2] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-emerald-400"
+                className="flex-[2] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-pace-400"
               />
               <input
                 type="text"
                 value={bannerUrl}
                 onChange={(e) => setBannerUrl(e.target.value)}
                 placeholder="https://nemoneai.com/posts/155"
-                className="flex-[1.5] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-emerald-400"
+                className="flex-[1.5] px-3 py-2 text-sm border border-zinc-200 rounded-xl focus:outline-none focus:border-pace-400"
               />
               <button
                 onClick={handleSaveBanner}
@@ -660,7 +660,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => handleEnrichRanking(item.id)}
                         disabled={enrichingRankId === item.id}
-                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl hover:bg-emerald-100 disabled:opacity-50 flex-shrink-0 transition-colors"
+                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-pace-50 text-pace-700 border border-pace-200 rounded-xl hover:bg-pace-100 disabled:opacity-50 flex-shrink-0 transition-colors"
                       >
                         {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
                         {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
@@ -679,7 +679,7 @@ export default function AdminPage() {
         {viewMode !== 'ranking' && (viewMode === 'spots' ? (
           <div className="grid gap-6">
             {isCreating && (
-              <div className="bg-white border border-emerald-500 rounded-3xl p-6 shadow-md flex gap-6 items-start">
+              <div className="bg-white border border-pace-500 rounded-3xl p-6 shadow-md flex gap-6 items-start">
                 <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">
                   {editForm.image_url ? (
                     <img src={editForm.image_url} alt="" className="w-full h-full object-cover" />
@@ -688,7 +688,7 @@ export default function AdminPage() {
                   )}
                 </div>
                 <div className="flex-grow space-y-2">
-                    <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-emerald-100">
+                    <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-pace-100">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">장소명</label>
@@ -696,7 +696,7 @@ export default function AdminPage() {
                             type="text" 
                             value={editForm.title || ''} 
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                         <div className="space-y-1">
@@ -705,7 +705,7 @@ export default function AdminPage() {
                             type="text" 
                             value={editForm.location || ''} 
                             onChange={e => setEditForm({...editForm, location: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                       </div>
@@ -715,7 +715,7 @@ export default function AdminPage() {
                           rows={3}
                           value={editForm.content || ''} 
                           onChange={e => setEditForm({...editForm, content: e.target.value})}
-                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500 resize-none"
                         />
                       </div>
                       <div className="grid grid-cols-3 gap-4">
@@ -724,7 +724,7 @@ export default function AdminPage() {
                           <select
                             value={editForm.region || region}
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           >
                             {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
@@ -738,7 +738,7 @@ export default function AdminPage() {
                               type="text"
                               value={editForm.image_url || ''}
                               onChange={e => setEditForm({...editForm, image_url: e.target.value})}
-                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                             />
                             <label className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-200 transition-colors">
                               {isUploadingImage ? <Loader2 size={16} className="animate-spin text-zinc-500" /> : <Upload size={16} className="text-zinc-500" />}
@@ -758,7 +758,7 @@ export default function AdminPage() {
                             type="text"
                             value={editForm.date_range || ''}
                             onChange={e => setEditForm({...editForm, date_range: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                       </div>
@@ -767,7 +767,7 @@ export default function AdminPage() {
                         <button
                           onClick={handleCreate}
                           disabled={isLoading}
-                          className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
+                          className="bg-pace-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-pace-600 disabled:opacity-50"
                         >
                           <Plus size={16} /> {isLoading ? '저장 중...' : '신규 장소 등록'}
                         </button>
@@ -809,7 +809,7 @@ export default function AdminPage() {
               );
             }).map((place) => (
               <React.Fragment key={place.id}>
-              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-emerald-200">
+              <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-pace-200">
                 <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">
                   {place.image_url ? (
                     <img src={place.image_url} alt="" className="w-full h-full object-cover" />
@@ -821,7 +821,7 @@ export default function AdminPage() {
                 <div className="flex-grow space-y-2">
                   {editingId === place.id ? (
                     <>
-                    <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-emerald-100">
+                    <div className="grid gap-4 bg-zinc-50 p-6 rounded-2xl border border-pace-100">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">장소명</label>
@@ -829,7 +829,7 @@ export default function AdminPage() {
                             type="text"
                             value={editForm.title || ''}
                             onChange={e => setEditForm({...editForm, title: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                         <div className="space-y-1">
@@ -838,7 +838,7 @@ export default function AdminPage() {
                             type="text"
                             value={editForm.location || ''}
                             onChange={e => setEditForm({...editForm, location: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                       </div>
@@ -848,7 +848,7 @@ export default function AdminPage() {
                           <button
                             onClick={handleEnrich}
                             disabled={isEnriching}
-                            className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold bg-pace-50 text-pace-700 border border-pace-200 rounded-lg hover:bg-pace-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           >
                             {isEnriching ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
                             {isEnriching ? 'pcmap 불러오는 중...' : 'pcmap 소개 자동생성'}
@@ -858,7 +858,7 @@ export default function AdminPage() {
                           rows={3}
                           value={editForm.content || ''}
                           onChange={e => setEditForm({...editForm, content: e.target.value})}
-                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500 resize-none"
                         />
                       </div>
                       <div className="grid grid-cols-3 gap-4">
@@ -867,7 +867,7 @@ export default function AdminPage() {
                           <select
                             value={editForm.region || region}
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           >
                             {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
                               <option key={r} value={r}>{r}</option>
@@ -881,7 +881,7 @@ export default function AdminPage() {
                               type="text"
                               value={editForm.image_url || ''}
                               onChange={e => setEditForm({...editForm, image_url: e.target.value})}
-                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                             />
                             <label className="flex-shrink-0 flex items-center justify-center w-10 h-10 bg-zinc-100 border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-200 transition-colors">
                               {isUploadingImage ? <Loader2 size={16} className="animate-spin text-zinc-500" /> : <Upload size={16} className="text-zinc-500" />}
@@ -901,7 +901,7 @@ export default function AdminPage() {
                             type="text"
                             value={editForm.date_range || ''}
                             onChange={e => setEditForm({...editForm, date_range: e.target.value})}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                       </div>
@@ -912,7 +912,7 @@ export default function AdminPage() {
                           placeholder="네이버 지도 URL의 숫자 ID (예: 2025646860)"
                           value={editForm.naver_place_id || ''}
                           onChange={e => setEditForm({...editForm, naver_place_id: e.target.value})}
-                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -923,7 +923,7 @@ export default function AdminPage() {
                             placeholder="예약하기 / 인스타 / 공식페이지"
                             value={(editForm as any).link_title || ''}
                             onChange={e => setEditForm({...editForm, link_title: e.target.value} as any)}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                         <div className="space-y-1">
@@ -933,7 +933,7 @@ export default function AdminPage() {
                             placeholder="https://..."
                             value={(editForm as any).link_url || ''}
                             onChange={e => setEditForm({...editForm, link_url: e.target.value} as any)}
-                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           />
                         </div>
                       </div>
@@ -943,7 +943,7 @@ export default function AdminPage() {
                             type="checkbox"
                             checked={!!(editForm as any).pinned}
                             onChange={e => setEditForm({...editForm, pinned: e.target.checked} as any)}
-                            className="w-4 h-4 accent-emerald-500"
+                            className="w-4 h-4 accent-pace-500"
                           />
                           <span className="text-xs font-bold text-zinc-600 flex items-center gap-1">
                             <Pin size={12} /> 최상단 고정
@@ -954,7 +954,7 @@ export default function AdminPage() {
                           <button
                             onClick={handleUpdate}
                             disabled={isLoading}
-                            className="bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
+                            className="bg-pace-500 text-white px-6 py-2 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-pace-600 disabled:opacity-50"
                           >
                             <Save size={16} /> {isLoading ? '저장 중...' : '보정 내용 저장'}
                           </button>
@@ -968,7 +968,7 @@ export default function AdminPage() {
                         <h3 className="text-lg font-bold text-zinc-900">{place.title}</h3>
                         <span className="text-[10px] font-medium text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {place.id}</span>
                         {place.pinned_at && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-pace-600 bg-pace-50 px-2 py-0.5 rounded-md">
                             <Pin size={10} /> 고정
                           </span>
                         )}
@@ -983,12 +983,12 @@ export default function AdminPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-emerald-600 font-bold">
+                      <div className="flex items-center gap-2 text-xs text-pace-600 font-bold">
                         <MapPin size={12} /> {place.location || '위치 정보 없음'}
                       </div>
                       <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed font-medium">{place.content}</p>
                       <div className="flex flex-wrap gap-3 sm:gap-4 pt-4">
-                        <button onClick={() => handleEdit(place)} className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-emerald-600 transition-colors bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100">
+                        <button onClick={() => handleEdit(place)} className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 hover:text-pace-600 transition-colors bg-zinc-50 px-3 py-1.5 rounded-lg border border-zinc-100">
                           <Edit size={14} /> 데이터 수정
                         </button>
                         <button onClick={() => handleDelete(place.id)} className="flex items-center gap-1.5 text-xs font-bold text-zinc-400 hover:text-rose-500 transition-colors px-3 py-1.5">
@@ -1003,15 +1003,15 @@ export default function AdminPage() {
                 </div>
               </div>
               {enriched?.placeId === place.id && (
-                <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
-                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">pcmap 블로그 후기 ({enriched.reviews.length})</p>
+                <div className="mt-3 bg-pace-50 border border-pace-200 rounded-2xl p-4">
+                  <p className="text-[10px] font-bold text-pace-600 uppercase tracking-widest mb-2">pcmap 블로그 후기 ({enriched.reviews.length})</p>
                   <div className="flex flex-col gap-1.5">
                     {enriched.reviews.map((r, i) => (
                       <a key={i} href={r.url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-2.5 p-2 bg-white border border-emerald-100 rounded-xl hover:border-emerald-400 transition-colors no-underline group">
+                        className="flex items-center gap-2.5 p-2 bg-white border border-pace-100 rounded-xl hover:border-pace-400 transition-colors no-underline group">
                         <span className="text-[11px] font-bold text-zinc-400 w-4 flex-shrink-0">{i + 1}</span>
-                        <span className="text-xs text-zinc-700 group-hover:text-emerald-700 flex-grow leading-snug">{r.title}</span>
-                        <ExternalLink size={11} className="flex-shrink-0 text-emerald-300 group-hover:text-emerald-600 ml-auto" />
+                        <span className="text-xs text-zinc-700 group-hover:text-pace-700 flex-grow leading-snug">{r.title}</span>
+                        <ExternalLink size={11} className="flex-shrink-0 text-pace-300 group-hover:text-pace-600 ml-auto" />
                       </a>
                     ))}
                   </div>
@@ -1024,12 +1024,12 @@ export default function AdminPage() {
           <div className="grid gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                <Palette size={20} className="text-emerald-500" /> 전체 테마 ({themes.length}개)
+                <Palette size={20} className="text-pace-500" /> 전체 테마 ({themes.length}개)
               </h3>
               <button
                 onClick={handleGenerateWeeklyTheme}
                 disabled={isGeneratingTheme}
-                className="flex items-center gap-1.5 bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 bg-pace-500 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-pace-600 disabled:opacity-50 transition-colors"
               >
                 {isGeneratingTheme ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
                 주간 TOP10 생성
@@ -1061,13 +1061,13 @@ export default function AdminPage() {
                             type="text"
                             value={themeEditForm.title}
                             onChange={e => setThemeEditForm(f => ({ ...f, title: e.target.value }))}
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm font-bold focus:outline-none focus:border-pace-500"
                           />
                           <textarea
                             rows={2}
                             value={themeEditForm.description}
                             onChange={e => setThemeEditForm(f => ({ ...f, description: e.target.value }))}
-                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none"
+                            className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-pace-500 resize-none"
                           />
                           <div className="flex gap-2">
                             <button
@@ -1082,7 +1082,7 @@ export default function AdminPage() {
                                 setIsLoading(false);
                               }}
                               disabled={isLoading}
-                              className="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50"
+                              className="bg-pace-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-pace-600 disabled:opacity-50"
                             >
                               <Save size={12} /> 저장
                             </button>
@@ -1094,7 +1094,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h4 className="font-bold text-zinc-900 text-sm">{theme.title}</h4>
                             {theme.pinned_at && (
-                              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-pace-600 bg-pace-50 px-2 py-0.5 rounded-md">
                                 <Pin size={10} /> 고정
                               </span>
                             )}
@@ -1111,7 +1111,7 @@ export default function AdminPage() {
                       {!isEditing && (
                         <button
                           onClick={() => { setEditingThemeId(theme.id); setThemeEditForm({ title: theme.title, description: theme.description }); }}
-                          className="p-2 text-zinc-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 text-zinc-400 hover:text-pace-600 hover:bg-pace-50 rounded-lg transition-colors"
                           title="수정"
                         >
                           <Edit size={15} />
@@ -1143,38 +1143,38 @@ export default function AdminPage() {
                         <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">포함 장소 ({places.length}개)</p>
                         <button
                           onClick={() => addingPlaceThemeId === theme.id ? setAddingPlaceThemeId(null) : openAddPlace(theme.id)}
-                          className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg hover:bg-emerald-100 transition-colors"
+                          className="flex items-center gap-1 text-xs font-bold text-pace-600 bg-pace-50 px-3 py-1 rounded-lg hover:bg-pace-100 transition-colors"
                         >
                           <Plus size={12} /> 장소 추가
                         </button>
                       </div>
 
                       {addingPlaceThemeId === theme.id && (
-                        <div className="mb-3 bg-white rounded-xl border border-emerald-200 p-4 space-y-3">
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">새 장소 직접 입력</p>
+                        <div className="mb-3 bg-white rounded-xl border border-pace-200 p-4 space-y-3">
+                          <p className="text-[10px] font-bold text-pace-600 uppercase tracking-widest">새 장소 직접 입력</p>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이름 *</label>
                               <input type="text" value={newPlaceForm.title} onChange={e => setNewPlaceForm(f => ({...f, title: e.target.value}))}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" autoFocus />
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" autoFocus />
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 *</label>
                               <input type="text" value={newPlaceForm.location} onChange={e => setNewPlaceForm(f => ({...f, location: e.target.value}))}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
                             </div>
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">설명 *</label>
                             <textarea rows={2} value={newPlaceForm.content} onChange={e => setNewPlaceForm(f => ({...f, content: e.target.value}))}
-                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 resize-none" />
+                              className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500 resize-none" />
                           </div>
                           <div className="grid grid-cols-3 gap-2">
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
                               <div className="flex gap-2">
                                 <input type="text" value={newPlaceForm.image_url} onChange={e => setNewPlaceForm(f => ({...f, image_url: e.target.value}))}
-                                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                                  className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
                                 <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-200 transition-colors">
                                   {isUploadingImage ? <Loader2 size={14} className="animate-spin text-zinc-500" /> : <Upload size={14} className="text-zinc-500" />}
                                   <input type="file" accept="image/*" className="hidden" disabled={isUploadingImage}
@@ -1185,18 +1185,18 @@ export default function AdminPage() {
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">동영상 URL</label>
                               <input type="text" value={newPlaceForm.video_url} onChange={e => setNewPlaceForm(f => ({...f, video_url: e.target.value}))}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
                               <input type="text" value={newPlaceForm.date_range} onChange={e => setNewPlaceForm(f => ({...f, date_range: e.target.value}))}
-                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500" />
+                                className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
                             <button onClick={() => setAddingPlaceThemeId(null)} className="px-4 py-1.5 text-zinc-400 font-bold text-xs">취소</button>
                             <button onClick={() => addPlaceToTheme(theme)} disabled={isLoading}
-                              className="bg-emerald-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50">
+                              className="bg-pace-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-pace-600 disabled:opacity-50">
                               <Plus size={12} /> {isLoading ? '저장 중...' : '장소 추가'}
                             </button>
                           </div>
@@ -1210,31 +1210,31 @@ export default function AdminPage() {
                           {places.map((p: any, i: number) => (
                             <div key={i} className="bg-white rounded-xl border border-zinc-100 overflow-hidden">
                               {editingPlace?.themeId === theme.id && editingPlace?.index === i ? (
-                                <div className="p-3 space-y-2 border-emerald-200 border rounded-xl">
-                                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">장소 수정</p>
+                                <div className="p-3 space-y-2 border-pace-200 border rounded-xl">
+                                  <p className="text-[10px] font-bold text-pace-600 uppercase tracking-widest">장소 수정</p>
                                   <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이름 *</label>
                                       <input type="text" value={editPlaceForm.title} onChange={e => setEditPlaceForm(f => ({...f, title: e.target.value}))}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" autoFocus />
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500" autoFocus />
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">주소 *</label>
                                       <input type="text" value={editPlaceForm.location} onChange={e => setEditPlaceForm(f => ({...f, location: e.target.value}))}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500" />
                                     </div>
                                   </div>
                                   <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">설명 *</label>
                                     <textarea rows={2} value={editPlaceForm.content} onChange={e => setEditPlaceForm(f => ({...f, content: e.target.value}))}
-                                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500 resize-none" />
+                                      className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500 resize-none" />
                                   </div>
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">이미지 URL</label>
                                       <div className="flex gap-2">
                                         <input type="text" value={editPlaceForm.image_url} onChange={e => setEditPlaceForm(f => ({...f, image_url: e.target.value}))}
-                                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                          className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500" />
                                         <label className="flex-shrink-0 flex items-center justify-center w-9 h-9 bg-zinc-100 border border-zinc-200 rounded-lg cursor-pointer hover:bg-zinc-200 transition-colors">
                                           {isUploadingImage ? <Loader2 size={14} className="animate-spin text-zinc-500" /> : <Upload size={14} className="text-zinc-500" />}
                                           <input type="file" accept="image/*" className="hidden" disabled={isUploadingImage}
@@ -1245,18 +1245,18 @@ export default function AdminPage() {
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">동영상 URL</label>
                                       <input type="text" value={editPlaceForm.video_url} onChange={e => setEditPlaceForm(f => ({...f, video_url: e.target.value}))}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500" />
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">운영 일시</label>
                                       <input type="text" value={editPlaceForm.date_range} onChange={e => setEditPlaceForm(f => ({...f, date_range: e.target.value}))}
-                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500" />
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-pace-500" />
                                     </div>
                                   </div>
                                   <div className="flex justify-end gap-2">
                                     <button onClick={() => setEditingPlace(null)} className="px-4 py-1.5 text-zinc-400 font-bold text-xs">취소</button>
                                     <button onClick={() => savePlaceEdit(theme)} disabled={isLoading}
-                                      className="bg-emerald-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-emerald-600 disabled:opacity-50">
+                                      className="bg-pace-500 text-white px-5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-pace-600 disabled:opacity-50">
                                       <Save size={12} /> {isLoading ? '저장 중...' : '수정 저장'}
                                     </button>
                                   </div>
@@ -1280,7 +1280,7 @@ export default function AdminPage() {
                                         date_range: p.date_range || '',
                                       });
                                     }}
-                                    className="p-1.5 text-zinc-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex-shrink-0"
+                                    className="p-1.5 text-zinc-300 hover:text-pace-600 hover:bg-pace-50 rounded-lg transition-colors flex-shrink-0"
                                     title="수정"
                                   >
                                     <Edit size={14} />
