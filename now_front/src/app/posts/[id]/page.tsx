@@ -4,16 +4,17 @@ import PlaceDetailClient, { Place } from './PlaceDetailClient';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
+// 백엔드가 명시적으로 404를 준 경우에만 "진짜로 없음"으로 취급해 notFound() 처리한다.
+// 5xx나 네트워크 오류(백엔드 재시작·순간 부하 등)까지 같은 취급하면, 실제로는 멀쩡한
+// 장소가 크롤러 접속 타이밍에 우연히 실패했다는 이유만으로 진짜 404를 받아 색인에서
+// 빠질 위험이 있다 — 이 경우엔 에러를 던져 Next 에러 바운더리(5xx)로 넘긴다.
 async function getPlace(id: string): Promise<Place | null> {
-  try {
-    const res = await fetch(`${BACKEND}/places/${id}`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${BACKEND}/places/${id}`, {
+    next: { revalidate: 300 },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET /places/${id} failed: ${res.status}`);
+  return res.json();
 }
 
 // '이런 곳도 있어요' 추천 풀 — 팝업/전시는 자기 카테고리끼리만, 클래스+쇼핑은 '상시 운영' 성격이 같아 하나로 묶음.
