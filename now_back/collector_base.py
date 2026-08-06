@@ -2,6 +2,7 @@ from typing import Optional
 from sqlalchemy import text
 from database import engine, cleanup_expired_data
 from gemini_service import get_embedding
+from image_storage import is_internal_url, delete_image
 from datetime import date, timedelta
 
 
@@ -94,12 +95,15 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                 # naver_place_id가 같은데 title만 바뀐 경우(KOPIS가 공연명을 살짝 수정해 재게시하는 경우 등),
                 # ON CONFLICT (title)만으로는 감지가 안 돼 naver_place_id UNIQUE 제약에 걸려 실패하던 문제 방지 —
                 # naver_place_id 또는 title로 기존 행을 먼저 찾아 있으면 UPDATE(naver_place_id 갱신 포함), 없으면 INSERT.
-                existing_id = conn.execute(
-                    text("SELECT id FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
+                existing_row = conn.execute(
+                    text("SELECT id, image_url FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
                     {"naver_place_id": naver_place_id, "title": title}
-                ).scalar()
+                ).first()
 
-                if existing_id:
+                if existing_row:
+                    existing_id = existing_row[0]
+                    old_image = existing_row[1]
+                    new_image = params.get("image_url")
                     conn.execute(text("""
                         UPDATE seongsu_places SET
                             title = :title,
@@ -120,6 +124,11 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                         WHERE id = :id
                     """), {**params, "id": existing_id})
                     updated_count += 1
+                    # 재수집 때마다 이미지를 새로 재호스팅해 image_url을 덮어쓰므로, 교체 전 옛 내부 이미지를
+                    # 삭제하지 않으면 Supabase Storage에 고아 객체가 무한 누적된다(버킷 용량이 계속 차오르던 원인).
+                    # 단, 새 값이 유효한 내부 이미지일 때만 삭제 — 재호스팅 실패로 외부 URL이 온 경우엔 기존 이미지 보존.
+                    if is_internal_url(new_image) and is_internal_url(old_image) and new_image != old_image:
+                        delete_image(old_image)
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places

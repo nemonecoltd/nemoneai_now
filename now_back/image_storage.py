@@ -94,20 +94,34 @@ def rehost_image(url: Optional[str]) -> Optional[str]:
 
 
 def _list_all_objects(bucket: str, prefix: str = "") -> list:
-    """버킷 내 전체 객체를 재귀적으로 나열 (하위 폴더 포함)."""
-    resp = requests.post(
-        f"{SUPABASE_URL}/storage/v1/object/list/{bucket}",
-        headers=_auth_headers("application/json"),
-        json={"limit": 1000, "offset": 0, "prefix": prefix, "sortBy": {"column": "name", "order": "asc"}},
-        timeout=15,
-    )
-    resp.raise_for_status()
+    """버킷 내 전체 객체를 재귀적으로 나열 (하위 폴더 포함).
+
+    Supabase list API는 호출당 최대 1000개만 반환하므로 offset으로 끝까지 페이지네이션한다.
+    (예전엔 offset 없이 한 번만 호출해 첫 1000개만 세는 바람에, 객체가 1000개를 넘어가면
+    사용량 지표가 실제와 무관하게 낮은 값에 멈춰있던 버그가 있었음.)
+    """
     items = []
-    for item in resp.json():
-        if item.get("id") is None:
-            items.extend(_list_all_objects(bucket, f"{prefix}{item['name']}/"))
-        else:
-            items.append(item)
+    offset = 0
+    page_size = 1000
+    while True:
+        resp = requests.post(
+            f"{SUPABASE_URL}/storage/v1/object/list/{bucket}",
+            headers=_auth_headers("application/json"),
+            json={"limit": page_size, "offset": offset, "prefix": prefix, "sortBy": {"column": "name", "order": "asc"}},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        batch = resp.json()
+        if not batch:
+            break
+        for item in batch:
+            if item.get("id") is None:
+                items.extend(_list_all_objects(bucket, f"{prefix}{item['name']}/"))
+            else:
+                items.append(item)
+        if len(batch) < page_size:
+            break
+        offset += page_size
     return items
 
 

@@ -9,7 +9,7 @@ from database import engine
 from deps import ADMIN_EMAIL, _verify_supabase_user
 from enrich_service import _enrich_place_core, _revalidate_place, _translate_and_save
 from gemini_service import get_embedding
-from image_storage import delete_image, rehost_image, upload_bytes
+from image_storage import delete_image, rehost_image, upload_bytes, is_internal_url
 import ranking_service as ranking
 from schemas import PlaceUpdate
 
@@ -158,8 +158,18 @@ async def update_place(place_id: int, place: PlaceUpdate):
         import re as _re
         from datetime import date as _date
         update_data = place.dict(exclude_unset=True)
+        old_image = None
         if update_data.get("image_url"):
+            with engine.connect() as _c:
+                old_image = _c.execute(
+                    text("SELECT image_url FROM seongsu_places WHERE id = :id"), {"id": place_id}
+                ).scalar()
             update_data["image_url"] = rehost_image(update_data["image_url"])
+            # 교체 전 옛 내부 이미지 삭제 — 안 그러면 Supabase Storage에 고아 객체가 쌓임.
+            # 새 값이 유효한 내부 이미지일 때만(재호스팅 실패로 외부 URL이면 기존 보존).
+            new_image = update_data["image_url"]
+            if is_internal_url(new_image) and is_internal_url(old_image) and new_image != old_image:
+                delete_image(old_image)
         if "content" in update_data:
             update_data["embedding"] = f"[{','.join(map(str, get_embedding(update_data['content'])))}]"
         # 어드민이 title/content를 직접 수정하면 영문 번역도 같이 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
