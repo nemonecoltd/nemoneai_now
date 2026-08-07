@@ -44,5 +44,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/ja/ranking/place`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.6, alternates: { languages: placeRankingLanguages } },
   ]
 
-  return [...staticUrls, ...placeUrls]
+  // 지역별 팝업 랭킹 허브 — "성수 팝업" 같은 헤드키워드를 잡기 위한 상시 갱신 페이지
+  // (URL은 영문 슬러그 — output:'standalone'이 한글 동적 세그먼트 정적 페이지를 못 찾는 버그 회피)
+  const placeRegionUrls = ['seongsu', 'hongdae', 'gangbuk', 'gangnam', 'busan', 'jeju'].map((slug) => ({
+    url: `${baseUrl}/ranking/place/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'hourly' as const,
+    priority: 0.75,
+  }))
+
+  return [...staticUrls, ...placeRegionUrls, ...placeUrls]
 }

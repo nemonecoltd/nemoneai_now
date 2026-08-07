@@ -1,11 +1,39 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
 export const revalidate = 3600;
+
+// 영문 슬러그 사용 — output:'standalone' 서버가 한글(비ASCII) 동적 세그먼트의
+// 정적 프리렌더 페이지를 못 찾는 Next.js 버그(HTML/매니페스트는 정상인데 404)를 피하기 위함.
+// SEO에 중요한 건 URL 텍스트가 아니라 title/H1의 한글 키워드라 슬러그는 영문이어도 무방.
+const SLUG_TO_REGION = {
+  seongsu: '성수',
+  hongdae: '홍대',
+  gangbuk: '강북',
+  gangnam: '강남',
+  busan: '부산',
+  jeju: '제주',
+} as const;
+type Slug = keyof typeof SLUG_TO_REGION;
+const SLUGS = Object.keys(SLUG_TO_REGION) as Slug[];
+
+const REGION_AREA: Record<Slug, string> = {
+  seongsu: '성수동',
+  hongdae: '홍대·상수',
+  gangbuk: '용산·강북',
+  gangnam: '강남·서초·송파',
+  busan: '부산',
+  jeju: '제주',
+};
+
+export function generateStaticParams() {
+  return SLUGS.map((slug) => ({ slug }));
+}
 
 interface PopularPlace {
   id: number;
@@ -20,9 +48,9 @@ interface PopularPlace {
   is_new?: boolean;
 }
 
-async function getPopularPlaces(): Promise<PopularPlace[]> {
+async function getPopularPlaces(region: string): Promise<PopularPlace[]> {
   try {
-    const res = await fetch(`${BACKEND}/places/popular?limit=25`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${BACKEND}/places/popular?region=${encodeURIComponent(region)}&limit=25`, { next: { revalidate } });
     if (!res.ok) return [];
     return res.json();
   } catch {
@@ -30,65 +58,58 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
   }
 }
 
-export async function generateMetadata(): Promise<Metadata> {
-  const places = await getPopularPlaces();
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const region = SLUG_TO_REGION[slug as Slug];
+  if (!region) return {};
+
+  const places = await getPopularPlaces(region);
   const top = places.slice(0, 5).map(p => p.title).join(', ');
-  const title = '실시간 인기 핫플 TOP 25';
-  const description = `성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const title = `${region} 팝업 실시간 인기 순위 TOP 25`;
+  const description = `지금 ${region}(${REGION_AREA[slug as Slug]})에서 가장 인기있는 팝업스토어 실시간 순위. ${top || `지금 ${region}에서 가장 핫한 팝업을 확인해보세요.`}`;
+  const canonical = `https://now.nemoneai.com/ranking/place/${slug}`;
+
   return {
     title,
     description,
-    alternates: {
-      canonical: 'https://now.nemoneai.com/ranking/place',
-      languages: {
-        'ko': 'https://now.nemoneai.com/ranking/place',
-        'en': 'https://now.nemoneai.com/en/ranking/place',
-        'zh': 'https://now.nemoneai.com/zh/ranking/place',
-        'ja': 'https://now.nemoneai.com/ja/ranking/place',
-        'x-default': 'https://now.nemoneai.com/ranking/place',
-      },
-    },
-    openGraph: { title, description, url: 'https://now.nemoneai.com/ranking/place', type: 'website' },
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: 'website' },
   };
 }
 
-export default async function PlaceRankingPage() {
-  const places = await getPopularPlaces();
+export default async function PlaceRankingRegionPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const region = SLUG_TO_REGION[slug as Slug];
+  if (!region) notFound();
+
+  const places = await getPopularPlaces(region);
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+          <Link href="/ranking/place" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
             <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">실시간 인기 핫플</h1>
-          <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400">
-            <Link href="/en/ranking/place" className="hover:text-zinc-700">EN</Link>
-            <Link href="/zh/ranking/place" className="hover:text-zinc-700">中文</Link>
-            <Link href="/ja/ranking/place" className="hover:text-zinc-700">日本語</Link>
-          </div>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{region} 팝업 실시간 인기</h1>
         </div>
         <BrandTagline />
       </header>
 
       <main className="px-6 pt-6 space-y-3">
         <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 TOP 25입니다.
+          최근 48시간 조회수·좋아요 기준, {region}({REGION_AREA[slug as Slug]}) 팝업스토어 실시간 TOP 25입니다.
         </p>
 
-        {/* 지역별 허브 — 크롤러가 지역별 랭킹 페이지를 발견하도록 내부링크 (URL은 영문 슬러그, 텍스트는 한글) */}
+        {/* 지역 간 내부링크 — 크롤러가 다른 지역 허브도 발견하도록 */}
         <div className="flex flex-wrap gap-1.5 pb-2">
-          {([
-            ['seongsu', '성수'], ['hongdae', '홍대'], ['gangbuk', '강북'],
-            ['gangnam', '강남'], ['busan', '부산'], ['jeju', '제주'],
-          ] as const).map(([slug, label]) => (
+          {SLUGS.filter(s => s !== slug).map(s => (
             <Link
-              key={slug}
-              href={`/ranking/place/${slug}`}
+              key={s}
+              href={`/ranking/place/${s}`}
               className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white border border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 transition-colors"
             >
-              {label} 팝업
+              {SLUG_TO_REGION[s]}
             </Link>
           ))}
         </div>
@@ -116,7 +137,7 @@ export default async function PlaceRankingPage() {
                   <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-400">{place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
+              <p className="text-[10px] text-zinc-400">{place.location || place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
             </div>
             <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
               <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count ?? 0}
