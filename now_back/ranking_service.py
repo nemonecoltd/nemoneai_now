@@ -312,7 +312,7 @@ def refresh_closing_soon():
               AND naver_place_id NOT LIKE 'kopis_%'
               AND naver_place_id NOT LIKE 'jeju_%'
               AND naver_place_id NOT LIKE 'culture_%'
-              AND region IN ('성수', '홍대', '강북', '강남', '제주')
+              AND region IN ('성수', '홍대', '강북', '강남', '부산', '제주')
             ORDER BY RANDOM()
             LIMIT 12
         """))

@@ -24,6 +24,7 @@ const regionBorder: Record<string, string> = {
   '홍대': 'border-orange-400',
   '강북': 'border-yellow-400',
   '강남': 'border-pink-400',
+  '부산': 'border-sky-400',
   '제주': 'border-[#0369a1]',
 };
 
@@ -32,6 +33,7 @@ const regionText: Record<string, string> = {
   '홍대': 'text-orange-300',
   '강북': 'text-yellow-300',
   '강남': 'text-pink-300',
+  '부산': 'text-sky-400',
   '제주': 'text-sky-300',
 };
 

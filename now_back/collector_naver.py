@@ -266,6 +266,19 @@ async def run_gangnam():
     return ("강남", *counts)
 
 
+async def run_busan():
+    # 부산은 '팝업'만 수행 (클래스/쇼핑/전시 없음). 종합 팝업 랭킹·자동 블로그갱신은 region 기준으로 자동 포함됨.
+    print("\n🚀 [부산] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("부산 팝업스토어")
+        counts = upsert_naver_items(result, "부산") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [부산] 실패: {e}")
+        return "부산", 0, 0, 1
+    print("✅ [부산] 완료")
+    return ("부산", *counts)
+
+
 async def run_jeju():
     print("\n🚀 [제주] 수집 시작")
     try:
@@ -329,6 +342,7 @@ async def run_all():
         await run_gangbuk(),
         await run_deohyundai(),
         await run_gangnam(),
+        await run_busan(),
         await run_jeju(),
         await run_jeju_class(),
         await run_class("성수", "성수 원데이클래스"),
@@ -355,5 +369,21 @@ async def run_all():
     )
 
 
+async def run_busan_only():
+    """부산만 단독 수집 + 완료 알림 — 첫 확장 시 부산만 따로 돌릴 때 사용.
+    (다음 정기 수집부터는 run_all에 포함돼 목요일에 다른 지역과 함께 돌아감)"""
+    print("=" * 50)
+    print("🗺️  부산 팝업스토어 단독 수집 시작")
+    print("=" * 50)
+    r = await run_busan()
+    cleanup_expired()
+    send_alert(f"부산 팝업 단독 수집 완료\n- {r[0]}: 신규 {r[1]} / 갱신 {r[2]}" + (f" / 실패 {r[3]}" if r[3] else ""))
+    print("🏁 부산 수집 완료")
+
+
 if __name__ == "__main__":
-    asyncio.run(run_all())
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "busan":
+        asyncio.run(run_busan_only())
+    else:
+        asyncio.run(run_all())

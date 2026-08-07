@@ -32,6 +32,7 @@ const REGIONS = {
   '홍대': { lat: 37.5575, lng: 126.9245, title: '홍대 팝업 맵' },
   '강북': { lat: 37.5344, lng: 126.9947, title: '강북 팝업 맵' },  // '강북'은 표시용 라벨일 뿐 실제 수집 지역은 용산(이태원역 기준, 한남동 인접) — 평균 좌표 대신 핵심 상권으로 고정
   '강남': { lat: 37.4979, lng: 127.0276, title: '강남 팝업 맵' },  // 강남역 기준
+  '부산': { lat: 35.1577, lng: 129.0594, title: '부산 팝업 맵' },  // 서면 기준
   '제주': { lat: 33.4996, lng: 126.5312, title: '제주 팝업 맵' }  // 제주시청 기준
 };
 
@@ -41,6 +42,7 @@ const REGION_COLOR: Record<string, string> = {
   '홍대': '#8b5cf6',
   '강북': '#eab308',
   '강남': '#ec4899',
+  '부산': '#0ea5e9',
   '제주': '#0369a1',
 };
 const REGION_TITLE: Record<string, { en: string; zh: string }> = {
@@ -48,6 +50,7 @@ const REGION_TITLE: Record<string, { en: string; zh: string }> = {
   '홍대': { en: 'Hongdae', zh: '弘大' },
   '강북': { en: 'Gangbuk', zh: '江北' },
   '강남': { en: 'Gangnam', zh: '江南' },
+  '부산': { en: 'Busan', zh: '釜山' },
   '제주': { en: 'Jeju', zh: '济州' },
 };
 

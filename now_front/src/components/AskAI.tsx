@@ -46,6 +46,10 @@ const dict = {
         '"오늘 홍대 버스킹이나 공연 정보 있어?"',
         '"상수동 근처 분위기 좋은 카페 추천해줘"'
       ],
+      '부산': [
+        '"지금 부산에서 하는 팝업스토어 알려줘"',
+        '"서면 근처 갈만한 팝업 코스 짜줘"'
+      ],
       '제주': [
         '"요즘 제주에서 하는 축제나 행사 있어?"',
         '"제주시내 쇼핑할만한 곳 추천해줘"'
@@ -71,6 +75,10 @@ const dict = {
         '"Is there any busking or live music in Hongdae today?"',
         '"Recommend a cozy cafe near Sangsu-dong"'
       ],
+      '부산': [
+        '"Tell me about pop-up stores open now in Busan"',
+        '"Plan a pop-up course near Seomyeon"'
+      ],
       '제주': [
         '"Any festivals or events happening in Jeju right now?"',
         '"Recommend a good shopping spot in Jeju city"'
@@ -95,6 +103,10 @@ const dict = {
       '홍대': [
         '"今天弘大有街头表演或演出信息吗？"',
         '"推荐上水洞附近氛围好的咖啡厅"'
+      ],
+      '부산': [
+        '"现在釜山有什么快闪店吗？"',
+        '"帮我安排西面附近的快闪店路线"'
       ],
       '제주': [
         '"最近济州有什么节庆或活动吗？"',
@@ -167,10 +179,10 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
 
   const t = dict[lang as keyof typeof dict] || dict.ko;
   const REGION_NAME_EN: Record<string, string> = {
-    '성수': 'Seongsu', '홍대': 'Hongdae', '강북': 'Gangbuk', '강남': 'Gangnam', '제주': 'Jeju', '공연': 'Concert', '축제': 'Festival',
+    '성수': 'Seongsu', '홍대': 'Hongdae', '강북': 'Gangbuk', '강남': 'Gangnam', '부산': 'Busan', '제주': 'Jeju', '공연': 'Concert', '축제': 'Festival',
   };
   const REGION_NAME_ZH: Record<string, string> = {
-    '성수': '圣水洞', '홍대': '弘大', '강북': '江北', '강남': '江南', '제주': '济州', '공연': '演出', '축제': '节庆',
+    '성수': '圣水洞', '홍대': '弘大', '강북': '江北', '강남': '江南', '부산': '釜山', '제주': '济州', '공연': '演出', '축제': '节庆',
   };
   const displayRegion = lang === 'en' ? (REGION_NAME_EN[region] || region) : lang === 'zh' ? (REGION_NAME_ZH[region] || region) : region;
   const currentExamples = t.examples[region as keyof typeof t.examples] || t.examples['성수'];

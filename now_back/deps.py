@@ -8,7 +8,7 @@ from fastapi import Header, HTTPException, Request
 ADMIN_EMAIL = "nemonecoltd@gmail.com"
 
 # 플레이스 랭킹 지역 서브탭 — ranking_service의 지역별 집계와 RankingShareCreate 검증이 공유
-_PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '제주']
+_PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주']
 
 
 def _lang_col(lang: str, base: str) -> str:

@@ -27,6 +27,7 @@ const REGION_LABEL_EN: Record<string, string> = {
   '홍대': 'Hongdae',
   '강북': 'Gangbuk',
   '강남': 'Gangnam',
+  '부산': 'Busan',
   '제주': 'Jeju',
   '공연': 'Concert',
   '축제': 'Festival',

@@ -37,7 +37,7 @@ const PAGE_SIZE = 20;
 
 type Tab = 'rec' | 'map' | 'list' | 'course' | 'magazine' | 'chat';
 type CourseSub = 'ai' | 'theme';
-type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '강북' | '강남' | '부산' | '공연' | '제주' | '축제';
 type Lang = 'ko' | 'en' | 'zh' | 'ja';
 // 우선순위 고정 목록 — 실제 서브탭 노출 여부는 /places/categories로 지역별 DISTINCT 조회해 결정
 // '전시'=성수/홍대/강북/강남(Visit Seoul), '행사'=제주(비짓제주) 전용 — 지역별 DISTINCT라 서로 섞이지 않음
@@ -52,23 +52,27 @@ const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string
 };
 
 // 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
-const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+// 부산은 팝업만 수행 — 다른 장소형 지역과 동일하게 취급하되 실제 서브탭은 데이터(팝업만) 기준으로 자동 결정됨
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 const EVENT_REGIONS = ['공연', '축제'] as const;
 const REGION_LABEL: Record<Region, { en: string; zh: string; ja: string }> = {
   '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
   '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
   '강북': { en: 'GANGBUK', zh: '江北', ja: 'カンブク' },
   '강남': { en: 'GANGNAM', zh: '江南', ja: 'カンナム' },
+  '부산': { en: 'BUSAN', zh: '釜山', ja: '釜山' },
   '제주': { en: 'JEJU', zh: '济州', ja: '済州' },
   '공연': { en: 'CONCERT', zh: '演出', ja: '公演' },
   '축제': { en: 'FESTIVAL', zh: '节庆', ja: '祭り' },
 };
 // 제주 대표색 — 이전 '공연>제주' 서브탭 시절 쓰던 블루를 지역 자체 대표색으로 승격
+// 부산 대표색 — 하늘색(sky), 제주의 진한 블루(#0369a1)와 구분
 const REGION_ACCENT: Record<Region, string> = {
   '성수': 'text-emerald-600 border-emerald-500',
   '홍대': 'text-orange-600 border-orange-500',
   '강북': 'text-yellow-600 border-yellow-500',
   '강남': 'text-pink-600 border-pink-500',
+  '부산': 'text-sky-500 border-sky-500',
   '제주': 'text-[#0369a1] border-[#0369a1]',
   '공연': 'text-emerald-600 border-emerald-500',
   '축제': 'text-amber-600 border-amber-500',
@@ -79,6 +83,7 @@ const REGION_PILL_ACTIVE: Record<Region, string> = {
   '홍대': 'bg-orange-500 text-white border-orange-500',
   '강북': 'bg-yellow-500 text-white border-yellow-500',
   '강남': 'bg-pink-500 text-white border-pink-500',
+  '부산': 'bg-sky-500 text-white border-sky-500',
   '제주': 'bg-[#0369a1] text-white border-[#0369a1]',
   '공연': 'bg-emerald-500 text-white border-emerald-500',
   '축제': 'bg-amber-500 text-white border-amber-500',
@@ -339,8 +344,9 @@ function Home() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              {/* 메인 지역 탭 — 장소형(성수/홍대/강북/강남/제주) | 이벤트형(공연/축제), '|'로 시각적 구분 */}
-              <div className="flex items-center gap-3 mb-1 overflow-x-auto no-scrollbar flex-nowrap">
+              {/* 메인 지역 탭 — 장소형(성수/홍대/강북/강남/부산/제주) | 이벤트형(공연/축제), '|'로 시각적 구분 */}
+              {/* 부산 추가로 항목이 늘어 gap을 좁혀 2줄 방지(그래도 넘치면 가로 스크롤) */}
+              <div className="flex items-center gap-2 mb-1 overflow-x-auto no-scrollbar flex-nowrap">
                 {PLACE_REGIONS.map((r) => (
                   <button
                     key={r}

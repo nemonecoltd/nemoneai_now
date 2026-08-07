@@ -17,7 +17,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition';
-const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '제주'] as const;
+const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
 const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
@@ -428,9 +428,11 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       ? (lang === 'en' ? 'Gangbuk' : lang === 'zh' ? '江北' : lang === 'ja' ? 'カンブク' : '강북')
                       : r === '강남'
                         ? (lang === 'en' ? 'Gangnam' : lang === 'zh' ? '江南' : lang === 'ja' ? 'カンナム' : '강남')
-                        : r === '제주'
-                          ? (lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : lang === 'ja' ? '済州' : '제주')
-                          : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : lang === 'ja' ? 'ソンス' : '성수')}
+                        : r === '부산'
+                          ? (lang === 'en' ? 'Busan' : lang === 'zh' ? '釜山' : lang === 'ja' ? '釜山' : '부산')
+                          : r === '제주'
+                            ? (lang === 'en' ? 'Jeju' : lang === 'zh' ? '济州' : lang === 'ja' ? '済州' : '제주')
+                            : (lang === 'en' ? 'Seongsu' : lang === 'zh' ? '圣水洞' : lang === 'ja' ? 'ソンス' : '성수')}
               </button>
             ))}
           </div>
@@ -566,14 +568,15 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                           : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
                           : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
                           : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
                           : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
                           {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
                             : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
+                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
                               : (place.region || '성수')}
                         </span>
                       </div>
@@ -606,9 +609,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                               : (place.category === 'class' || place.category === 'shopping')
                                 ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
                                 : place.date_range || (lang === 'en'
-                                    ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                                    ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
                                     : lang === 'zh'
-                                      ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                                      ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
                                       : `${place.region} 근처`)}
                         </span>
                       </div>
@@ -762,13 +765,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                           : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                           : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
                           : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
                           {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
                             : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞')
+                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
                               : (place.region || '성수')}
                         </span>
                       </div>
@@ -790,9 +794,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {lang === 'en'
-                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
                             : lang === 'zh'
-                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
                               : `${place.region || '성수'} 근처`}
                         </span>
                       </div>
@@ -832,13 +836,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
                           : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
                           : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
                           : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
                           : "bg-emerald-50 text-emerald-600 border-emerald-400"
                         )}>
                           {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
                             : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞')
+                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
                               : (place.region || '성수')}
                         </span>
                       </div>
@@ -860,9 +865,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         </span>
                         <span className="text-[9px] text-zinc-400 font-medium truncate">
                           {place.date_range || (lang === 'en'
-                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
                             : lang === 'zh'
-                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
                               : `${place.region || '성수'} 근처`)}
                         </span>
                       </div>

@@ -21,13 +21,14 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 const EVENT_REGIONS = ['공연', '축제'] as const;
 const REGION_LABEL: Record<string, { en: string; zh: string; ja: string }> = {
   '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
   '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
   '강북': { en: 'GANGBUK', zh: '江北', ja: 'カンブク' },
   '강남': { en: 'GANGNAM', zh: '江南', ja: 'カンナム' },
+  '부산': { en: 'BUSAN', zh: '釜山', ja: '釜山' },
   '제주': { en: 'JEJU', zh: '济州', ja: '済州' },
   '공연': { en: 'CONCERT', zh: '演出', ja: '公演' },
   '축제': { en: 'FESTIVAL', zh: '节庆', ja: '祭り' },
@@ -37,6 +38,7 @@ const REGION_ACCENT: Record<string, string> = {
   '홍대': 'text-orange-600 border-orange-500',
   '강북': 'text-yellow-600 border-yellow-500',
   '강남': 'text-pink-600 border-pink-500',
+  '부산': 'text-sky-500 border-sky-500',
   '제주': 'text-[#0369a1] border-[#0369a1]',
   '공연': 'text-emerald-600 border-emerald-500',
   '축제': 'text-amber-600 border-amber-500',
@@ -46,6 +48,7 @@ const REGION_PILL_ACTIVE: Record<string, string> = {
   '홍대': 'bg-orange-500 text-white border-orange-500',
   '강북': 'bg-yellow-500 text-white border-yellow-500',
   '강남': 'bg-pink-500 text-white border-pink-500',
+  '부산': 'bg-sky-500 text-white border-sky-500',
   '제주': 'bg-[#0369a1] text-white border-[#0369a1]',
   '공연': 'bg-emerald-500 text-white border-emerald-500',
   '축제': 'bg-amber-500 text-white border-amber-500',
