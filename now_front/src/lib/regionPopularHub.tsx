@@ -3,6 +3,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
+import Logo from '@/components/Logo';
+import BottomNav from '@/components/BottomNav';
+import SiteFooter from '@/components/SiteFooter';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 export const revalidate = 3600;
@@ -157,14 +160,28 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
   const backHref = `${PATH_PREFIX[lang]}/ranking/place`;
 
   return (
-    <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
+    <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-28 border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
-        <div className="flex items-center gap-4">
-          <Link href={backHref} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-            <ChevronLeft size={24} />
+        <div className="flex items-center gap-3">
+          <Link href={backHref} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 flex-shrink-0">
+            <ChevronLeft size={20} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{c.heading(region)}</h1>
+          <Logo href={`${PATH_PREFIX[lang]}/`} className="h-6" />
+          <div className="flex-1" />
+          {/* 언어 스위처 — 지금 보고 있는 지역 페이지의 다른 언어 버전으로 바로 이동 */}
+          <div className="flex bg-zinc-100 p-0.5 rounded-lg text-[10px] font-bold flex-shrink-0">
+            {(['ko', 'en', 'zh', 'ja'] as Lang[]).map((l) => (
+              <Link
+                key={l}
+                href={`${PATH_PREFIX[l]}/ranking/place/${slug}`}
+                className={`px-2 py-1 rounded-md uppercase transition-colors ${l === lang ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-400'}`}
+              >
+                {l}
+              </Link>
+            ))}
+          </div>
         </div>
+        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">{c.heading(region)}</h1>
         <BrandTagline />
       </header>
 
@@ -216,7 +233,11 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
             <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
           </Link>
         ))}
+
+        <SiteFooter lang={lang} />
       </main>
+
+      <BottomNav region={SLUG_TO_REGION_KO[s]} lang={lang} />
     </div>
   );
 }
