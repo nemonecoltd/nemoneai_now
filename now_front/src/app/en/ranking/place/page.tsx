@@ -91,10 +91,6 @@ export default async function PlaceRankingPageEn() {
       </header>
 
       <main className="px-6 pt-6 space-y-3">
-        <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Jeju, concerts, and festivals.
-        </p>
-
         {places.length === 0 && (
           <p className="text-center text-zinc-400 text-sm py-20">Data is being prepared.</p>
         )}
@@ -133,6 +129,10 @@ export default async function PlaceRankingPageEn() {
           )}
           </div>
         ))}
+
+        <p className="text-xs text-zinc-400 leading-relaxed pt-2">
+          Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Jeju, concerts, and festivals.
+        </p>
 
         <SiteFooter lang="en" />
       </main>

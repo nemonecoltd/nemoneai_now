@@ -78,10 +78,6 @@ export default async function PlaceRankingPage() {
       </header>
 
       <main className="px-6 pt-6 space-y-3">
-        <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 TOP 25입니다.
-        </p>
-
         {/* 지역별 허브 — 크롤러가 지역별 랭킹 페이지를 발견하도록 내부링크 (URL은 영문 슬러그, 텍스트는 한글) */}
         <div className="flex flex-wrap gap-1.5 pb-2">
           {([
@@ -136,6 +132,10 @@ export default async function PlaceRankingPage() {
           )}
           </div>
         ))}
+
+        <p className="text-xs text-zinc-400 leading-relaxed pt-2">
+          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 TOP 25입니다.
+        </p>
 
         <SiteFooter lang="ko" />
       </main>

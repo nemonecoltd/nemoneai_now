@@ -91,10 +91,6 @@ export default async function PlaceRankingPageZh() {
       </header>
 
       <main className="px-6 pt-6 space-y-3">
-        <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          根据最近48小时的浏览量和点赞数统计，圣水洞、弘大、江北、济州、演出、节庆综合实时TOP 25排行榜。
-        </p>
-
         {places.length === 0 && (
           <p className="text-center text-zinc-400 text-sm py-20">数据准备中。</p>
         )}
@@ -133,6 +129,10 @@ export default async function PlaceRankingPageZh() {
           )}
           </div>
         ))}
+
+        <p className="text-xs text-zinc-400 leading-relaxed pt-2">
+          根据最近48小时的浏览量和点赞数统计，圣水洞、弘大、江北、济州、演出、节庆综合实时TOP 25排行榜。
+        </p>
 
         <SiteFooter lang="zh" />
       </main>

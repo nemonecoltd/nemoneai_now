@@ -91,10 +91,6 @@ export default async function PlaceRankingPageJa() {
       </header>
 
       <main className="px-6 pt-6 space-y-3">
-        <p className="text-xs text-zinc-400 leading-relaxed mb-2">
-          直近48時間の閲覧数・いいね数に基づく、ソンス・ホンデ・カンブク・済州・公演・祭りを合わせたリアルタイムTOP25です。
-        </p>
-
         {places.length === 0 && (
           <p className="text-center text-zinc-400 text-sm py-20">データを準備中です。</p>
         )}
@@ -133,6 +129,10 @@ export default async function PlaceRankingPageJa() {
           )}
           </div>
         ))}
+
+        <p className="text-xs text-zinc-400 leading-relaxed pt-2">
+          直近48時間の閲覧数・いいね数に基づく、ソンス・ホンデ・カンブク・済州・公演・祭りを合わせたリアルタイムTOP25です。
+        </p>
 
         <SiteFooter lang="ja" />
       </main>

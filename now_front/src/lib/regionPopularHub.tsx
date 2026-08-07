@@ -187,8 +187,6 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
       </header>
 
       <main className="px-6 pt-6 space-y-3">
-        <p className="text-xs text-zinc-400 leading-relaxed mb-2">{c.desc(region, area)}</p>
-
         <div className="flex flex-wrap gap-1.5 pb-2">
           {SLUGS.filter(x => x !== slug).map(x => (
             <Link
@@ -241,6 +239,8 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
           )}
           </div>
         ))}
+
+        <p className="text-xs text-zinc-400 leading-relaxed pt-2">{c.desc(region, area)}</p>
 
         <SiteFooter lang={lang} />
       </main>
