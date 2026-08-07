@@ -23,7 +23,7 @@ export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
       <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">
         {[
           { name: 'ABOUT', href: 'https://home.nemoneai.com' },
-          { name: 'YOUTUBE', href: 'https://www.youtube.com/@MatMatch' },
+          { name: 'BLOG', href: 'https://blog.naver.com/nemoneaim' },
           { name: '네모네AIM', href: 'https://nemoneai.com' },
           { name: 'FEEDBACK', href: '/feedback' },
         ].map((item) => (
