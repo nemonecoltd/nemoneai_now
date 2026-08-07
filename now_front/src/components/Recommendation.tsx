@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame, Bot, Clock, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -18,6 +18,12 @@ function cn(...inputs: ClassValue[]) {
 
 type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition';
 const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '부산', '제주'] as const;
+// 지역 전환 슬라이드 애니메이션 — custom(스와이프 방향)에 따라 진입/퇴장 방향이 반대가 됨
+const regionSlideVariants = {
+  enter: (dir: 1 | -1) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (dir: 1 | -1) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
+};
 type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
 const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
 type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
@@ -32,6 +38,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);
   const [placeRegion, setPlaceRegion] = useState<PlaceRankingRegion>('종합');
+  const [placeSwipeDir, setPlaceSwipeDir] = useState<1 | -1>(1); // 지역 전환 슬라이드 방향(1=다음/왼쪽으로, -1=이전/오른쪽으로)
+  const placePillsRef = useRef<HTMLDivElement>(null);
   const [concerts, setConcerts] = useState([]);
   const [festivals, setFestivals] = useState([]);
   const [shopping, setShopping] = useState([]);
@@ -50,6 +58,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   useEffect(() => {
     if (placeRegion === '종합') setPlaces(initialPlaces);
   }, [initialPlaces, placeRegion]);
+
+  // 스와이프/탭으로 지역이 바뀔 때 활성 pill이 가로 스크롤 영역 밖에 있으면 안 보여서
+  // "스와이프가 뭘 바꿨는지" 체감이 안 됨 — 항상 활성 pill이 보이게 자동 스크롤.
+  useEffect(() => {
+    const el = placePillsRef.current?.querySelector<HTMLElement>(`[data-region="${placeRegion}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [placeRegion]);
 
   useEffect(() => {
     if (activeTab === 'course') {
@@ -83,6 +98,15 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     }
   };
 
+  // pill 탭 클릭과 스와이프 둘 다 이걸 거쳐서 지역을 바꿈 — 인덱스 비교로 슬라이드 방향을
+  // 정해서, 탭으로 눌러도 스와이프한 것처럼 콘텐츠가 방향에 맞게 슬라이드 전환되게 함.
+  const changeRegion = (next: PlaceRankingRegion) => {
+    const curIdx = PLACE_RANKING_REGIONS.indexOf(placeRegion);
+    const nextIdx = PLACE_RANKING_REGIONS.indexOf(next);
+    setPlaceSwipeDir(nextIdx >= curIdx ? 1 : -1);
+    setPlaceRegion(next);
+  };
+
   // 지역 탭(종합/성수/홍대/…) 스와이프 전환 — 왼쪽으로 스와이프하면 다음 지역, 오른쪽이면 이전 지역.
   // 배열 끝에서는 그냥 멈춤(순환 안 함) — 순환시키면 "종합" 옆에 "제주"가 붙어 방향 감각이 헷갈림.
   const handlePlaceSwipe = (offsetX: number, velocityX: number) => {
@@ -90,9 +114,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     const SWIPE_VELOCITY = 400;
     const idx = PLACE_RANKING_REGIONS.indexOf(placeRegion);
     if (offsetX < -SWIPE_DISTANCE || velocityX < -SWIPE_VELOCITY) {
-      if (idx < PLACE_RANKING_REGIONS.length - 1) setPlaceRegion(PLACE_RANKING_REGIONS[idx + 1]);
+      if (idx < PLACE_RANKING_REGIONS.length - 1) changeRegion(PLACE_RANKING_REGIONS[idx + 1]);
     } else if (offsetX > SWIPE_DISTANCE || velocityX > SWIPE_VELOCITY) {
-      if (idx > 0) setPlaceRegion(PLACE_RANKING_REGIONS[idx - 1]);
+      if (idx > 0) changeRegion(PLACE_RANKING_REGIONS[idx - 1]);
     }
   };
 
@@ -423,11 +447,12 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
           </button>
         </div>
         {activeTab === 'place' && (
-          <div className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar">
+          <div ref={placePillsRef} className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar">
             {PLACE_RANKING_REGIONS.map((r) => (
               <button
                 key={r}
-                onClick={() => setPlaceRegion(r)}
+                data-region={r}
+                onClick={() => changeRegion(r)}
                 className={cn(
                   "flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
                   placeRegion === r ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-400 border-zinc-200"
@@ -569,88 +594,148 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               key="p"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="space-y-6 pt-1 touch-pan-y"
+              className="pt-1 touch-pan-y overflow-x-hidden"
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.5}
               onDragEnd={(_e, info) => handlePlaceSwipe(info.offset.x, info.velocity.x)}
             >
-              {places.slice(0, 25).map((place: any, idx: number) => (
+            {/* 지역 전환 시 스와이프 방향대로 콘텐츠가 슬라이드 전환 — 순간 교체되면 스와이프가
+                뭘 바꿨는지 체감이 안 되던 문제 보완. 바깥 motion.div(key="p")는 드래그 감지만 담당,
+                실제 카드 리스트는 placeRegion이 바뀔 때마다 이 안쪽에서 새로 마운트/언마운트됨. */}
+            <AnimatePresence mode="wait" custom={placeSwipeDir} initial={false}>
+              <motion.div
+                key={placeRegion}
+                custom={placeSwipeDir}
+                variants={regionSlideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="space-y-6"
+              >
+              {places.slice(0, 25).map((place: any, idx: number) => {
+                const regionBadgeClass = cn(
+                  "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
+                  place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                  : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                  : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                  : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                  : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+                  : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
+                  : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                  : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                );
+                const regionLabel = lang === 'en'
+                  ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
+                  : lang === 'zh'
+                    ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
+                    : (place.region || '성수');
+                const placeTitle = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const secondaryText = place.region === '공연'
+                  ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')
+                  : place.region === '축제'
+                    ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : '전국 축제')
+                    : (place.category === 'class' || place.category === 'shopping')
+                      ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
+                      : place.date_range || (lang === 'en'
+                          ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                          : lang === 'zh'
+                            ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                            : `${place.region} 근처`);
+                const href = `/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`;
+
+                return (
                 <div key={place.id}>
-                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
-                      <div className="absolute -bottom-1 -right-1 shadow-lg">
-                        <span className={cn(
-                          "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
-                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
-                          : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                          : place.region === '공연' ? "bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
-                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
-                          : place.region === '축제' ? "bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
-                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
-                        )}>
-                          {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
-                            : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
-                              : (place.region || '성수')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                        </h4>
-                        {place.category === 'class' && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
-                            {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
-                          </span>
-                        )}
+                  {idx === 0 ? (
+                    // 1위 강조 카드 — 장소 메뉴 카드 스타일(큰 이미지)을 그대로 재사용해 통일감 유지
+                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative h-52 overflow-hidden bg-zinc-100">
+                        <img
+                          src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`}
+                          alt={placeTitle || ''}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }}
+                        />
+                        <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-zinc-900/90 backdrop-blur-sm text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
+                          <Flame size={13} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                        <div className="absolute top-4 right-4">
+                          <span className={regionBadgeClass}>{regionLabel}</span>
+                        </div>
                         {place.is_new && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                          <span className="absolute bottom-4 right-4 text-[9px] font-black px-2 py-1 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
                             NEW
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {place.region === '공연'
-                            ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')
-                            : place.region === '축제'
-                              ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : '전국 축제')
-                              : (place.category === 'class' || place.category === 'shopping')
-                                ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
-                                : place.date_range || (lang === 'en'
-                                    ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
-                                    : lang === 'zh'
-                                      ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
-                                      : `${place.region} 근처`)}
-                        </span>
+                      <div className="p-5 space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-lg font-bold text-zinc-900 tracking-tight">{placeTitle}</h3>
+                          {place.category === 'class' && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
+                              {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
                       </div>
-                    </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
-                      <ChevronRight size={18} />
                     </Link>
-                  </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={placeTitle || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                        <div className="absolute -bottom-1 -right-1 shadow-lg">
+                          <span className={regionBadgeClass}>{regionLabel}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{placeTitle}</h4>
+                          {place.category === 'class' && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
+                              {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
+                            </span>
+                          )}
+                          {place.is_new && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[9px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
+                      </div>
+                      <Link href={href} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  )}
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
-              ))}
+                );
+              })}
+              </motion.div>
+            </AnimatePresence>
             </motion.div>
           ) : activeTab === 'concert' ? (
             <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
