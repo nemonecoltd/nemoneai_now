@@ -792,22 +792,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id}>
                   {idx === 0 ? (
-                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
-                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                    <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative w-[34%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/400`; }} />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
                           <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={badgeClass}>{badgeLabel}</span>
-                        </div>
                         {place.is_new && (
-                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
+                          <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="p-4 space-y-2">
-                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
-                        <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-2.5">
+                        <span className={cn(badgeClass, "self-start")}>{badgeLabel}</span>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2">{title}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                             <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
                           </span>
@@ -872,22 +870,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id}>
                   {idx === 0 ? (
-                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
-                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                    <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative w-[34%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/400`; }} />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
                           <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={badgeClass}>{badgeLabel}</span>
-                        </div>
                         {place.is_new && (
-                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
+                          <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="p-4 space-y-2">
-                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
-                        <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-2.5">
+                        <span className={cn(badgeClass, "self-start")}>{badgeLabel}</span>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2">{title}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                             <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
                           </span>
@@ -968,22 +964,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id}>
                   {idx === 0 ? (
-                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
-                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                    <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative w-[34%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/400`; }} />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
                           <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={badgeClass}>{badgeLabel}</span>
-                        </div>
                         {place.is_new && (
-                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
+                          <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="p-4 space-y-2">
-                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
-                        <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-2.5">
+                        <span className={cn(badgeClass, "self-start")}>{badgeLabel}</span>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2">{title}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                             <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
                           </span>
@@ -1064,22 +1058,20 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id}>
                   {idx === 0 ? (
-                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
-                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                    <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative w-[34%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/400`; }} />
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
                           <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={badgeClass}>{badgeLabel}</span>
-                        </div>
                         {place.is_new && (
-                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
+                          <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="p-4 space-y-2">
-                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
-                        <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-2.5">
+                        <span className={cn(badgeClass, "self-start")}>{badgeLabel}</span>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2">{title}</h3>
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                             <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
                           </span>
