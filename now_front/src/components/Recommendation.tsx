@@ -71,7 +71,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   // place_id/place_name만 있고 이미지가 없어서, 코스가 참조하는 실제 장소 이미지를 가져와야 함
   useEffect(() => {
     const top = courses[0] as any;
-    const stepIds: number[] = Array.isArray(top?.steps) ? top.steps.slice(0, 4).map((s: any) => s.place_id).filter(Boolean) : [];
+    const stepIds: number[] = Array.isArray(top?.steps) ? top.steps.slice(0, 3).map((s: any) => s.place_id).filter(Boolean) : [];
     if (stepIds.length === 0) {
       setTopCourseImages([]);
       return;
@@ -504,8 +504,8 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 <div key={course.id}>
                   <div onClick={() => setSelectedCourse(course)} className="bg-white rounded-3xl border border-zinc-100 shadow-sm cursor-pointer hover:border-pace-200 transition-all group relative overflow-hidden mb-4">
                     {idx === 0 && (
-                      <div className="relative h-[104px] grid grid-cols-2 gap-0.5 bg-zinc-100">
-                        {Array.from({ length: 4 }).map((_, i) => (
+                      <div className="relative h-[104px] grid grid-cols-3 gap-0.5 bg-zinc-100">
+                        {Array.from({ length: 3 }).map((_, i) => (
                           <div key={i} className="relative overflow-hidden bg-zinc-200">
                             {topCourseImages[i] && (
                               <img src={topCourseImages[i]} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
@@ -685,38 +685,36 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id}>
                   {idx === 0 ? (
-                    // 1위 강조 카드 — 장소 메뉴 카드 스타일(큰 이미지)을 그대로 재사용해 통일감 유지
-                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
+                    // 1위 강조 카드 — 컴팩트 리스트와 동일한 좌(이미지)-우(텍스트) 구도를 유지하되 썸네일만 확대
+                    <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative w-[42%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
                         <img
-                          src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`}
+                          src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`}
                           alt={placeTitle || ''}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           referrerPolicy="no-referrer"
-                          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/400`; }}
                         />
-                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                        <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
                           <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-2.5 right-2.5">
-                          <span className={regionBadgeClass}>{regionLabel}</span>
-                        </div>
                         {place.is_new && (
-                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
+                          <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
                             NEW
                           </span>
                         )}
                       </div>
-                      <div className="p-4 space-y-2">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="text-lg font-bold text-zinc-900 tracking-tight">{placeTitle}</h3>
+                      <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-2.5">
+                        <span className={cn(regionBadgeClass, "self-start")}>{regionLabel}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-base font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2">{placeTitle}</h3>
                           {place.category === 'class' && (
                             <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
                               {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
                             <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
                           </span>
