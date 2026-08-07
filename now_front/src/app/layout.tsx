@@ -13,10 +13,10 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500", "700"],
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
   title: {
-    default: "NEMONE PACE | 성수·홍대·강남·제주 팝업·전시·공연·축제 추천",
+    default: "NEMONE PACE | 성수·홍대·강남·부산·제주 팝업·전시·공연·축제 추천",
     template: "%s | NEMONE PACE"
   },
-  description: "지금 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다",
+  description: "지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다",
   alternates: {
     canonical: 'https://now.nemoneai.com',
     languages: {
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
-    description: '지금 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
     url: 'https://now.nemoneai.com',
     images: ['/og-image.jpg'],
     type: 'website',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
-    description: '지금 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
     images: ['/og-image.jpg'],
   },
   robots: {
@@ -55,7 +55,7 @@ const websiteJsonLd = {
   '@type': 'WebSite',
   name: 'NEMONE PACE',
   url: 'https://now.nemoneai.com',
-  description: '지금 이 시간 성수·홍대·강북·강남·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
   potentialAction: {
     '@type': 'SearchAction',
     target: {
