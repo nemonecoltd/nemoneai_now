@@ -111,7 +111,9 @@ def refresh_place_popularity(is_cron: bool = False):
         is_real_cycle = is_cron or (prev_snapshot is None)
 
         result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE))
+        overall_interval_days = 2
         if len(result) < 25:
+            overall_interval_days = 30
             result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE))
         _place_popularity_cache = [dict(row._mapping) for row in result]
 
@@ -135,6 +137,10 @@ def refresh_place_popularity(is_cron: bool = False):
             conn.commit()
 
         # 플레이스 랭킹 지역 서브탭 — 종합과 같은 산식으로 지역별 톱25만 따로 캐시 + 지역별 NEW 배지
+        # interval_days는 반드시 종합(overall_interval_days)과 동일하게 맞춘다. 지역별로 각자
+        # "48시간 내 25개 미만이면 30일로 확장" 판단을 따로 하면, 종합에서는 48시간 점수(예: 13점)로
+        # 보이는 장소가 지역 탭에서는 30일 누적 점수(예: 473점)로 보이는 등 같은 장소의 점수·순위가
+        # 화면마다 달라지는 문제가 있었음(2026-08-07).
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_region_ranking_snapshot (
                 region TEXT PRIMARY KEY,
@@ -147,9 +153,7 @@ def refresh_place_popularity(is_cron: bool = False):
 
         by_region: dict = {}
         for r in _PLACE_RANKING_REGIONS:
-            r_result = list(_popularity_rows(conn, 2, min_score=_MIN_RANKING_SCORE, only_region=r))
-            if len(r_result) < 25:
-                r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
+            r_result = list(_popularity_rows(conn, overall_interval_days, min_score=_MIN_RANKING_SCORE, only_region=r))
             region_cache = [dict(row._mapping) for row in r_result]
 
             prev_r_snapshot = conn.execute(text("SELECT top25_ids FROM place_region_ranking_snapshot WHERE region = :region"), {"region": r}).fetchone()

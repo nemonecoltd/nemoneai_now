@@ -687,7 +687,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 0 ? (
                     // 1위 강조 카드 — 컴팩트 리스트와 동일한 좌(이미지)-우(텍스트) 구도를 유지하되 썸네일만 확대
                     <Link href={href} className="flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative w-[42%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
+                      <div className="relative w-[34%] aspect-square flex-shrink-0 overflow-hidden bg-zinc-100">
                         <img
                           src={place.image_url || `https://picsum.photos/seed/${place.id}/400/400`}
                           alt={placeTitle || ''}
