@@ -83,6 +83,19 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     }
   };
 
+  // 지역 탭(종합/성수/홍대/…) 스와이프 전환 — 왼쪽으로 스와이프하면 다음 지역, 오른쪽이면 이전 지역.
+  // 배열 끝에서는 그냥 멈춤(순환 안 함) — 순환시키면 "종합" 옆에 "제주"가 붙어 방향 감각이 헷갈림.
+  const handlePlaceSwipe = (offsetX: number, velocityX: number) => {
+    const SWIPE_DISTANCE = 60;
+    const SWIPE_VELOCITY = 400;
+    const idx = PLACE_RANKING_REGIONS.indexOf(placeRegion);
+    if (offsetX < -SWIPE_DISTANCE || velocityX < -SWIPE_VELOCITY) {
+      if (idx < PLACE_RANKING_REGIONS.length - 1) setPlaceRegion(PLACE_RANKING_REGIONS[idx + 1]);
+    } else if (offsetX > SWIPE_DISTANCE || velocityX > SWIPE_VELOCITY) {
+      if (idx > 0) setPlaceRegion(PLACE_RANKING_REGIONS[idx - 1]);
+    }
+  };
+
   const fetchConcerts = async () => {
     setIsLoading(true);
     try {
@@ -552,7 +565,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               ))}
             </motion.div>
           ) : activeTab === 'place' ? (
-            <motion.div key="p" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
+            <motion.div
+              key="p"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-6 pt-1 touch-pan-y"
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.5}
+              onDragEnd={(_e, info) => handlePlaceSwipe(info.offset.x, info.velocity.x)}
+            >
               {places.slice(0, 25).map((place: any, idx: number) => (
                 <div key={place.id}>
                   <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
