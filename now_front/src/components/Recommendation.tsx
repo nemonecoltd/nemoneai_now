@@ -35,6 +35,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('place');
   const [courses, setCourses] = useState([]);
+  const [topCourseImages, setTopCourseImages] = useState<string[]>([]); // 1위 코스 콜라주용 — steps에 썸네일이 없어 방문지 장소 이미지를 개별 조회
   const [themes, setThemes] = useState([]);
   const [places, setPlaces] = useState(initialPlaces);
   const [placeRegion, setPlaceRegion] = useState<PlaceRankingRegion>('종합');
@@ -65,6 +66,24 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     const el = placePillsRef.current?.querySelector<HTMLElement>(`[data-region="${placeRegion}"]`);
     el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
   }, [placeRegion]);
+
+  // 1위 코스의 방문지(최대 4곳) 이미지를 개별 조회해 콜라주 썸네일 구성 — steps 데이터엔
+  // place_id/place_name만 있고 이미지가 없어서, 코스가 참조하는 실제 장소 이미지를 가져와야 함
+  useEffect(() => {
+    const top = courses[0] as any;
+    const stepIds: number[] = Array.isArray(top?.steps) ? top.steps.slice(0, 4).map((s: any) => s.place_id).filter(Boolean) : [];
+    if (stepIds.length === 0) {
+      setTopCourseImages([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all(stepIds.map((id) => fetch(`/api-now/places/${id}`).then(r => r.ok ? r.json() : null).catch(() => null)))
+      .then((results) => {
+        if (cancelled) return;
+        setTopCourseImages(results.filter(Boolean).map((p: any) => p.image_url).filter(Boolean));
+      });
+    return () => { cancelled = true; };
+  }, [courses]);
 
   useEffect(() => {
     if (activeTab === 'course') {
@@ -483,11 +502,28 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="c" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {courses.slice(0, 25).map((course: any, idx: number) => (
                 <div key={course.id}>
-                  <div onClick={() => setSelectedCourse(course)} className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm space-y-4 cursor-pointer hover:border-pace-200 transition-all group relative overflow-hidden mb-4">
-                    <div className="absolute -left-1 -top-1 w-8 h-8 bg-zinc-900 text-white text-[10px] font-black rounded-br-2xl flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    
+                  <div onClick={() => setSelectedCourse(course)} className="bg-white rounded-3xl border border-zinc-100 shadow-sm cursor-pointer hover:border-pace-200 transition-all group relative overflow-hidden mb-4">
+                    {idx === 0 && (
+                      <div className="relative h-[104px] grid grid-cols-2 gap-0.5 bg-zinc-100">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                          <div key={i} className="relative overflow-hidden bg-zinc-200">
+                            {topCourseImages[i] && (
+                              <img src={topCourseImages[i]} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                            )}
+                          </div>
+                        ))}
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-5 space-y-4 relative">
+                    {idx !== 0 && (
+                      <div className="absolute -left-1 -top-1 w-8 h-8 bg-zinc-900 text-white text-[10px] font-black rounded-br-2xl flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full overflow-hidden border border-zinc-100 flex-shrink-0 bg-zinc-50">
                         <img
@@ -532,9 +568,10 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                         {(lang === 'en' && course.description_en) ? course.description_en : course.description}
                       </p>
                     </div>
+                    </div>
                   </div>
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -650,7 +687,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {idx === 0 ? (
                     // 1위 강조 카드 — 장소 메뉴 카드 스타일(큰 이미지)을 그대로 재사용해 통일감 유지
                     <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
-                      <div className="relative h-52 overflow-hidden bg-zinc-100">
+                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
                         <img
                           src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`}
                           alt={placeTitle || ''}
@@ -658,19 +695,19 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           referrerPolicy="no-referrer"
                           onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }}
                         />
-                        <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-zinc-900/90 backdrop-blur-sm text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg">
-                          <Flame size={13} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
                         </div>
-                        <div className="absolute top-4 right-4">
+                        <div className="absolute top-2.5 right-2.5">
                           <span className={regionBadgeClass}>{regionLabel}</span>
                         </div>
                         {place.is_new && (
-                          <span className="absolute bottom-4 right-4 text-[9px] font-black px-2 py-1 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
+                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
                             NEW
                           </span>
                         )}
                       </div>
-                      <div className="p-5 space-y-2">
+                      <div className="p-4 space-y-2">
                         <div className="flex items-center gap-1.5">
                           <h3 className="text-lg font-bold text-zinc-900 tracking-tight">{placeTitle}</h3>
                           {place.category === 'class' && (
@@ -744,57 +781,82 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : '아직 공연 랭킹 데이터가 없습니다.'}
                 </p>
               )}
-              {concerts.slice(0, 25).map((place: any, idx: number) => (
+              {concerts.slice(0, 25).map((place: any, idx: number) => {
+                const badgeLabel = lang === 'en'
+                  ? (place.category === '연극' ? 'THEATER' : place.category === '뮤지컬' ? 'MUSICAL' : place.category === '음악' ? 'MUSIC' : 'CONCERT')
+                  : lang === 'zh'
+                    ? (place.category === '연극' ? '话剧' : place.category === '뮤지컬' ? '音乐剧' : place.category === '음악' ? '音乐' : '综合')
+                    : (place.category || '종합');
+                const badgeClass = "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]";
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const secondaryText = place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연');
+                const href = `/posts/${place.id}?region=공연&lang=${lang}`;
+                return (
                 <div key={place.id}>
-                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
-                      <div className="absolute -bottom-1 -right-1 shadow-lg">
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-                          {lang === 'en'
-                            ? (place.category === '연극' ? 'THEATER' : place.category === '뮤지컬' ? 'MUSICAL' : place.category === '음악' ? 'MUSIC' : 'CONCERT')
-                            : lang === 'zh'
-                              ? (place.category === '연극' ? '话剧' : place.category === '뮤지컬' ? '音乐剧' : place.category === '음악' ? '音乐' : '综合')
-                              : (place.category || '종합')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                        </h4>
+                  {idx === 0 ? (
+                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
                         {place.is_new && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
-                            NEW
-                          </span>
+                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')}
-                        </span>
+                      <div className="p-4 space-y-2">
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
                       </div>
-                    </div>
-                    <Link href={`/posts/${place.id}?region=공연&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
-                      <ChevronRight size={18} />
                     </Link>
-                  </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                        <div className="absolute -bottom-1 -right-1 shadow-lg">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{title}</h4>
+                          {place.is_new && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">NEW</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[9px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
+                      </div>
+                      <Link href={href} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  )}
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </motion.div>
           ) : activeTab === 'festival' ? (
             <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
@@ -803,53 +865,78 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {lang === 'en' ? 'No festival ranking data yet.' : lang === 'zh' ? '暂无节庆排行数据。' : '아직 축제 랭킹 데이터가 없습니다.'}
                 </p>
               )}
-              {festivals.slice(0, 25).map((place: any, idx: number) => (
+              {festivals.slice(0, 25).map((place: any, idx: number) => {
+                const badgeLabel = lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : '축제';
+                const badgeClass = "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]";
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const secondaryText = place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제');
+                const href = `/posts/${place.id}?region=축제&lang=${lang}`;
+                return (
                 <div key={place.id}>
-                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
-                      <div className="absolute -bottom-1 -right-1 shadow-lg">
-                        <span className="text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]">
-                          {lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : '축제'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                        </h4>
+                  {idx === 0 ? (
+                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
                         {place.is_new && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
-                            NEW
-                          </span>
+                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제')}
-                        </span>
+                      <div className="p-4 space-y-2">
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
                       </div>
-                    </div>
-                    <Link href={`/posts/${place.id}?region=축제&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
-                      <ChevronRight size={18} />
                     </Link>
-                  </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                        <div className="absolute -bottom-1 -right-1 shadow-lg">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{title}</h4>
+                          {place.is_new && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">NEW</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[9px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
+                      </div>
+                      <Link href={href} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  )}
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </motion.div>
           ) : activeTab === 'shopping' ? (
             <motion.div key="sh" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
@@ -858,69 +945,94 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {lang === 'en' ? 'No shopping ranking data yet.' : lang === 'zh' ? '暂无购物排行数据。' : '아직 쇼핑 랭킹 데이터가 없습니다.'}
                 </p>
               )}
-              {shopping.slice(0, 25).map((place: any, idx: number) => (
+              {shopping.slice(0, 25).map((place: any, idx: number) => {
+                const badgeClass = cn(
+                  "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
+                  place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                  : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                  : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                  : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+                  : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
+                  : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                );
+                const badgeLabel = lang === 'en'
+                  ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                  : lang === 'zh'
+                    ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
+                    : (place.region || '성수');
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const secondaryText = lang === 'en'
+                  ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                  : lang === 'zh'
+                    ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                    : `${place.region || '성수'} 근처`;
+                const href = `/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`;
+                return (
                 <div key={place.id}>
-                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
-                      <div className="absolute -bottom-1 -right-1 shadow-lg">
-                        <span className={cn(
-                          "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
-                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
-                          : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
-                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
-                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
-                        )}>
-                          {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
-                            : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
-                              : (place.region || '성수')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                        </h4>
+                  {idx === 0 ? (
+                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
                         {place.is_new && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
-                            NEW
-                          </span>
+                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {lang === 'en'
-                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
-                            : lang === 'zh'
-                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
-                              : `${place.region || '성수'} 근처`}
-                        </span>
+                      <div className="p-4 space-y-2">
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
                       </div>
-                    </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
-                      <ChevronRight size={18} />
                     </Link>
-                  </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                        <div className="absolute -bottom-1 -right-1 shadow-lg">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{title}</h4>
+                          {place.is_new && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">NEW</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[9px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
+                      </div>
+                      <Link href={href} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  )}
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </motion.div>
           ) : (
             <motion.div key="ex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
@@ -929,69 +1041,94 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   {lang === 'en' ? 'No exhibition ranking data yet.' : lang === 'zh' ? '暂无展览排行数据。' : '아직 전시 랭킹 데이터가 없습니다.'}
                 </p>
               )}
-              {exhibitions.slice(0, 25).map((place: any, idx: number) => (
+              {exhibitions.slice(0, 25).map((place: any, idx: number) => {
+                const badgeClass = cn(
+                  "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
+                  place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
+                  : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                  : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
+                  : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
+                  : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
+                  : "bg-emerald-50 text-emerald-600 border-emerald-400"
+                );
+                const badgeLabel = lang === 'en'
+                  ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
+                  : lang === 'zh'
+                    ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
+                    : (place.region || '성수');
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const secondaryText = place.date_range || (lang === 'en'
+                  ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
+                  : lang === 'zh'
+                    ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
+                    : `${place.region || '성수'} 근처`);
+                const href = `/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`;
+                return (
                 <div key={place.id}>
-                  <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                    <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                      {idx + 1}
-                    </div>
-                    <div className="relative flex-shrink-0">
-                      <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={place.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
-                      <div className="absolute -bottom-1 -right-1 shadow-lg">
-                        <span className={cn(
-                          "text-[8px] font-black px-1.5 py-0.5 rounded-md border",
-                          place.region === '홍대' ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.5)]"
-                          : place.region === '강북' ? "bg-yellow-500 text-white border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]"
-                          : place.region === '강남' ? "bg-pink-500 text-white border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.5)]"
-                          : place.region === '부산' ? "bg-sky-400 text-white border-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.5)]"
-                          : place.region === '제주' ? "bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]"
-                          : "bg-emerald-50 text-emerald-600 border-emerald-400"
-                        )}>
-                          {lang === 'en'
-                            ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : 'SEONGSU')
-                            : lang === 'zh'
-                              ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
-                              : (place.region || '성수')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">
-                          {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
-                        </h4>
+                  {idx === 0 ? (
+                    <Link href={href} className="block bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group relative mb-4">
+                      <div className="relative h-[104px] overflow-hidden bg-zinc-100">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/400/300`} alt={title || ''} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/400/300`; }} />
+                        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                        </div>
+                        <div className="absolute top-2.5 right-2.5">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
                         {place.is_new && (
-                          <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">
-                            NEW
-                          </span>
+                          <span className="absolute bottom-2.5 right-2.5 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">NEW</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
-                          <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-medium truncate">
-                          {place.date_range || (lang === 'en'
-                            ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
-                            : lang === 'zh'
-                              ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
-                              : `${place.region || '성수'} 근처`)}
-                        </span>
+                      <div className="p-4 space-y-2">
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight">{title}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
                       </div>
-                    </div>
-                    <Link href={`/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
-                      <ChevronRight size={18} />
                     </Link>
-                  </div>
+                  ) : (
+                    <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
+                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
+                        {idx + 1}
+                      </div>
+                      <div className="relative flex-shrink-0">
+                        <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
+                        <div className="absolute -bottom-1 -right-1 shadow-lg">
+                          <span className={badgeClass}>{badgeLabel}</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{title}</h4>
+                          {place.is_new && (
+                            <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400 animate-pulse">NEW</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">
+                            <Flame size={10} fill="currentColor" /> {place.score ?? place.like_count}
+                          </span>
+                          <span className="text-[9px] text-zinc-400 font-medium truncate">{secondaryText}</span>
+                        </div>
+                      </div>
+                      <Link href={href} className="p-2 bg-zinc-50 rounded-xl text-zinc-300 group-hover:bg-pace-50 group-hover:text-pace-500 transition-all">
+                        <ChevronRight size={18} />
+                      </Link>
+                    </div>
+                  )}
 
-                  {idx === 1 && (
+                  {idx === 0 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>
