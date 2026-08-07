@@ -2,6 +2,9 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
+import Logo from '@/components/Logo';
+import BottomNav from '@/components/BottomNav';
+import SiteFooter from '@/components/SiteFooter';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -69,19 +72,20 @@ export default async function PlaceRankingPageJa() {
   const places = await getPopularPlaces();
 
   return (
-    <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
+    <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-28 border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
-            <ChevronLeft size={24} />
+        <div className="flex items-center gap-3">
+          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600 flex-shrink-0">
+            <ChevronLeft size={20} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">リアルタイム人気ホットスポット</h1>
-          <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400">
+          <Logo href="/" className="h-6" />
+          <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400 flex-shrink-0">
             <Link href="/ranking/place" className="hover:text-zinc-700">KO</Link>
             <Link href="/en/ranking/place" className="hover:text-zinc-700">EN</Link>
             <Link href="/zh/ranking/place" className="hover:text-zinc-700">中文</Link>
           </div>
         </div>
+        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">リアルタイム人気ホットスポット</h1>
         <BrandTagline />
       </header>
 
@@ -121,7 +125,11 @@ export default async function PlaceRankingPageJa() {
             <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
           </Link>
         ))}
+
+        <SiteFooter lang="ja" />
       </main>
+
+      <BottomNav lang="ja" />
     </div>
   );
 }
