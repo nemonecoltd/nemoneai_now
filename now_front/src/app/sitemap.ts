@@ -46,12 +46,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // 지역별 팝업 랭킹 허브 — "성수 팝업" 같은 헤드키워드를 잡기 위한 상시 갱신 페이지
   // (URL은 영문 슬러그 — output:'standalone'이 한글 동적 세그먼트 정적 페이지를 못 찾는 버그 회피)
-  const placeRegionUrls = ['seongsu', 'hongdae', 'gangbuk', 'gangnam', 'busan', 'jeju'].map((slug) => ({
-    url: `${baseUrl}/ranking/place/${slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'hourly' as const,
-    priority: 0.75,
-  }))
+  // 다국어(en/zh/ja) 버전도 함께 생성, hreflang alternates로 연결
+  const regionSlugs = ['seongsu', 'hongdae', 'gangbuk', 'gangnam', 'busan', 'jeju']
+  const placeRegionUrls = regionSlugs.flatMap((slug) => {
+    const languages = {
+      ko: `${baseUrl}/ranking/place/${slug}`,
+      en: `${baseUrl}/en/ranking/place/${slug}`,
+      zh: `${baseUrl}/zh/ranking/place/${slug}`,
+      ja: `${baseUrl}/ja/ranking/place/${slug}`,
+    }
+    return [
+      { url: languages.ko, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.75, alternates: { languages } },
+      { url: languages.en, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.55, alternates: { languages } },
+      { url: languages.zh, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.55, alternates: { languages } },
+      { url: languages.ja, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 0.55, alternates: { languages } },
+    ]
+  })
 
   return [...staticUrls, ...placeRegionUrls, ...placeUrls]
 }
