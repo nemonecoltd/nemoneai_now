@@ -571,7 +571,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   </div>
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -760,7 +760,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   )}
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -844,7 +844,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   )}
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -922,7 +922,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   )}
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -1016,7 +1016,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   )}
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (
@@ -1110,7 +1110,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     </div>
                   )}
 
-                  {idx === 0 && (
+                  {idx === 1 && (
                     <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
                   )}
                   {idx === 14 && (

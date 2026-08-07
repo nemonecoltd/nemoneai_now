@@ -124,7 +124,7 @@ export default async function PlaceRankingPage() {
             </span>
             <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
           </Link>
-          {idx === 0 && (
+          {idx === 1 && (
             <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
           )}
           {idx === 14 && (
