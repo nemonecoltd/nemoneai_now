@@ -79,7 +79,13 @@ interface AdminStats {
   storage_percent?: number;
 }
 
-type Region = '성수' | '홍대' | '강북' | '강남' | '공연' | '제주' | '축제';
+type Region = '성수' | '홍대' | '강북' | '강남' | '부산' | '공연' | '제주' | '축제';
+// 서비스(page.tsx)와 동일한 순서 — 장소형 지역(성수~제주) 다음 이벤트형 지역(공연/축제)
+const REGIONS: Region[] = ['성수', '홍대', '강북', '강남', '부산', '제주', '공연', '축제'];
+const REGION_LABEL_EN: Record<Region, string> = {
+  '성수': 'SEONGSU', '홍대': 'HONGDAE', '강북': 'GANGBUK', '강남': 'GANGNAM',
+  '부산': 'BUSAN', '제주': 'JEJU', '공연': 'CONCERT', '축제': 'FESTIVAL',
+};
 type ViewMode = 'spots' | 'themes' | 'ranking';
 
 export default function AdminPage() {
@@ -445,49 +451,49 @@ export default function AdminPage() {
   if (!isLocalDev && user?.email !== 'nemonecoltd@gmail.com') return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-8 font-sans">
+    <div className="min-h-screen bg-zinc-50 p-4 md:p-8 font-sans">
       <div className="max-w-5xl mx-auto">
-        <header className="flex justify-between items-end mb-8">
-          <div>
+        <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 text-pace-600 mb-1">
               <ShieldCheck size={18} />
               <span className="text-[10px] font-black uppercase tracking-widest">Admin Control Panel</span>
             </div>
-            <h1 className="text-3xl font-bold text-zinc-900">지금 여기 관리자 <span className="text-pace-500">.</span></h1>
-            
-            <div className="flex items-center gap-6 mt-6 border-b border-zinc-200">
-              <div className="flex items-center gap-4">
+            <h1 className="text-xl md:text-3xl font-bold text-zinc-900">지금 여기 관리자 <span className="text-pace-500">.</span></h1>
+
+            <div className="flex items-center gap-4 md:gap-6 mt-4 md:mt-6 border-b border-zinc-200 overflow-x-auto no-scrollbar">
+              <div className="flex items-center gap-4 flex-shrink-0">
                 <button
                   onClick={() => setViewMode('ranking')}
-                  className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
+                  className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] flex-shrink-0 whitespace-nowrap ${
                     viewMode === 'ranking' ? "text-amber-500 border-amber-400" : "text-zinc-400 border-transparent hover:text-zinc-600"
                   }`}
                 >
                   📊 TOP 25
                 </button>
-                <div className="w-px h-4 bg-zinc-300 mb-1"></div>
-                {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map((r) => (
+                <div className="w-px h-4 bg-zinc-300 mb-1 flex-shrink-0"></div>
+                {REGIONS.map((r) => (
                   <button
                     key={r}
                     onClick={() => {
                       setViewMode('spots');
                       setRegion(r);
                     }}
-                    className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
+                    className={`text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] flex-shrink-0 whitespace-nowrap ${
                       viewMode === 'spots' && region === r ? "text-pace-600 border-pace-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                     }`}
                   >
-                    {r === '성수' ? 'SEONGSU' : r === '홍대' ? 'HONGDAE' : r === '강북' ? 'GANGBUK' : r === '강남' ? 'GANGNAM' : r === '공연' ? 'CONCERT' : r === '제주' ? 'JEJU' : 'FESTIVAL'}
+                    {REGION_LABEL_EN[r]}
                   </button>
                 ))}
               </div>
-              
-              <div className="w-px h-4 bg-zinc-300 mb-1"></div>
 
-              <div className="flex items-center">
+              <div className="w-px h-4 bg-zinc-300 mb-1 flex-shrink-0"></div>
+
+              <div className="flex items-center flex-shrink-0">
                 <button
                   onClick={() => setViewMode('themes')}
-                  className={`flex items-center gap-1.5 text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] ${
+                  className={`flex items-center gap-1.5 text-sm font-bold transition-all px-2 pb-2 border-b-2 -mb-[1px] whitespace-nowrap ${
                     viewMode === 'themes' ? "text-pace-600 border-pace-500" : "text-zinc-400 border-transparent hover:text-zinc-600"
                   }`}
                 >
@@ -496,65 +502,69 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="px-6 py-3 bg-white text-zinc-900 border border-zinc-200 rounded-2xl font-bold text-sm hover:bg-zinc-50 transition-all shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+            <Link href="/" className="flex-1 md:flex-none text-center px-4 md:px-6 py-2.5 md:py-3 bg-white text-zinc-900 border border-zinc-200 rounded-2xl font-bold text-xs md:text-sm hover:bg-zinc-50 transition-all shadow-sm whitespace-nowrap">
               서비스 홈
             </Link>
             {viewMode === 'spots' && (
-              <button 
+              <button
                 onClick={() => {
                   setIsCreating(true);
                   setEditingId(null);
                   setEditForm({});
                 }}
-                className="bg-zinc-900 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-pace-600 transition-all shadow-lg"
+                className="flex-1 md:flex-none justify-center bg-zinc-900 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-pace-600 transition-all shadow-lg text-xs md:text-sm whitespace-nowrap"
               >
-                <Plus size={20} /> 새 장소 등록
+                <Plus size={18} /> 새 장소 등록
               </button>
             )}
           </div>
         </header>
 
         {stats && (
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-pace-50 text-pace-600 flex items-center justify-center">
-                <Users size={24} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+            <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-3 md:gap-4 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-pace-50 text-pace-600 flex items-center justify-center flex-shrink-0">
+                <Users size={20} className="md:hidden" />
+                <Users size={24} className="hidden md:block" />
               </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">총 유저수</div>
-                <div className="text-2xl font-black text-zinc-900">{(stats?.total_users ?? 0).toLocaleString()}명</div>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Route size={24} />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">생성된 코스</div>
-                <div className="text-2xl font-black text-zinc-900">{(stats?.total_courses ?? 0).toLocaleString()}개</div>
+              <div className="min-w-0">
+                <div className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">총 유저수</div>
+                <div className="text-lg md:text-2xl font-black text-zinc-900 truncate">{(stats?.total_users ?? 0).toLocaleString()}명</div>
               </div>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-                <MapPinIcon size={24} />
+            <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-3 md:gap-4 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Route size={20} className="md:hidden" />
+                <Route size={24} className="hidden md:block" />
               </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">등록된 장소</div>
-                <div className="text-2xl font-black text-zinc-900">{(stats?.total_places ?? 0).toLocaleString()}곳</div>
+              <div className="min-w-0">
+                <div className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">생성된 코스</div>
+                <div className="text-lg md:text-2xl font-black text-zinc-900 truncate">{(stats?.total_courses ?? 0).toLocaleString()}개</div>
               </div>
             </div>
-            <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                <HardDrive size={24} />
+            <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-3 md:gap-4 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                <MapPinIcon size={20} className="md:hidden" />
+                <MapPinIcon size={24} className="hidden md:block" />
               </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">스토리지 사용량</div>
-                <div className="text-2xl font-black text-zinc-900">
+              <div className="min-w-0">
+                <div className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">등록된 장소</div>
+                <div className="text-lg md:text-2xl font-black text-zinc-900 truncate">{(stats?.total_places ?? 0).toLocaleString()}곳</div>
+              </div>
+            </div>
+            <div className="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-zinc-200 shadow-sm flex items-center gap-3 md:gap-4 min-w-0">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <HardDrive size={20} className="md:hidden" />
+                <HardDrive size={24} className="hidden md:block" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest whitespace-nowrap">스토리지 사용량</div>
+                <div className="text-lg md:text-2xl font-black text-zinc-900 truncate">
                   {(stats?.storage_percent ?? 0).toFixed(1)}%
-                  <span className="text-xs font-bold text-zinc-400 ml-1">
-                    ({((stats?.storage_used_bytes ?? 0) / 1024 / 1024).toFixed(1)}MB)
-                  </span>
+                </div>
+                <div className="text-[10px] md:text-xs font-bold text-zinc-400 whitespace-nowrap">
+                  {((stats?.storage_used_bytes ?? 0) / 1024 / 1024).toFixed(1)}MB
                 </div>
               </div>
             </div>
@@ -726,7 +736,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           >
-                            {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {REGIONS.map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
@@ -869,7 +879,7 @@ export default function AdminPage() {
                             onChange={e => setEditForm({...editForm, region: e.target.value})}
                             className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-pace-500"
                           >
-                            {(['성수', '홍대', '강북', '강남', '공연', '제주', '축제'] as Region[]).map(r => (
+                            {REGIONS.map(r => (
                               <option key={r} value={r}>{r}</option>
                             ))}
                           </select>
