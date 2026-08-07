@@ -5,6 +5,7 @@ import BrandTagline from '@/components/BrandTagline';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import SiteFooter from '@/components/SiteFooter';
+import AdUnit from '@/components/AdUnit';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -99,8 +100,8 @@ export default async function PlaceRankingPageJa() {
         )}
 
         {places.map((place, idx) => (
+          <div key={place.id}>
           <Link
-            key={place.id}
             href={`/posts/${place.id}`}
             className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
           >
@@ -124,6 +125,13 @@ export default async function PlaceRankingPageJa() {
             </span>
             <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
           </Link>
+          {idx === 0 && (
+            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+          )}
+          {idx === 14 && (
+            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
+          )}
+          </div>
         ))}
 
         <SiteFooter lang="ja" />
