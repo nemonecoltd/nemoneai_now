@@ -10,6 +10,14 @@ ADMIN_EMAIL = "nemonecoltd@gmail.com"
 # 플레이스 랭킹 지역 서브탭 — ranking_service의 지역별 집계와 RankingShareCreate 검증이 공유
 _PLACE_RANKING_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주']
 
+# 서울시 실시간 도시데이터(혼잡도) API 지점명 매핑 — 프론트/라우터가 쓰는 짧은 키(홍대/성수) ↔
+# API에 실제 등록된 지점명. 등록명은 예상과 다를 수 있어 반드시 실 API 호출로 확인 후 채울 것
+# (2026-08-09 확인: '홍대관광특구'는 오류, 공백 포함 '홍대 관광특구'가 정확한 등록명. '성수카페거리'는 그대로 정확).
+CROWD_AREA_MAP = {
+    '홍대': '홍대 관광특구',
+    '성수': '성수카페거리',
+}
+
 
 def _lang_col(lang: str, base: str) -> str:
     """lang(ko/en/zh/ja)에 맞는 컬럼명 반환. 예: _lang_col('zh', 'title') -> 'title_zh'"""

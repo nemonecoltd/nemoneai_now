@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 import ranking_service as ranking
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
-from routers import admin, ai, courses, magazine, places, rankings, social
+from routers import admin, ai, courses, crowd, magazine, places, rankings, social
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
 
@@ -67,6 +67,7 @@ app.include_router(ai.router)
 app.include_router(magazine.router)
 app.include_router(places.router)
 app.include_router(admin.router)
+app.include_router(crowd.router)
 
 ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
 
