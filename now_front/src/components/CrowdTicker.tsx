@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { LongFlap } from 'react-split-flap';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface CrowdData {
   area: string;
@@ -16,10 +16,10 @@ interface CrowdData {
   ppltn_delta_pct?: number;
 }
 
+// 혼잡도 폴링 대상(now_back deps.py CROWD_AREA_MAP)과 동일한 지점만 순환 노출 — 전부 3~4자라
+// 티커 라벨을 그대로 API 지점 키로 써도 됨(별도 축약 불필요)
+const TICKER_AREAS = ['성수', '홍대', '강남역', '이태원', '광화문'];
 const ROTATE_MS = 5000;
-// /crowd/all을 SWR 없이도 계속 최신으로 유지 — 원본 데이터가 서버에서 10분 간격으로만 갱신되니
-// 그보다 촘촘한 5분이면 충분(기존 프로젝트 전체가 plain fetch 컨벤션이라 새 데이터 레이어 안 얹음)
-const REFRESH_MS = 5 * 60 * 1000;
 
 // MapView.tsx REGION_COLOR와 동일한 지역 대표색 — 티커에서도 지점 구분이 되도록 재사용
 const AREA_ACCENT: Record<string, string> = {
@@ -67,93 +67,86 @@ function genderLabel(ageGender?: CrowdData['age_gender_summary']): string | null
   return Math.abs(male - female) < 5 ? '남녀비슷' : male > female ? '남성다수' : '여성다수';
 }
 
-function FlapRow({ item }: { item: CrowdData }) {
-  const accent = AREA_ACCENT[item.area] || '#a1a1aa';
-  const age = topAgeGroup(item.age_gender_summary);
-  const gender = genderLabel(item.age_gender_summary);
-  const visitorPart = [age, gender].filter(Boolean).join('·');
-  const deltaText = typeof item.ppltn_delta_pct === 'number'
-    ? (Math.abs(item.ppltn_delta_pct) < 1 ? '직전과 비슷' : `직전대비 ${item.ppltn_delta_pct > 0 ? '+' : ''}${item.ppltn_delta_pct}%`)
-    : null;
-
-  return (
-    <span className="flex items-center gap-1.5 px-4 text-[11px] font-bold whitespace-nowrap overflow-x-auto no-scrollbar">
-      <span
-        className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
-        style={{ backgroundColor: accent, boxShadow: `0 0 5px ${accent}` }}
-      />
-      <span className="font-black flex-shrink-0" style={{ color: accent }}>{item.area}</span>
-      <span className="text-zinc-700 flex-shrink-0">•</span>
-      <span className="text-zinc-200 font-mono flex-shrink-0">{formatNum(item.ppltn_min)}~{formatNum(item.ppltn_max)}명</span>
-      {deltaText && (
-        <>
-          <span className="text-zinc-700 flex-shrink-0">•</span>
-          <span className="text-zinc-400 font-medium flex-shrink-0">{deltaText}</span>
-        </>
-      )}
-      {visitorPart && (
-        <>
-          <span className="text-zinc-700 flex-shrink-0">•</span>
-          <span className="text-zinc-400 font-medium flex-shrink-0">{visitorPart}</span>
-        </>
-      )}
-      <span className="text-zinc-700 flex-shrink-0">•</span>
-      <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[item.congest_lvl] || 'text-zinc-400'}`}>
-        {item.congest_lvl}
-      </span>
-    </span>
-  );
-}
-
 export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: string; onNavigateToMap?: (region: string) => void }) {
-  const [items, setItems] = useState<CrowdData[]>([]);
-  const [displayId, setDisplayId] = useState<string | null>(null);
+  const [dataByArea, setDataByArea] = useState<Record<string, CrowdData>>({});
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    const load = () => {
-      fetch('/api-now/crowd/all')
-        .then((res) => (res.ok ? res.json() : null))
-        .then((json) => {
-          if (cancelled || !Array.isArray(json) || json.length === 0) return;
-          setItems(json);
-          setDisplayId((prev) => prev ?? json[0].area);
-        })
-        .catch(() => {});
-    };
-    load();
-    const refreshTimer = setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(refreshTimer); };
+    Promise.all(
+      TICKER_AREAS.map((area) =>
+        fetch(`/api-now/crowd?area=${encodeURIComponent(area)}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null)
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next: Record<string, CrowdData> = {};
+      results.forEach((r, i) => { if (r) next[TICKER_AREAS[i]] = r; });
+      // 실패한 지점은 이전 값 유지 — 화면이 통째로 비지 않도록 병합
+      setDataByArea((prev) => ({ ...prev, ...next }));
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    if (items.length === 0) return;
-    const timer = setInterval(() => {
-      setDisplayId((current) => {
-        const i = items.findIndex((it) => it.area === current);
-        return items[(i + 1) % items.length].area;
-      });
-    }, ROTATE_MS);
+    const timer = setInterval(() => setIdx((i) => (i + 1) % TICKER_AREAS.length), ROTATE_MS);
     return () => clearInterval(timer);
-  }, [items]);
+  }, []);
 
-  if (items.length === 0 || !displayId) return null;
+  const area = TICKER_AREAS[idx];
+  const data = dataByArea[area];
 
-  const flaps = items.map((item) => ({ id: item.area, component: <FlapRow item={item} /> }));
+  if (!data) return null;
+
+  const accent = AREA_ACCENT[area] || '#a1a1aa';
+  const age = topAgeGroup(data.age_gender_summary);
+  const gender = genderLabel(data.age_gender_summary);
+  const visitorPart = [age, gender].filter(Boolean).join('·');
+  const deltaText = typeof data.ppltn_delta_pct === 'number'
+    ? (Math.abs(data.ppltn_delta_pct) < 1 ? '직전과 비슷' : `직전대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
+    : null;
 
   return (
     <button
-      onClick={() => onNavigateToMap?.(AREA_TO_REGION[displayId] || displayId)}
+      onClick={() => onNavigateToMap?.(AREA_TO_REGION[area] || area)}
       className="w-full px-6 pt-2.5 overflow-hidden text-left"
     >
-      <div className="rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-950">
-        <LongFlap
-          flaps={flaps}
-          displayId={displayId}
-          digitHeight={36}
-          theme="dark"
-          hinge={false}
-        />
+      <div className="relative h-9 bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800/80">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={area}
+            initial={{ y: 18, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -18, opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="absolute inset-0 flex items-center gap-1.5 px-4 text-[11px] font-bold whitespace-nowrap overflow-x-auto no-scrollbar"
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
+              style={{ backgroundColor: accent, boxShadow: `0 0 5px ${accent}` }}
+            />
+            <span className="font-black flex-shrink-0" style={{ color: accent }}>{area}</span>
+            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className="text-zinc-200 font-mono flex-shrink-0">{formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}명</span>
+            {deltaText && (
+              <>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{deltaText}</span>
+              </>
+            )}
+            {visitorPart && (
+              <>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{visitorPart}</span>
+              </>
+            )}
+            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-400'}`}>
+              {data.congest_lvl}
+            </span>
+          </motion.div>
+        </AnimatePresence>
       </div>
     </button>
   );

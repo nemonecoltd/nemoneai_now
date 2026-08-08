@@ -19,7 +19,6 @@
     "next": "^14.2.29",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-split-flap": "^0.2.1",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
