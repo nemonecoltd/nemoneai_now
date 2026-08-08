@@ -13,10 +13,6 @@ interface CrowdData {
     female_rate?: string;
     age_rates?: Record<string, string>;
   };
-  weather_summary?: {
-    temp?: string;
-    sky?: string;
-  };
   ppltn_delta_pct?: number;
 }
 
@@ -24,11 +20,17 @@ interface CrowdData {
 const TICKER_AREAS = ['성수', '홍대'];
 const ROTATE_MS = 10000;
 
+// MapView.tsx REGION_COLOR와 동일한 지역 대표색 — 티커에서도 지점 구분이 되도록 재사용
+const AREA_ACCENT: Record<string, string> = {
+  '성수': '#34d399',
+  '홍대': '#a78bfa',
+};
+
 const CONGEST_COLOR: Record<string, string> = {
-  '여유': 'text-emerald-600',
-  '보통': 'text-amber-600',
-  '약간 붐빔': 'text-orange-600',
-  '붐빔': 'text-rose-600',
+  '여유': 'text-emerald-400',
+  '보통': 'text-amber-400',
+  '약간 붐빔': 'text-orange-400',
+  '붐빔': 'text-rose-400',
 };
 
 function formatNum(n: number): string {
@@ -84,18 +86,17 @@ export default function CrowdTicker({ lang = 'ko' }: { lang?: string }) {
 
   if (!data) return null;
 
+  const accent = AREA_ACCENT[area] || '#a1a1aa';
   const age = topAgeGroup(data.age_gender_summary);
   const gender = genderLabel(data.age_gender_summary);
-  const temp = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°` : null;
-  const sky = data.weather_summary?.sky;
-  const visitorPart = [age, gender, temp && sky ? `${temp}·${sky}` : temp || sky].filter(Boolean).join('·');
+  const visitorPart = [age, gender].filter(Boolean).join('·');
   const deltaText = typeof data.ppltn_delta_pct === 'number'
     ? (Math.abs(data.ppltn_delta_pct) < 1 ? '전시간 비슷' : `전시간대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
     : null;
 
   return (
     <div className="px-6 pt-2.5 overflow-hidden">
-      <div className="relative h-9 bg-zinc-900 rounded-2xl overflow-hidden">
+      <div className="relative h-9 bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800/80">
         <AnimatePresence mode="wait">
           <motion.div
             key={area}
@@ -103,25 +104,29 @@ export default function CrowdTicker({ lang = 'ko' }: { lang?: string }) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -18, opacity: 0 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="absolute inset-0 flex items-center gap-2 px-4 text-[11px] font-bold whitespace-nowrap overflow-x-auto no-scrollbar"
+            className="absolute inset-0 flex items-center gap-1.5 px-4 text-[11px] font-bold whitespace-nowrap overflow-x-auto no-scrollbar"
           >
-            <span className="text-white font-black flex-shrink-0">{area}</span>
-            <span className="text-zinc-600 flex-shrink-0">|</span>
-            <span className="text-white flex-shrink-0">{formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}명</span>
+            <span
+              className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
+              style={{ backgroundColor: accent, boxShadow: `0 0 5px ${accent}` }}
+            />
+            <span className="font-black flex-shrink-0" style={{ color: accent }}>{area}</span>
+            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className="text-zinc-200 font-mono flex-shrink-0">{formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}명</span>
             {deltaText && (
               <>
-                <span className="text-zinc-600 flex-shrink-0">|</span>
-                <span className="text-zinc-300 flex-shrink-0">{deltaText}</span>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{deltaText}</span>
               </>
             )}
             {visitorPart && (
               <>
-                <span className="text-zinc-600 flex-shrink-0">|</span>
-                <span className="text-zinc-300 flex-shrink-0">{visitorPart}</span>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{visitorPart}</span>
               </>
             )}
-            <span className="text-zinc-600 flex-shrink-0">|</span>
-            <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-300'}`}>
+            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-400'}`}>
               {data.congest_lvl}
             </span>
           </motion.div>

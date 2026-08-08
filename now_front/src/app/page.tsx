@@ -545,23 +545,21 @@ function Home() {
           (그 자리엔 유동인구 티커가 들어감). 가이드=우하단, 코스생성=좌하단, 모든 탭에서 노출. */}
       <button
         onClick={() => { setActiveTab('rec'); setCourseModalTrigger((t) => t + 1); }}
-        className="fixed bottom-28 left-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90 bg-white text-zinc-900 border border-zinc-200 hover:border-pace-300 hover:text-pace-600"
+        className="fixed bottom-28 left-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all z-[60] active:scale-90 bg-white text-zinc-900 border border-zinc-200 hover:border-pace-300 hover:text-pace-600"
+        aria-label="AI코스생성"
       >
         <Sparkles size={22} />
-        <span className="text-xs font-black tracking-tight whitespace-nowrap">
-          {lang === 'en' ? 'AI Course' : lang === 'zh' ? 'AI路线' : 'AI코스생성'}
-        </span>
       </button>
 
       <button
         onClick={() => setActiveTab('chat')}
         className={cn(
-          "fixed bottom-28 right-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90",
+          "fixed bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all z-[60] active:scale-90",
           activeTab === 'chat' ? "bg-pace-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-pace-600"
         )}
+        aria-label="AI가이드"
       >
         <MessageCircle size={24} className={cn(activeTab === 'chat' && "animate-pulse")} />
-        <span className="text-xs font-black tracking-tight whitespace-nowrap">AI가이드</span>
         {activeTab !== 'chat' && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-pace-500 rounded-full border-2 border-zinc-50 animate-bounce" />
         )}
