@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import { Metadata } from 'next';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
+
+// 루트 레이아웃의 robots:{index:true,follow:true}가 그대로 상속되면 Next.js가 404에
+// 자동으로 붙이는 noindex 태그와 겹쳐 <meta name="robots"> 두 개가 모순되게 찍히던 문제
+// (구글서치콘솔이 이 페이지들을 "noindex 태그에 의해 제외"로 보고) — 명시적으로 덮어씀.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 interface SuggestedPlace {
   id: number;
