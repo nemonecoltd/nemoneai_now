@@ -167,6 +167,7 @@ function Home() {
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
   const [courseSub, setCourseSub] = useState<CourseSub>('theme');
+  const [courseModalTrigger, setCourseModalTrigger] = useState(0);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
@@ -452,7 +453,7 @@ function Home() {
         <AnimatePresence mode="wait">
           {activeTab === 'rec' && (
             <motion.div key="rec" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-              <Recommendation places={allPlaces} lang={lang} />
+              <Recommendation places={allPlaces} lang={lang} openCourseSignal={courseModalTrigger} />
             </motion.div>
           )}
 
@@ -540,22 +541,31 @@ function Home() {
         </footer>
       </main>
 
-      {/* Floating AI Chat Button (둥둥이) — 핫플 탭엔 이미 AI가이드 버튼이 있어 중복 노출 방지로 숨김 */}
-      {activeTab !== 'rec' && (
-        <button
-          onClick={() => setActiveTab('chat')}
-          className={cn(
-            "fixed bottom-28 right-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90",
-            activeTab === 'chat' ? "bg-pace-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-pace-600"
-          )}
-        >
-          <MessageCircle size={24} className={cn(activeTab === 'chat' && "animate-pulse")} />
-          <span className="text-xs font-black tracking-tight whitespace-nowrap">AI가이드</span>
-          {activeTab !== 'chat' && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-pace-500 rounded-full border-2 border-zinc-50 animate-bounce" />
-          )}
-        </button>
-      )}
+      {/* Floating AI 가이드/코스생성 버튼(둥둥이) — 핫플 상단에 있던 버튼 2개를 전체 화면 공통 FAB로 이동
+          (그 자리엔 유동인구 티커가 들어감). 가이드=우하단, 코스생성=좌하단, 모든 탭에서 노출. */}
+      <button
+        onClick={() => { setActiveTab('rec'); setCourseModalTrigger((t) => t + 1); }}
+        className="fixed bottom-28 left-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90 bg-white text-zinc-900 border border-zinc-200 hover:border-pace-300 hover:text-pace-600"
+      >
+        <Sparkles size={22} />
+        <span className="text-xs font-black tracking-tight whitespace-nowrap">
+          {lang === 'en' ? 'AI Course' : lang === 'zh' ? 'AI路线' : 'AI코스생성'}
+        </span>
+      </button>
+
+      <button
+        onClick={() => setActiveTab('chat')}
+        className={cn(
+          "fixed bottom-28 right-6 h-14 pl-4 pr-5 rounded-full shadow-2xl flex items-center gap-2 transition-all z-[60] active:scale-90",
+          activeTab === 'chat' ? "bg-pace-500 text-white scale-105" : "bg-zinc-900 text-white hover:bg-pace-600"
+        )}
+      >
+        <MessageCircle size={24} className={cn(activeTab === 'chat' && "animate-pulse")} />
+        <span className="text-xs font-black tracking-tight whitespace-nowrap">AI가이드</span>
+        {activeTab !== 'chat' && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-pace-500 rounded-full border-2 border-zinc-50 animate-bounce" />
+        )}
+      </button>
 
       {/* Bottom Navigation */}
       <nav className="bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-6 pt-2 pb-4 flex justify-between items-center z-50">

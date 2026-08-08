@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronRight, Minus, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Minus, Users, X } from 'lucide-react';
 
 interface CrowdData {
   area: string;
@@ -37,25 +37,15 @@ function formatNum(n: number): string {
   return n.toLocaleString('ko-KR');
 }
 
-// 연령대 분포에서 가장 비중 높은 세대 + 성비 우세 쪽을 한 줄 요약으로 — 방문자구성 4줄 서브텍스트용
-function summarizeVisitors(ageGender?: CrowdData['age_gender_summary']): string | null {
+// 연령대 분포에서 가장 비중 높은 세대 — 방문자구성 칩용
+function topAgeGroup(ageGender?: CrowdData['age_gender_summary']): string | null {
   if (!ageGender?.age_rates) return null;
   const entries = Object.entries(ageGender.age_rates)
     .map(([age, rate]) => [age, parseFloat(rate)] as [string, number])
     .filter(([, rate]) => !Number.isNaN(rate));
   if (entries.length === 0) return null;
   const [topAge] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
-  const male = parseFloat(ageGender.male_rate || '0');
-  const female = parseFloat(ageGender.female_rate || '0');
-  const genderLabel = Math.abs(male - female) < 5 ? '남녀 비슷' : male > female ? '남성 다수' : '여성 다수';
-  return `${topAge}대 · ${genderLabel} 방문`;
-}
-
-function summarizeWeather(weather?: CrowdData['weather_summary']): string | null {
-  if (!weather?.temp) return null;
-  const parts = [`${Math.round(parseFloat(weather.temp))}°C`];
-  if (weather.sky) parts.push(weather.sky);
-  return parts.join(' · ');
+  return `${topAge}대`;
 }
 
 export default function CrowdCard({ region, lang = 'ko' }: { region: string; lang?: string }) {
@@ -74,9 +64,9 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
 
   if (!data) return null;
 
-  const visitorSummary = summarizeVisitors(data.age_gender_summary);
-  const weatherSummary = summarizeWeather(data.weather_summary);
-  const subtext = [visitorSummary, weatherSummary].filter(Boolean).join(' · ');
+  const ageChip = topAgeGroup(data.age_gender_summary);
+  const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°C` : null;
+  const skyChip = data.weather_summary?.sky || null;
 
   return (
     <>
@@ -93,10 +83,12 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
               {lang === 'en' ? 'Live Crowd' : lang === 'zh' ? '实时人流' : '실시간 인구'}
             </span>
           </div>
-          <ChevronRight size={14} className="text-zinc-300" />
+          <span className="text-[10px] text-zinc-400 font-bold">
+            {lang === 'en' ? 'Details' : lang === 'zh' ? '详情' : '자세히'}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 mt-1.5">
+        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
           <span className="text-sm font-black text-zinc-900">
             {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{lang === 'en' ? '' : '명'}
           </span>
@@ -111,14 +103,30 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
               <Minus size={9} />
             </span>
           )}
+          {data.age_gender_summary?.male_rate && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500">
+              남성 {data.age_gender_summary.male_rate}%
+            </span>
+          )}
+          {data.age_gender_summary?.female_rate && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500">
+              여성 {data.age_gender_summary.female_rate}%
+            </span>
+          )}
         </div>
 
-        {data.fcst_text && (
-          <p className="text-[10px] text-zinc-400 font-medium mt-1">{data.fcst_text}</p>
-        )}
-
-        {subtext && (
-          <p className="text-[10px] text-zinc-400 mt-1">{subtext}</p>
+        {(ageChip || tempChip || skyChip) && (
+          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+            {ageChip && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-500">{ageChip}</span>
+            )}
+            {tempChip && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-500">{tempChip}</span>
+            )}
+            {skyChip && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-500">{skyChip}</span>
+            )}
+          </div>
         )}
       </button>
 

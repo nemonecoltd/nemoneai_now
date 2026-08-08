@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Route, Heart, ChevronRight, User, Sparkles, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame, Bot, Clock, Info } from 'lucide-react';
+import { Route, Heart, ChevronRight, User, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame, Clock, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,7 +10,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from './AdUnit';
 import ClosingSoonTicker from './ClosingSoonTicker';
-import AskAI from './AskAI';
+import CrowdTicker from './CrowdTicker';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -30,7 +30,7 @@ type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
 
-export default function Recommendation({ places: initialPlaces = [], lang = 'ko' }: { places?: any[], lang?: string }) {
+export default function Recommendation({ places: initialPlaces = [], lang = 'ko', openCourseSignal = 0 }: { places?: any[], lang?: string, openCourseSignal?: number }) {
   const { user, session, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('place');
@@ -49,7 +49,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
   const [selectedPlace, setSelectedPlace] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showAskAI, setShowAskAI] = useState(false);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [courseRegion, setCourseRegion] = useState<AiCourseRegion>('성수');
   const [courseCompanion, setCourseCompanion] = useState<Companion>('solo');
@@ -251,6 +250,16 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
     }
   };
 
+  // 상단 "AI코스생성" 버튼이 전체화면 공통 FAB(page.tsx)로 이동하면서, 다른 탭에서 눌러도
+  // 핫플 탭으로 전환된 뒤 이 모달이 열리도록 트리거 카운터를 신호로 받음(0은 최초 마운트라 무시)
+  const openCourseSignalRef = useRef(openCourseSignal);
+  useEffect(() => {
+    if (openCourseSignal !== openCourseSignalRef.current) {
+      openCourseSignalRef.current = openCourseSignal;
+      if (openCourseSignal > 0) openCourseModal();
+    }
+  }, [openCourseSignal]);
+
   const createAiCourse = async () => {
     if (!user) return signInWithGoogle();
     setIsCreatingCourse(true);
@@ -425,22 +434,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   return (
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
-      <div className="px-6 pt-2.5 flex gap-2">
-        <button
-          onClick={openCourseModal}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-pace-600 transition-all shadow-sm"
-        >
-          <Sparkles size={14} />
-          {lang === 'en' ? 'AI Course' : lang === 'zh' ? 'AI路线' : lang === 'ja' ? 'AIコース' : 'AI코스생성'}
-        </button>
-        <button
-          onClick={() => setShowAskAI(true)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-2xl text-xs font-bold hover:border-pace-300 hover:text-pace-600 transition-all shadow-sm"
-        >
-          <Bot size={14} />
-          {lang === 'en' ? 'AI Guide' : lang === 'zh' ? 'AI导游' : lang === 'ja' ? 'AIガイド' : 'AI가이드'}
-        </button>
-      </div>
+      <CrowdTicker lang={lang} />
       <div className="px-6 py-2.5">
         <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
@@ -1390,19 +1384,6 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
         )}
       </AnimatePresence>
 
-      {/* AI Guide Modal */}
-      <AnimatePresence>
-        {showAskAI && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-end justify-center" onClick={() => setShowAskAI(false)}>
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} className="w-full max-w-md bg-zinc-50 rounded-t-[40px] h-[88vh] shadow-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-end p-4 pb-0 flex-shrink-0">
-                <button onClick={() => setShowAskAI(false)} className="p-2 bg-white rounded-full shadow-sm border border-zinc-100"><X size={20} /></button>
-              </div>
-              <AskAI region={placeRegion === '종합' ? '성수' : placeRegion} lang={lang} fullHeight />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
