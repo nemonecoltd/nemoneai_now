@@ -35,7 +35,7 @@ from sqlalchemy import text
 from database import engine
 from image_storage import rehost_image
 from gemini_service import get_embedding
-from collector_base import cleanup_expired
+from collector_base import cleanup_expired, _load_blocklist
 from notification import send_alert
 
 load_dotenv()
@@ -297,9 +297,19 @@ def fetch_events(session: requests.Session) -> list[dict]:
 def upsert_visitjeju_items(items: list[dict]) -> tuple[int, int, int]:
     """쇼핑(c2)=상시 운영으로 보고 end_date NULL(45일 TTL 삭제 대상 제외).
     행사(c5)=state=ing로 이미 '진행중'만 걸러왔지만, 재수집이 늦어지는 경우를 대비한 안전장치로
-    수집 시점+30일 임시 만료도 같이 둠(팝업/클래스와 동일 패턴) — 응답에서 계속 나오는 한 계속 갱신됨."""
-    new_count = updated_count = fail_count = 0
+    수집 시점+30일 임시 만료도 같이 둠(팝업/클래스와 동일 패턴) — 응답에서 계속 나오는 한 계속 갱신됨.
+
+    비짓제주 state=ing 필터가 실제로는 이미 끝난 행사를 계속 '진행중'으로 반환하는 경우가 있어
+    (2026-08-08, 제주서예문화축제가 종료일 2주 뒤에도 ing로 잡혀 랭킹에 계속 노출됨), 관리자가
+    수동으로 삭제·블록리스트에 넣은 항목은 재수집 시 다시 살아나지 않도록 건너뛴다."""
+    new_count = updated_count = fail_count = blocked_count = 0
+    with engine.connect() as conn:
+        blocked_ids, blocked_titles = _load_blocklist(conn)
+        conn.commit()
     for item in items:
+        if item.get("external_id") in blocked_ids or item["title"] in blocked_titles:
+            blocked_count += 1
+            continue
         try:
             embedding = get_embedding(item["content"] or item["title"])
             end_date = None if item["category"] == "shopping" else (date.today() + timedelta(days=30))
@@ -362,6 +372,8 @@ def upsert_visitjeju_items(items: list[dict]) -> tuple[int, int, int]:
         except Exception as e:
             fail_count += 1
             print(f"    ❌ '{item.get('title', '?')}' 저장 실패: {e}")
+    if blocked_count:
+        print(f"  🚫 삭제 블록리스트에 있어 건너뜀: {blocked_count}개")
     return new_count, updated_count, fail_count
 
 
