@@ -13,6 +13,9 @@ interface CrowdData {
     female_rate?: string;
     age_rates?: Record<string, string>;
   };
+  weather_summary?: {
+    temp?: string;
+  };
   ppltn_delta_pct?: number;
 }
 
@@ -60,11 +63,15 @@ function topAgeGroup(ageGender?: CrowdData['age_gender_summary']): string | null
   return `${topAge}대`;
 }
 
-function genderLabel(ageGender?: CrowdData['age_gender_summary']): string | null {
+// "남성다수" 같은 문구 대신 남성/여성/남녀(비슷)만 색으로 구분 표기(남성=파랑, 여성=분홍, 비슷=무채색)
+function dominantGender(ageGender?: CrowdData['age_gender_summary']): { label: string; className: string } | null {
   const male = parseFloat(ageGender?.male_rate || '');
   const female = parseFloat(ageGender?.female_rate || '');
   if (Number.isNaN(male) || Number.isNaN(female)) return null;
-  return Math.abs(male - female) < 5 ? '남녀비슷' : male > female ? '남성다수' : '여성다수';
+  if (Math.abs(male - female) < 5) return { label: '남녀', className: 'text-zinc-400' };
+  return male > female
+    ? { label: '남성', className: 'text-blue-400' }
+    : { label: '여성', className: 'text-pink-400' };
 }
 
 export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: string; onNavigateToMap?: (region: string) => void }) {
@@ -101,11 +108,14 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
 
   const accent = AREA_ACCENT[area] || '#a1a1aa';
   const age = topAgeGroup(data.age_gender_summary);
-  const gender = genderLabel(data.age_gender_summary);
-  const visitorPart = [age, gender].filter(Boolean).join('·');
+  const gender = dominantGender(data.age_gender_summary);
+  const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°` : null;
+  const isFlat = typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1;
   const deltaText = typeof data.ppltn_delta_pct === 'number'
-    ? (Math.abs(data.ppltn_delta_pct) < 1 ? '직전과 비슷' : `직전대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
+    ? (isFlat ? '직전과 비슷' : `직전대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
     : null;
+  // 증가=빨강, 감소=파랑, 변화 거의 없음(1% 미만)은 무채색
+  const deltaColor = isFlat ? 'text-zinc-400' : (data.ppltn_delta_pct ?? 0) > 0 ? 'text-rose-400' : 'text-blue-400';
 
   return (
     <button
@@ -132,13 +142,25 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
             {deltaText && (
               <>
                 <span className="text-zinc-700 flex-shrink-0">•</span>
-                <span className="text-zinc-400 font-medium flex-shrink-0">{deltaText}</span>
+                <span className={`font-medium flex-shrink-0 ${deltaColor}`}>{deltaText}</span>
               </>
             )}
-            {visitorPart && (
+            {age && (
               <>
                 <span className="text-zinc-700 flex-shrink-0">•</span>
-                <span className="text-zinc-400 font-medium flex-shrink-0">{visitorPart}</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{age}</span>
+              </>
+            )}
+            {gender && (
+              <>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className={`font-medium flex-shrink-0 ${gender.className}`}>{gender.label}</span>
+              </>
+            )}
+            {tempChip && (
+              <>
+                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-zinc-400 font-medium flex-shrink-0">{tempChip}</span>
               </>
             )}
             <span className="text-zinc-700 flex-shrink-0">•</span>
