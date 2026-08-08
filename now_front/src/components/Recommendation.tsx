@@ -30,7 +30,7 @@ type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
 
-export default function Recommendation({ places: initialPlaces = [], lang = 'ko', openCourseSignal = 0 }: { places?: any[], lang?: string, openCourseSignal?: number }) {
+export default function Recommendation({ places: initialPlaces = [], lang = 'ko', openCourseSignal = 0, onNavigateToMap }: { places?: any[], lang?: string, openCourseSignal?: number, onNavigateToMap?: (region: string) => void }) {
   const { user, session, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('place');
@@ -434,7 +434,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   return (
     <div className="h-full flex flex-col bg-zinc-50">
       <ClosingSoonTicker lang={lang} />
-      <CrowdTicker lang={lang} />
+      <CrowdTicker lang={lang} onNavigateToMap={onNavigateToMap} />
       <div className="px-6 py-2.5">
         <div className="flex gap-1 bg-zinc-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar">
           <button onClick={() => setActiveTab('course')} className={cn("flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>

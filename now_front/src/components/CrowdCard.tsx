@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Minus, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Minus, Users, X } from 'lucide-react';
+
+// 지역 → 서울시 도시데이터 지점 후보. now_back deps.py CROWD_AREA_MAP과 키를 맞출 것.
+// 강북은 넓은 지역이라 이태원 외 지점(광화문 등)으로 향후 확장 예정 — 여기 배열에 추가하면
+// 아래 드롭다운이 선택지를 자동으로 늘려 보여줌.
+const REGION_CROWD_POINTS: Record<string, string[]> = {
+  '성수': ['성수'],
+  '홍대': ['홍대'],
+  '강남': ['강남역'],
+  '강북': ['이태원', '광화문'],
+};
 
 interface CrowdData {
   area: string;
@@ -49,20 +59,28 @@ function topAgeGroup(ageGender?: CrowdData['age_gender_summary']): string | null
 }
 
 export default function CrowdCard({ region, lang = 'ko' }: { region: string; lang?: string }) {
+  const points = REGION_CROWD_POINTS[region];
+  const [selectedPoint, setSelectedPoint] = useState(points?.[0]);
   const [data, setData] = useState<CrowdData | null>(null);
   const [showDetail, setShowDetail] = useState(false);
 
+  // 지역이 바뀌면 그 지역의 첫 지점으로 리셋 — 다른 지역 선택값이 그대로 남지 않도록
   useEffect(() => {
+    setSelectedPoint(REGION_CROWD_POINTS[region]?.[0]);
+  }, [region]);
+
+  useEffect(() => {
+    if (!selectedPoint) return;
     let cancelled = false;
     // API 실패해도 이전 카드 값을 그대로 유지 — 화면이 깨지거나 빈 카드로 바뀌지 않도록 setData(null) 하지 않음
-    fetch(`/api-now/crowd?area=${encodeURIComponent(region)}`)
+    fetch(`/api-now/crowd?area=${encodeURIComponent(selectedPoint)}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => { if (!cancelled && json) setData(json); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [region]);
+  }, [selectedPoint]);
 
-  if (!data) return null;
+  if (!points || !data) return null;
 
   const ageChip = topAgeGroup(data.age_gender_summary);
   const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°C` : null;
@@ -79,8 +97,21 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${CONGEST_STYLE[data.congest_lvl] || 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
               {data.congest_lvl}
             </span>
-            <span className="text-[10px] text-zinc-400 font-bold">
-              {lang === 'en' ? 'Live Crowd' : lang === 'zh' ? '实时人流' : '실시간 인구'}
+            {/* 지점 선택 — 강북처럼 지역 안에 지점이 여러 개로 늘어나도 여기서 바로 전환 */}
+            <span
+              className="relative flex items-center gap-0.5 text-[10px] text-zinc-500 font-bold"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <select
+                value={selectedPoint}
+                onChange={(e) => setSelectedPoint(e.target.value)}
+                className="appearance-none bg-transparent pr-3 focus:outline-none"
+              >
+                {points.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <ChevronDown size={10} className="pointer-events-none absolute right-0 text-zinc-400" />
             </span>
           </div>
           <span className="text-[10px] text-zinc-400 font-bold">

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 import ranking_service as ranking
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
+from scraper_seoul_crowd import poll_crowd
 from routers import admin, ai, courses, crowd, magazine, places, rankings, social
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
@@ -70,6 +71,7 @@ app.include_router(admin.router)
 app.include_router(crowd.router)
 
 ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
+poll_crowd()  # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
@@ -85,6 +87,12 @@ scheduler.start()
 
 if os.getenv("AUTO_ENRICH_POPUPS") == "true":
     scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
+
+# 서울시 실시간 도시데이터(혼잡도) — 로컬 launchd(맥 꺼지면 중단)에서 서버 cron으로 이전(2026-08-09).
+# 10분 간격: 서울시 자체 생활인구 데이터가 내부적으로 약 5분 주기로 갱신되므로 그보다 촘촘히 돌려도
+# 새 값을 못 받고, 6개 지점×6회/시간 = 시간당 36건 호출로 부하도 미미함. delta(직전 대비)는 더 이상
+# "1시간 전"이 아니라 "직전 폴링(10분 전) 대비"라 프론트 라벨도 그에 맞게 "직전대비"로 표기.
+scheduler.add_job(poll_crowd, IntervalTrigger(minutes=10), id="poll_crowd")
 
 # 텔레그램으로 플레이스 ID 보내면 블로그갱신 트리거 — 로컬 전용(Playwright 없는 프로덕션에선 절대 켜면 안 됨,
 # getUpdates 폴링도 두 곳에서 동시에 하면 충돌함). 로컬 .env에만 TELEGRAM_BOT_ENABLED=true를 넣어서 게이트.

@@ -1,6 +1,8 @@
-"""서울시 실시간 도시데이터(인구밀도/혼잡도) 폴링 — 지도 탭 혼잡도 카드용.
-launchd(com.nemoneai.now.collector-seoul-crowd, 1시간 간격)가 로컬에서 실행.
-지점당 1행 UPSERT라 데이터가 누적되지 않음 — cleanup_expired_data()의 45일 TTL 대상 아님(예외)."""
+"""서울시 실시간 도시데이터(인구밀도/혼잡도) 폴링 — 지도 탭/메인 티커 혼잡도용.
+main.py APScheduler(poll_crowd, 10분 간격)가 서버에서 실행(2026-08-09, 로컬 launchd에서 이전 —
+"실시간" 데이터가 로컬 맥 전원/네트워크 상태에 좌우되면 서비스 연속성이 깨지기 때문).
+지점당 1행 UPSERT라 데이터가 누적되지 않음 — cleanup_expired_data()의 45일 TTL 대상 아님(예외).
+CLI로 직접 실행(python scraper_seoul_crowd.py)도 그대로 가능 — 로컬 디버깅/최초 시딩용."""
 import json
 import os
 from typing import Optional

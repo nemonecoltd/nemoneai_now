@@ -16,14 +16,27 @@ interface CrowdData {
   ppltn_delta_pct?: number;
 }
 
-// 혼잡도 폴링 대상(now_back deps.py CROWD_AREA_MAP)과 동일한 지점만 순환 노출
-const TICKER_AREAS = ['성수', '홍대'];
-const ROTATE_MS = 10000;
+// 혼잡도 폴링 대상(now_back deps.py CROWD_AREA_MAP)과 동일한 지점만 순환 노출 — 전부 3~4자라
+// 티커 라벨을 그대로 API 지점 키로 써도 됨(별도 축약 불필요)
+const TICKER_AREAS = ['성수', '홍대', '강남역', '이태원', '광화문'];
+const ROTATE_MS = 5000;
 
 // MapView.tsx REGION_COLOR와 동일한 지역 대표색 — 티커에서도 지점 구분이 되도록 재사용
 const AREA_ACCENT: Record<string, string> = {
-  '성수': '#34d399',
-  '홍대': '#a78bfa',
+  '성수': '#10b981',
+  '홍대': '#8b5cf6',
+  '강남역': '#ec4899',
+  '이태원': '#eab308',
+  '광화문': '#eab308',
+};
+
+// 티커 탭 시 지도 탭으로 이동할 지역 — CrowdCard.tsx REGION_CROWD_POINTS의 역매핑
+const AREA_TO_REGION: Record<string, string> = {
+  '성수': '성수',
+  '홍대': '홍대',
+  '강남역': '강남',
+  '이태원': '강북',
+  '광화문': '강북',
 };
 
 const CONGEST_COLOR: Record<string, string> = {
@@ -54,7 +67,7 @@ function genderLabel(ageGender?: CrowdData['age_gender_summary']): string | null
   return Math.abs(male - female) < 5 ? '남녀비슷' : male > female ? '남성다수' : '여성다수';
 }
 
-export default function CrowdTicker({ lang = 'ko' }: { lang?: string }) {
+export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: string; onNavigateToMap?: (region: string) => void }) {
   const [dataByArea, setDataByArea] = useState<Record<string, CrowdData>>({});
   const [idx, setIdx] = useState(0);
 
@@ -91,11 +104,14 @@ export default function CrowdTicker({ lang = 'ko' }: { lang?: string }) {
   const gender = genderLabel(data.age_gender_summary);
   const visitorPart = [age, gender].filter(Boolean).join('·');
   const deltaText = typeof data.ppltn_delta_pct === 'number'
-    ? (Math.abs(data.ppltn_delta_pct) < 1 ? '전시간 비슷' : `전시간대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
+    ? (Math.abs(data.ppltn_delta_pct) < 1 ? '직전과 비슷' : `직전대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
     : null;
 
   return (
-    <div className="px-6 pt-2.5 overflow-hidden">
+    <button
+      onClick={() => onNavigateToMap?.(AREA_TO_REGION[area] || area)}
+      className="w-full px-6 pt-2.5 overflow-hidden text-left"
+    >
       <div className="relative h-9 bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800/80">
         <AnimatePresence mode="wait">
           <motion.div
@@ -132,6 +148,6 @@ export default function CrowdTicker({ lang = 'ko' }: { lang?: string }) {
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </button>
   );
 }

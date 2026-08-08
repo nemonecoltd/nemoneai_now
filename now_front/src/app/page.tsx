@@ -171,6 +171,10 @@ function Home() {
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
   const setActiveTab = (tab: Tab) => { setActiveTabState(tab); scrollToTop(); };
+  const goToCrowdMap = (region: string) => {
+    setRegion(region as Region);
+    setActiveTab('map');
+  };
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
@@ -453,7 +457,7 @@ function Home() {
         <AnimatePresence mode="wait">
           {activeTab === 'rec' && (
             <motion.div key="rec" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-              <Recommendation places={allPlaces} lang={lang} openCourseSignal={courseModalTrigger} />
+              <Recommendation places={allPlaces} lang={lang} openCourseSignal={courseModalTrigger} onNavigateToMap={goToCrowdMap} />
             </motion.div>
           )}
 

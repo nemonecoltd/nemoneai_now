@@ -5,9 +5,6 @@ import { Calendar, Navigation, X, MapPin, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import CrowdCard from './CrowdCard';
 
-// 서울시 실시간 도시데이터(혼잡도) 폴링 대상 지점만 카드 노출 — now_back deps.py CROWD_AREA_MAP과 동일 목록
-const CROWD_SUPPORTED_REGIONS = ['홍대', '성수'];
-
 interface Place {
   id: number;
   title: string;
@@ -160,7 +157,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
 
   return (
     <div className="w-full h-[calc(100vh-180px)] bg-zinc-50 flex flex-col overflow-hidden">
-      {CROWD_SUPPORTED_REGIONS.includes(region) && <CrowdCard region={region} lang={lang} />}
+      <CrowdCard region={region} lang={lang} />
 
       <div className="flex-1 relative overflow-hidden">
       <div ref={mapRef} className="w-full h-full" />
