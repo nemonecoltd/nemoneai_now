@@ -75,6 +75,17 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
               const quillOnly = html.replace(MD_BLOCK_REGEX, '');
               const paragraphs = quillOnly.split('</p>');
               if (paragraphs.length < 5) {
+                // 본문(quill)이 짧아도 표 등 MD 블록이 크면 광고가 맨 끝(표 뒤)으로 밀려버림 —
+                // MD 블록이 있으면 본문 뒤·표 앞에 광고를 끼워 중간 위치를 유지
+                if (mdBlocks) {
+                  return (
+                    <>
+                      <div dangerouslySetInnerHTML={{ __html: quillOnly }} />
+                      <InArticleAd />
+                      <div dangerouslySetInnerHTML={{ __html: mdBlocks }} />
+                    </>
+                  );
+                }
                 return (
                   <>
                     <div dangerouslySetInnerHTML={{ __html: html }} />
