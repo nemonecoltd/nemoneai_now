@@ -13,6 +13,19 @@ const REGION_CROWD_POINTS: Record<string, string[]> = {
   '강북': ['이태원', '광화문'],
 };
 
+// 지점명 다국어 표기 — API/내부 키(value)는 한글 그대로, 드롭다운 표시 텍스트만 번역
+const POINT_LABEL: Record<string, Record<string, string>> = {
+  '성수': { en: 'Seongsu', zh: '圣水', ja: 'ソンス' },
+  '홍대': { en: 'Hongdae', zh: '弘大', ja: 'ホンデ' },
+  '강남역': { en: 'Gangnam Stn', zh: '江南站', ja: 'カンナム駅' },
+  '이태원': { en: 'Itaewon', zh: '梨泰院', ja: 'イテウォン' },
+  '광화문': { en: 'Gwanghwamun', zh: '光化门', ja: 'グァンファムン' },
+};
+
+function pointLabel(point: string, lang: string): string {
+  return POINT_LABEL[point]?.[lang] ?? point;
+}
+
 interface CrowdData {
   area: string;
   congest_lvl: string;
@@ -35,7 +48,7 @@ interface CrowdData {
   prev_congest_lvl?: string;
 }
 
-// 서울시 실시간 도시데이터 혼잡도 4단계 공식 표기 — 배지 색상 매핑
+// 서울시 실시간 도시데이터 혼잡도 4단계 공식 표기 — 배지 색상 매핑(원본 한글 키 기준, API가 항상 한글로 내려줌)
 const CONGEST_STYLE: Record<string, string> = {
   '여유': 'bg-emerald-50 text-emerald-600 border-emerald-200',
   '보통': 'bg-amber-50 text-amber-600 border-amber-200',
@@ -43,8 +56,31 @@ const CONGEST_STYLE: Record<string, string> = {
   '붐빔': 'bg-rose-50 text-rose-600 border-rose-200',
 };
 
+const CONGEST_LABEL: Record<string, Record<string, string>> = {
+  '여유': { en: 'Not Crowded', zh: '空闲', ja: '余裕' },
+  '보통': { en: 'Moderate', zh: '一般', ja: '普通' },
+  '약간 붐빔': { en: 'Slightly Busy', zh: '略拥挤', ja: 'やや混雑' },
+  '붐빔': { en: 'Crowded', zh: '拥挤', ja: '混雑' },
+};
+
+function congestLabel(lvl: string, lang: string): string {
+  return CONGEST_LABEL[lvl]?.[lang] ?? lvl;
+}
+
 function formatNum(n: number): string {
   return n.toLocaleString('ko-KR');
+}
+
+function ppltnUnit(lang: string): string {
+  return lang === 'en' ? '' : lang === 'zh' || lang === 'ja' ? '人' : '명';
+}
+
+function detailsLabel(lang: string): string {
+  return lang === 'en' ? 'Details' : lang === 'zh' ? '详情' : lang === 'ja' ? '詳細' : '자세히';
+}
+
+function flatDeltaLabel(lang: string): string {
+  return lang === 'en' ? 'About the same' : lang === 'zh' ? '变化不大' : lang === 'ja' ? 'ほぼ同じ' : '직전대비 비슷';
 }
 
 // 연령대 분포에서 가장 비중 높은 세대 — 방문자구성 칩용
@@ -55,7 +91,28 @@ function topAgeGroup(ageGender?: CrowdData['age_gender_summary']): string | null
     .filter(([, rate]) => !Number.isNaN(rate));
   if (entries.length === 0) return null;
   const [topAge] = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
-  return `${topAge}대`;
+  return topAge;
+}
+
+function ageDominantLabel(age: string, lang: string): string {
+  if (lang === 'en') return `Mostly ${age}s`;
+  if (lang === 'zh') return `${age}多岁为主`;
+  if (lang === 'ja') return `${age}代中心`;
+  return `${age}대 강세`;
+}
+
+// 남/여 둘 다 보여주면 줄이 밀려서 — 우세한 쪽 하나만, 정확히 동률이면 '남여동일'
+function dominantGenderChip(ageGender: CrowdData['age_gender_summary'] | undefined, lang: string): { label: string; className: string } | null {
+  const male = parseFloat(ageGender?.male_rate || '');
+  const female = parseFloat(ageGender?.female_rate || '');
+  if (Number.isNaN(male) || Number.isNaN(female)) return null;
+  const evenLabel = lang === 'en' ? 'Even split' : lang === 'zh' ? '男女均衡' : lang === 'ja' ? '男女同数' : '남여동일';
+  const maleLabel = lang === 'en' ? 'Male' : lang === 'zh' ? '男性' : lang === 'ja' ? '男性' : '남성';
+  const femaleLabel = lang === 'en' ? 'Female' : lang === 'zh' ? '女性' : lang === 'ja' ? '女性' : '여성';
+  if (male === female) return { label: evenLabel, className: 'bg-zinc-50 text-zinc-500' };
+  return male > female
+    ? { label: `${maleLabel} ${ageGender!.male_rate}%`, className: 'bg-blue-50 text-blue-500' }
+    : { label: `${femaleLabel} ${ageGender!.female_rate}%`, className: 'bg-pink-50 text-pink-500' };
 }
 
 export default function CrowdCard({ region, lang = 'ko' }: { region: string; lang?: string }) {
@@ -82,8 +139,12 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
 
   if (!points || !data) return null;
 
-  const ageChip = topAgeGroup(data.age_gender_summary);
+  const topAge = topAgeGroup(data.age_gender_summary);
+  const genderChip = dominantGenderChip(data.age_gender_summary, lang);
+  const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°C` : null;
   const skyChip = data.weather_summary?.sky || null;
+  const maleLabel = lang === 'en' ? 'Male' : lang === 'zh' ? '男性' : lang === 'ja' ? '男性' : '남성';
+  const femaleLabel = lang === 'en' ? 'Female' : lang === 'zh' ? '女性' : lang === 'ja' ? '女性' : '여성';
 
   return (
     <>
@@ -105,26 +166,27 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
                 className="appearance-none bg-transparent pr-3 focus:outline-none"
               >
                 {points.map((p) => (
-                  <option key={p} value={p}>{p}</option>
+                  <option key={p} value={p}>{pointLabel(p, lang)}</option>
                 ))}
               </select>
               <ChevronDown size={10} className="pointer-events-none absolute right-0 text-zinc-400" />
             </span>
-            {ageChip && <span className="text-[10px] font-bold text-indigo-500">{ageChip} 강세</span>}
+            {topAge && <span className="text-[10px] font-bold text-indigo-500">{ageDominantLabel(topAge, lang)}</span>}
+            {tempChip && <span className="text-[10px] font-bold text-orange-500">{tempChip}</span>}
             {skyChip && <span className="text-[10px] font-bold text-sky-500">{skyChip}</span>}
           </div>
           <span className="text-[10px] text-zinc-400 font-bold">
-            {lang === 'en' ? 'Details' : lang === 'zh' ? '详情' : '자세히'}
+            {detailsLabel(lang)}
           </span>
         </div>
 
         {/* 2줄: 혼잡도+인구수+델타+남녀를 한 줄에 — 가장 중요한 정보라 크게, 줄을 나누지 않음 */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <span className={`text-sm font-black px-2.5 py-1 rounded-xl border flex-shrink-0 ${CONGEST_STYLE[data.congest_lvl] || 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
-            {data.congest_lvl}
+            {congestLabel(data.congest_lvl, lang)}
           </span>
           <span className="text-base font-black text-zinc-900 flex-shrink-0">
-            {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{lang === 'en' ? '' : '명'}
+            {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}
           </span>
           {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) >= 1 && (
             <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${data.ppltn_delta_pct > 0 ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
@@ -134,17 +196,12 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
           )}
           {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1 && (
             <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-50 text-zinc-400 flex-shrink-0">
-              <Minus size={9} /> 0%
+              <Minus size={9} /> {flatDeltaLabel(lang)}
             </span>
           )}
-          {data.age_gender_summary?.male_rate && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 flex-shrink-0">
-              남성 {data.age_gender_summary.male_rate}%
-            </span>
-          )}
-          {data.age_gender_summary?.female_rate && (
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500 flex-shrink-0">
-              여성 {data.age_gender_summary.female_rate}%
+          {genderChip && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${genderChip.className}`}>
+              {genderChip.label}
             </span>
           )}
         </div>
@@ -163,29 +220,36 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
 
             <div className="flex items-center gap-2 mb-1">
               <Users size={16} className="text-zinc-400" />
-              <h3 className="text-base font-black text-zinc-900">{data.area} 실시간 인구</h3>
+              <h3 className="text-base font-black text-zinc-900">
+                {pointLabel(data.area, lang)} {lang === 'en' ? 'Live Population' : lang === 'zh' ? '实时人流' : lang === 'ja' ? 'リアルタイム人口' : '실시간 인구'}
+              </h3>
             </div>
             <p className="text-xs text-zinc-400 mb-5">
-              {new Date(data.updated_at).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 기준
+              {new Date(data.updated_at).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit' })}{' '}
+              {lang === 'en' ? 'as of' : lang === 'zh' ? '更新于' : lang === 'ja' ? '時点' : '기준'}
             </p>
 
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="bg-zinc-50 rounded-2xl p-4">
-                <p className="text-[10px] text-zinc-400 font-bold mb-1">남성</p>
+                <p className="text-[10px] text-zinc-400 font-bold mb-1">{maleLabel}</p>
                 <p className="text-lg font-black text-zinc-900">{data.age_gender_summary?.male_rate ?? '-'}%</p>
               </div>
               <div className="bg-zinc-50 rounded-2xl p-4">
-                <p className="text-[10px] text-zinc-400 font-bold mb-1">여성</p>
+                <p className="text-[10px] text-zinc-400 font-bold mb-1">{femaleLabel}</p>
                 <p className="text-lg font-black text-zinc-900">{data.age_gender_summary?.female_rate ?? '-'}%</p>
               </div>
             </div>
 
             {data.age_gender_summary?.age_rates && (
               <div className="space-y-2">
-                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">연령대 분포</p>
+                <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">
+                  {lang === 'en' ? 'Age Distribution' : lang === 'zh' ? '年龄分布' : lang === 'ja' ? '年齢分布' : '연령대 분포'}
+                </p>
                 {Object.entries(data.age_gender_summary.age_rates).map(([age, rate]) => (
                   <div key={age} className="flex items-center gap-3">
-                    <span className="text-[10px] text-zinc-500 font-bold w-8 flex-shrink-0">{age}대</span>
+                    <span className="text-[10px] text-zinc-500 font-bold w-8 flex-shrink-0">
+                      {age}{lang === 'en' ? 's' : lang === 'zh' ? '多岁' : lang === 'ja' ? '代' : '대'}
+                    </span>
                     <div className="flex-1 h-2 bg-zinc-100 rounded-full overflow-hidden">
                       <div className="h-full bg-pace-500 rounded-full" style={{ width: `${Math.min(parseFloat(rate) * 3, 100)}%` }} />
                     </div>
