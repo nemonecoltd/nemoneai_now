@@ -83,7 +83,6 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
   if (!points || !data) return null;
 
   const ageChip = topAgeGroup(data.age_gender_summary);
-  const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°C` : null;
   const skyChip = data.weather_summary?.sky || null;
 
   return (
@@ -112,7 +111,6 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
               <ChevronDown size={10} className="pointer-events-none absolute right-0 text-zinc-400" />
             </span>
             {ageChip && <span className="text-[10px] font-bold text-indigo-500">{ageChip} 강세</span>}
-            {tempChip && <span className="text-[10px] font-bold text-orange-500">{tempChip}</span>}
             {skyChip && <span className="text-[10px] font-bold text-sky-500">{skyChip}</span>}
           </div>
           <span className="text-[10px] text-zinc-400 font-bold">
@@ -136,7 +134,7 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
           )}
           {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1 && (
             <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-50 text-zinc-400 flex-shrink-0">
-              <Minus size={9} /> 직전대비 비슷
+              <Minus size={9} /> 0%
             </span>
           )}
           {data.age_gender_summary?.male_rate && (

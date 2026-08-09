@@ -109,12 +109,10 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
   const accent = AREA_ACCENT[area] || '#a1a1aa';
   const age = topAgeGroup(data.age_gender_summary);
   const gender = dominantGender(data.age_gender_summary);
-  const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°` : null;
   const isFlat = typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1;
-  // 숫자가 들어갈 때만 "직전대비" 라벨을 빼서 줄 밀림 방지(뒤 혼잡도가 잘리던 문제) —
-  // 변화가 거의 없는 경우(1% 미만)는 원래 문구 그대로 유지
+  // 모바일에서 혼잡도가 계속 잘려서 — 온도 칩 제거, 델타도 라벨 없이 숫자만(0%) 표기
   const deltaText = typeof data.ppltn_delta_pct === 'number'
-    ? (isFlat ? '직전대비 비슷' : `${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
+    ? (isFlat ? '0%' : `${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
     : null;
   // 증가=빨강, 감소=파랑, 변화 거의 없음(1% 미만)은 무채색
   const deltaColor = isFlat ? 'text-zinc-400' : (data.ppltn_delta_pct ?? 0) > 0 ? 'text-rose-400' : 'text-blue-400';
@@ -157,12 +155,6 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
               <>
                 <span className="text-zinc-700 flex-shrink-0">•</span>
                 <span className={`font-medium flex-shrink-0 ${gender.className}`}>{gender.label}</span>
-              </>
-            )}
-            {tempChip && (
-              <>
-                <span className="text-zinc-700 flex-shrink-0">•</span>
-                <span className="text-zinc-400 font-medium flex-shrink-0">{tempChip}</span>
               </>
             )}
             <span className="text-zinc-700 flex-shrink-0">•</span>
