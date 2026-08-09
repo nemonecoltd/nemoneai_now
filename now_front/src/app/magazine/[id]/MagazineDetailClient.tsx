@@ -63,10 +63,17 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
         )}
         <div className="px-5 py-6">
           <h1 className="text-xl font-black text-zinc-900 leading-snug mb-4">{post.title}</h1>
-          <div className="text-sm text-zinc-700 leading-relaxed [&_img]:rounded-2xl [&_img]:my-3 [&_p]:mb-3 [&_a]:text-pace-600 [&_a]:underline">
+          <div className="text-sm text-zinc-700 leading-relaxed [&_img]:rounded-2xl [&_img]:my-3 [&_p]:mb-3 [&_a]:text-pace-600 [&_a]:underline [&_table]:w-full [&_table]:my-4 [&_table]:border-collapse [&_table]:text-xs [&_th]:border [&_th]:border-zinc-200 [&_th]:bg-zinc-50 [&_th]:p-2 [&_th]:text-left [&_th]:font-bold [&_td]:border [&_td]:border-zinc-200 [&_td]:p-2">
             {(() => {
               const html = post.body_text || '';
-              const paragraphs = html.split('</p>');
+              // matmatch(nemoneai.com)에서 MD 업로드로 첨부한 표 등 구조화 콘텐츠는
+              // <!--md-import-->...<!--/md-import-->로 감싸져 그대로 body_text에 저장됨.
+              // 광고 삽입용 </p> 개수 분할이 이 블록 내부(표 태그 등)를 가로지르면 깨지므로,
+              // 분할 전에 먼저 빼내고 항상 온전한 채로 뒤에 붙임(matmatch frontend와 동일 수정, 2026-08-09).
+              const MD_BLOCK_REGEX = /<!--md-import-->[\s\S]*?<!--\/md-import-->/g;
+              const mdBlocks = html.match(MD_BLOCK_REGEX)?.join('') || '';
+              const quillOnly = html.replace(MD_BLOCK_REGEX, '');
+              const paragraphs = quillOnly.split('</p>');
               if (paragraphs.length < 5) {
                 return (
                   <>
@@ -77,7 +84,7 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
               }
               const mid = Math.floor(paragraphs.length / 2);
               const firstHalf = paragraphs.slice(0, mid).join('</p>') + '</p>';
-              const secondHalf = paragraphs.slice(mid).join('</p>');
+              const secondHalf = paragraphs.slice(mid).join('</p>') + mdBlocks;
               return (
                 <>
                   <div dangerouslySetInnerHTML={{ __html: firstHalf }} />
