@@ -111,8 +111,10 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
   const gender = dominantGender(data.age_gender_summary);
   const tempChip = data.weather_summary?.temp ? `${Math.round(parseFloat(data.weather_summary.temp))}°` : null;
   const isFlat = typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1;
+  // 숫자가 들어갈 때만 "직전대비" 라벨을 빼서 줄 밀림 방지(뒤 혼잡도가 잘리던 문제) —
+  // 변화가 거의 없는 경우(1% 미만)는 원래 문구 그대로 유지
   const deltaText = typeof data.ppltn_delta_pct === 'number'
-    ? (isFlat ? '직전과 비슷' : `직전대비 ${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
+    ? (isFlat ? '직전대비 비슷' : `${data.ppltn_delta_pct > 0 ? '+' : ''}${data.ppltn_delta_pct}%`)
     : null;
   // 증가=빨강, 감소=파랑, 변화 거의 없음(1% 미만)은 무채색
   const deltaColor = isFlat ? 'text-zinc-400' : (data.ppltn_delta_pct ?? 0) > 0 ? 'text-rose-400' : 'text-blue-400';
