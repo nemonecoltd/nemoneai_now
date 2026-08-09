@@ -42,7 +42,7 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     elif category in ("연극", "뮤지컬", "음악", "종합"):
         where_clause += f" AND p.category = '{category}'"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
-    base_cols = "p.id, p.title, p.title_en, p.title_zh, p.content, p.content_en, p.content_zh, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id"
+    base_cols = "p.id, p.title, p.title_en, p.title_zh, p.title_ja, p.content, p.content_en, p.content_zh, p.content_ja, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id"
     # sort 옵션: 'latest'(신규 수집순), 'popular'(최근 30일 조회+좋아요 인기순), 'closing'(마감임박순), 기본은 랜덤
     # 예전엔 GREATEST(updated_at, created_at)를 썼는데, 블로그갱신(어드민 수동 편집 + 신규 팝업 자동갱신 스케줄러)이
     # updated_at을 계속 찍다 보니 몇 달 전 수집된 팝업이 오늘 갱신됐다는 이유만으로 "최신순" 상위에 튀어오르는
@@ -92,7 +92,7 @@ async def list_place_categories(region: str):
 
 @router.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, title_zh, content, content_en, content_zh, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()

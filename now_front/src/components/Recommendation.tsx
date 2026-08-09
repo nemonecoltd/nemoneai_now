@@ -662,7 +662,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   : lang === 'zh'
                     ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
                     : (place.region || '성수');
-                const placeTitle = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const placeTitle = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
                 const secondaryText = place.region === '공연'
                   ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')
                   : place.region === '축제'
@@ -780,7 +780,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     ? (place.category === '연극' ? '话剧' : place.category === '뮤지컬' ? '音乐剧' : place.category === '음악' ? '音乐' : '综合')
                     : (place.category || '종합');
                 const badgeClass = "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-purple-500 text-white border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.5)]";
-                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
                 const secondaryText = place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연');
                 const href = `/posts/${place.id}?region=공연&lang=${lang}`;
                 return (
@@ -858,7 +858,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
               {festivals.slice(0, 25).map((place: any, idx: number) => {
                 const badgeLabel = lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : '축제';
                 const badgeClass = "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-amber-500 text-white border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]";
-                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
                 const secondaryText = place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제');
                 const href = `/posts/${place.id}?region=축제&lang=${lang}`;
                 return (
@@ -948,7 +948,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   : lang === 'zh'
                     ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
                     : (place.region || '성수');
-                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
                 const secondaryText = lang === 'en'
                   ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
                   : lang === 'zh'
@@ -1042,7 +1042,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   : lang === 'zh'
                     ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞')
                     : (place.region || '성수');
-                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title;
+                const title = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
                 const secondaryText = place.date_range || (lang === 'en'
                   ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
                   : lang === 'zh'

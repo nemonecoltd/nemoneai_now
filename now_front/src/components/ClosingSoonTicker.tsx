@@ -15,6 +15,7 @@ interface ClosingSoonPlace {
   title: string;
   title_en?: string;
   title_zh?: string;
+  title_ja?: string;
   image_url?: string;
   region?: string;
 }
@@ -61,7 +62,7 @@ export default function ClosingSoonTicker({ lang = 'ko' }: { lang?: string }) {
       <div className="flex-1 overflow-hidden">
         <div className="flex items-center gap-5 py-1.5 px-4 w-max animate-marquee hover:[animation-play-state:paused]">
           {loop.map((p, idx) => {
-            const title = (lang === 'en' && p.title_en) ? p.title_en : (lang === 'zh' && p.title_zh) ? p.title_zh : p.title;
+            const title = (lang === 'en' && p.title_en) ? p.title_en : (lang === 'zh' && p.title_zh) ? p.title_zh : (lang === 'ja' && p.title_ja) ? p.title_ja : p.title;
             return (
               <Link
                 key={`${p.id}-${idx}`}

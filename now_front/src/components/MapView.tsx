@@ -10,6 +10,7 @@ interface Place {
   title: string;
   title_en?: string;
   title_zh?: string;
+  title_ja?: string;
   location?: string;
   latitude?: number;
   longitude?: number;
@@ -108,7 +109,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
         const marker = new window.google.maps.Marker({
           position,
           map,
-          title: lang === 'en' ? (place.title_en || place.title) : lang === 'zh' ? (place.title_zh || place.title) : place.title,
+          title: lang === 'en' ? (place.title_en || place.title) : lang === 'zh' ? (place.title_zh || place.title) : lang === 'ja' ? (place.title_ja || place.title) : place.title,
           icon: {
             path: window.google.maps.SymbolPath.CIRCLE,
             fillColor: REGION_COLOR[region] || REGION_COLOR['성수'],
@@ -256,7 +257,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
               </button>
 
               <h3 className="text-base font-black text-zinc-900 leading-snug pr-8 mb-2">
-                {lang === 'en' ? (selectedPlace.title_en || selectedPlace.title) : lang === 'zh' ? (selectedPlace.title_zh || selectedPlace.title) : selectedPlace.title}
+                {lang === 'en' ? (selectedPlace.title_en || selectedPlace.title) : lang === 'zh' ? (selectedPlace.title_zh || selectedPlace.title) : lang === 'ja' ? (selectedPlace.title_ja || selectedPlace.title) : selectedPlace.title}
               </h3>
 
               {selectedPlace.location && (

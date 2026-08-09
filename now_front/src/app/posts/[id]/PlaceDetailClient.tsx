@@ -72,9 +72,11 @@ export interface Place {
   title: string;
   title_en?: string;
   title_zh?: string;
+  title_ja?: string;
   content: string;
   content_en?: string;
   content_zh?: string;
+  content_ja?: string;
   location: string;
   image_url: string;
   video_url?: string;
@@ -234,9 +236,11 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
   const displayTitle = (lang === 'en' && place.title_en) ? place.title_en
     : (lang === 'zh' && place.title_zh) ? place.title_zh
+    : (lang === 'ja' && place.title_ja) ? place.title_ja
     : place.title;
   const displayContent = (lang === 'en' && place.content_en) ? place.content_en
     : (lang === 'zh' && place.content_zh) ? place.content_zh
+    : (lang === 'ja' && place.content_ja) ? place.content_ja
     : place.content;
 
   const displayDateRange = (() => {

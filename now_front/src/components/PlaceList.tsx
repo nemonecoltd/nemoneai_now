@@ -20,9 +20,11 @@ interface Place {
   title: string;
   title_en?: string;
   title_zh?: string;
+  title_ja?: string;
   content: string;
   content_en?: string;
   content_zh?: string;
+  content_ja?: string;
   image_url?: string;
   video_url?: string;
   location?: string;
@@ -225,7 +227,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               <Link href={`/posts/${place.id}?region=${encodeURIComponent(region)}&lang=${lang}`} className="flex items-start justify-between gap-3 -m-1 p-1 rounded-xl hover:bg-zinc-50 transition-colors">
                 <div className="min-w-0">
                   <h3 className="text-lg font-bold text-zinc-900">
-                    {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : place.title}
+                    {(lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title}
                   </h3>
                   <p className="text-[10px] font-bold text-pace-600 uppercase tracking-widest mt-1">{place.location}</p>
                 </div>
@@ -234,7 +236,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
                 </span>
               </Link>
               <p className="text-sm text-zinc-500 line-clamp-2 leading-relaxed">
-                {(lang === 'en' && place.content_en) ? place.content_en : (lang === 'zh' && place.content_zh) ? place.content_zh : place.content}
+                {(lang === 'en' && place.content_en) ? place.content_en : (lang === 'zh' && place.content_zh) ? place.content_zh : (lang === 'ja' && place.content_ja) ? place.content_ja : place.content}
               </p>
               <div className="flex items-center gap-2 pt-1">
                 <Clock size={12} className="text-zinc-400" />
