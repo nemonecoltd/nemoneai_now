@@ -92,12 +92,9 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
         onClick={() => setShowDetail(true)}
         className="sticky top-0 z-40 w-full text-left bg-white/95 backdrop-blur-xl border-b border-zinc-100 px-5 py-3 shadow-sm"
       >
-        {/* 1줄: 연령·온도·날씨·지점선택 ... 자세히 (얇은 상단 헤더) */}
+        {/* 1줄: 지점선택·연령·온도·날씨 ... 자세히 (얇은 상단 헤더) */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {ageChip && <span className="text-[10px] font-bold text-indigo-500">{ageChip}</span>}
-            {tempChip && <span className="text-[10px] font-bold text-orange-500">{tempChip}</span>}
-            {skyChip && <span className="text-[10px] font-bold text-sky-500">{skyChip}</span>}
             {/* 지점 선택 — 강북처럼 지역 안에 지점이 여러 개로 늘어나도 여기서 바로 전환 */}
             <span
               className="relative flex items-center gap-0.5 text-[10px] text-zinc-500 font-bold"
@@ -114,45 +111,44 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
               </select>
               <ChevronDown size={10} className="pointer-events-none absolute right-0 text-zinc-400" />
             </span>
+            {ageChip && <span className="text-[10px] font-bold text-indigo-500">{ageChip} 강세</span>}
+            {tempChip && <span className="text-[10px] font-bold text-orange-500">{tempChip}</span>}
+            {skyChip && <span className="text-[10px] font-bold text-sky-500">{skyChip}</span>}
           </div>
           <span className="text-[10px] text-zinc-400 font-bold">
             {lang === 'en' ? 'Details' : lang === 'zh' ? '详情' : '자세히'}
           </span>
         </div>
 
-        {/* 2줄: 혼잡도(강조)+인구수(강조) / 그 아래 델타+남녀 — 가장 중요한 정보라 크게 */}
-        <div className="mt-2">
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-black px-2.5 py-1 rounded-xl border ${CONGEST_STYLE[data.congest_lvl] || 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
-              {data.congest_lvl}
+        {/* 2줄: 혼잡도+인구수+델타+남녀를 한 줄에 — 가장 중요한 정보라 크게, 줄을 나누지 않음 */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span className={`text-sm font-black px-2.5 py-1 rounded-xl border flex-shrink-0 ${CONGEST_STYLE[data.congest_lvl] || 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
+            {data.congest_lvl}
+          </span>
+          <span className="text-base font-black text-zinc-900 flex-shrink-0">
+            {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{lang === 'en' ? '' : '명'}
+          </span>
+          {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) >= 1 && (
+            <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${data.ppltn_delta_pct > 0 ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
+              {data.ppltn_delta_pct > 0 ? <ArrowUp size={9} /> : <ArrowDown size={9} />}
+              {Math.abs(data.ppltn_delta_pct)}%
             </span>
-            <span className="text-base font-black text-zinc-900">
-              {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{lang === 'en' ? '' : '명'}
+          )}
+          {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1 && (
+            <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-50 text-zinc-400 flex-shrink-0">
+              <Minus size={9} /> 직전대비 비슷
             </span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-            {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) >= 1 && (
-              <span className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${data.ppltn_delta_pct > 0 ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
-                {data.ppltn_delta_pct > 0 ? <ArrowUp size={9} /> : <ArrowDown size={9} />}
-                {Math.abs(data.ppltn_delta_pct)}%
-              </span>
-            )}
-            {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) < 1 && (
-              <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-50 text-zinc-400">
-                <Minus size={9} /> 0%
-              </span>
-            )}
-            {data.age_gender_summary?.male_rate && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500">
-                남성 {data.age_gender_summary.male_rate}%
-              </span>
-            )}
-            {data.age_gender_summary?.female_rate && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500">
-                여성 {data.age_gender_summary.female_rate}%
-              </span>
-            )}
-          </div>
+          )}
+          {data.age_gender_summary?.male_rate && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-500 flex-shrink-0">
+              남성 {data.age_gender_summary.male_rate}%
+            </span>
+          )}
+          {data.age_gender_summary?.female_rate && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-500 flex-shrink-0">
+              여성 {data.age_gender_summary.female_rate}%
+            </span>
+          )}
         </div>
       </button>
 
