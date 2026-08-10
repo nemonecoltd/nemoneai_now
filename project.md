@@ -1081,3 +1081,19 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 - **matmatch 연관**: `posts/195` 스포티파이 임베드가 안 뜨는 문제 — 최근 100개 정적 생성(SSG) 목록에 포함된 글이라 빌드 시점 이후 저장된 video_url이 재빌드 전까지 반영 안 되는 구조(PM2 재시작·`.next/cache` 삭제로도 안 지워짐). matmatch frontend 재빌드·배포로 해결
 - **로컬 배치 알림 누락 사고**: 8/10 오전 웹푸시 테스트 누출 방지용으로 `notification.py`의 공용 `send_alert()`에 넣었던 전역 `TELEGRAM_ALERTS_DISABLED` 억제가, 같은 함수를 공유하는 로컬 스크래퍼들(서울 전시 수집 등)의 정상 완료 알림까지 묵음 처리하는 부작용 발견 — 전역 억제를 제거하고 `push_service.run_weekly_push()` 호출부에서만 개별 억제하도록 범위 축소
 - 번역 자체가 안 된 게 아니라 조회 API와 화면 표시 사이에서 완성된 번역 데이터가 버려지고 있던 것 — 백엔드 SELECT 2곳 + 프론트 5곳 모두 수정. 과거 수집 데이터는 애초에 title_ja가 비어있어 기존 방침대로 미조치(신규 데이터부터 정상 노출)
+
+#### 10. 다국어 SEO 완성 — "표면은 다국어인데 해외 유입이 거의 없다"는 지적에서 출발
+- `/en·/zh·/ja/ranking/place`(요약 페이지)는 실제 영어 콘텐츠로 잘 만들어져 있었지만, 거기서 클릭해 들어가는 개별 상세페이지(`/posts/[id]`)가 언어 대응이 사실상 전무했음 — 다국어 "표면"만 있고 실제 콘텐츠 뎁스(장소 상세 수천 개)는 크롤링이 안 되는 구조라 해외 유입 부진이 당연한 결과였음
+- 번역 데이터 자체는 이미 충분(활성 장소 2,997개 중 title_en 64%·title_zh 61%·title_ja 46% — 전부 수집 단계 AI 번역), 새 번역 작업 없이 순수 배선 문제였음
+- **`posts/[id]/page.tsx` `generateMetadata`가 `searchParams`(lang)를 아예 안 받아** `?lang=en`을 붙여도 title이 `"한글 · English"`로 뒤섞여 나가던 것 → lang별로 title_en/content_en 등을 명시적으로 선택하도록 수정, 언어별 자기참조 canonical + hreflang 5종(ko/en/zh/ja/x-default) 추가
+- `sitemap.ts`의 상세페이지 URL마다 hreflang alternates 삽입(대규모 사이트에서 언어판 발견의 정석 경로) — 배포 후 sitemap에 hreflang 태그 15,097개 확인
+- `<html lang>`이 모든 페이지에 `"ko"`로 하드코딩돼 실제 콘텐츠 언어와 안 맞던 것 — `PlaceDetailClient.tsx`에서 언어 변경 시 `document.documentElement.lang`을 클라이언트에서 갱신
+- 랭킹 페이지(en/zh/ja) 개별 장소 링크에 `lang` 쿼리가 안 붙어있어 클릭하면 한국어 URL로 튕기던 것 수정
+- **부수 발견 버그 1 — canonical 오염**: root layout(`layout.tsx`)의 `alternates.canonical`이 모든 하위 페이지에 기본값으로 cascade돼서 `/privacy`·`/feedback`·`/signup`이 전부 canonical=홈으로 나가 "홈의 중복본"으로 취급되던 상태 — root에서 `alternates` 제거, 각 페이지가 자기 canonical을 직접 명시하도록 이동
+- **부수 발견 버그 2 — 제목 이중 접미사**: 랭킹 페이지 5개(en/zh/ja 랭킹 + course/theme 랭킹)가 자체적으로 `| NEMONE PACE`를 또 붙여서 root layout의 title template과 겹쳐 `"... | NEMONE PACE | NEMONE PACE"`로 나가던 것 수정
+- 홈은 root 경로+쿼리 조합에서 Next.js가 hreflang URL의 쿼리스트링을 정규화로 떨구는 현상이 있어(`?lang=en` → `https://now.nemoneai.com`으로 손실) 홈만 hreflang을 의도적으로 생략, self-canonical만 유지 — 실제 다국어 색인 무게는 상세페이지(정상 작동)와 전용 `/en·/zh·/ja/ranking` 페이지가 담당
+
+#### 11. "갑자기 유입이 끊겼다" 신고 — 종합 SEO 점검, 기술적 원인 없음으로 결론
+- 다국어 배포 직후 실시간 유입 감소 신고 → 주요 페이지 HTTP 상태, robots.txt, noindex 메타/헤더, 홈 SSR 콘텐츠, sitemap, GA4·네이버·애드센스 추적 스크립트, 실제 렌더 콘텐츠까지 전수 점검 — 전부 정상(200, 색인 허용, 추적 정상, 콘텐츠 정상 렌더)
+- 점검 중 실제 버그 하나 발견: 봇이 `/posts/robots.txt`처럼 숫자가 아닌 id로 긁으면 백엔드가 422를 주고, 프론트가 이를 처리 못 해 500 에러 페이지가 나가고 있었음(크롤 예산 낭비, 실유입과는 무관) — `getPlace()`에 id가 숫자가 아니면 백엔드 호출 없이 곧장 `notFound()`(404) 처리하도록 가드 추가
+- 결론: 오늘 배포한 변경들은 전부 색인(며칠 단위 반영)에 작용하는 종류라 구조적으로 실시간 유입을 즉시 끊을 수 없음 — 실시간 유입 저하는 저녁 시간대 자연 감소·네이버 재크롤링 대기 등으로 설명되고, 오히려 오늘 작업(홈 SSR·canonical 정리·다국어 hreflang) 전부 회복 방향
