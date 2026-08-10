@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import Provider from "./Provider";
 import Script from "next/script";
 import NaverAnalytics from "@/components/NaverAnalytics";
+import { cn } from "@/lib/utils";
+
 
 // next/font가 빌드 타임에 폰트를 자체 호스팅 — fonts.gstatic.com 외부 요청 자체가 없어져
 // Googlebot 크롤링 시 외부 폰트 fetch 실패/타임아웃 리스크와 CLS를 함께 제거
@@ -42,12 +44,17 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  manifest: '/manifest.json',
   verification: {
     google: 'eHAc5WBdeiR9-l5T2HvCw1v4XTdjKghnA3JCCSz-YAk',
     other: {
       'naver-site-verification': 'ca36f2387b65666b52d99f160ee37bbb17b38f8a',
     },
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#35577A',
 };
 
 const websiteJsonLd = {
@@ -72,7 +79,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="ko" className={cn(inter.variable, spaceGrotesk.variable, "font-sans")}>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/brand/pace-icon-solid.svg" type="image/svg+xml" />

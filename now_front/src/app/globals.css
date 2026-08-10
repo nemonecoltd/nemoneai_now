@@ -1,3 +1,6 @@
+/* tw-animate-css/shadcn/tailwind.css는 전부 Tailwind v4 전용 문법(@theme inline, @utility)이라
+   이 프로젝트(v3.4.1)에선 죽은 코드 — animate-in/data-[state=open] 등은 tailwindcss-animate
+   플러그인(tailwind.config.js plugins)과 각 컴포넌트의 대괄호 문법으로 대체(2026-08-10). */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,10 +9,94 @@
   :root {
     --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     --font-display: var(--font-space-grotesk), sans-serif;
+    /* shadcn 기본 중립색(oklch) → 기존 PACE 브랜드 토큰(tailwind.config.js의 pace-* 팔레트) 값으로
+       치환 — 새 색상을 만들지 않고 이미 있는 값만 그대로 대입(2단계, 2026-08-10).
+       tailwind.config.js가 이 변수들을 hsl(var())이 아니라 그대로 참조하므로 HSL 변환 불필요. */
+    --background: oklch(1 0 0);
+    --foreground: #18181b;
+    --card: oklch(1 0 0);
+    --card-foreground: #18181b;
+    --popover: oklch(1 0 0);
+    --popover-foreground: #18181b;
+    --primary: #35577A;
+    --primary-foreground: #ffffff;
+    --secondary: #f4f4f5;
+    --secondary-foreground: #18181b;
+    --muted: #f4f4f5;
+    --muted-foreground: #a1a1aa;
+    --accent: #F0F5F9;
+    --accent-foreground: #35577A;
+    --destructive: #f43f5e;
+    --destructive-foreground: #ffffff;
+    --border: #e4e4e7;
+    --input: #e4e4e7;
+    --ring: #4675A4;
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
   }
-  
+
   body {
+    /* shadcn init 기본값(bg-background text-foreground)은 컬러 토큰 매핑(2단계) 전이라
+       아직 PACE 컬러가 아닌 shadcn 기본 중립색을 가리킴 — 점진적 교체 원칙에 따라
+       기존 화면은 그대로 두고, 신규 shadcn 컴포넌트만 bg-background 등을 개별적으로 사용 */
     @apply bg-zinc-50 text-zinc-900 font-sans antialiased;
+  }
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+  }
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+  * {
+    /* outline-ring/50(투명도 슬래시 표기)은 CSS 변수가 oklch() 완성값이라 Tailwind v3에서
+       알파 채널을 못 뽑아냄(v4 전제 문법) — 투명도 없이 그대로 사용 */
+    @apply border-border outline-ring;
+  }
+  html {
+    @apply font-sans;
   }
 }
 
