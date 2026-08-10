@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, Map as MapIcon, MapPin, Route as RouteIcon, Newspaper, MessageCircle } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -72,16 +73,17 @@ export default function BottomNav({ region = '성수', lang = 'ko', isPerformanc
 
 function NavButton({ onClick, icon, label, disabled }: { onClick: () => void; icon: React.ReactNode; label: string; disabled?: boolean }) {
   return (
-    <button
+    <motion.button
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
+      whileTap={disabled ? undefined : { scale: 0.85 }}
       className={cn(
-        "flex flex-col items-center gap-1 transition-all",
+        "flex flex-col items-center gap-1 transition-colors",
         disabled ? "text-zinc-300 cursor-not-allowed" : "text-zinc-400 hover:text-pace-600"
       )}
     >
       {icon}
       <span className="text-[10px] font-bold">{label}</span>
-    </button>
+    </motion.button>
   );
 }

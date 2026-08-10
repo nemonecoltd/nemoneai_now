@@ -155,7 +155,7 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
       onClick={() => onNavigateToMap?.(AREA_TO_REGION[area] || area)}
       className="w-full px-6 pt-2.5 overflow-hidden text-left"
     >
-      <div className="relative h-9 bg-zinc-950 rounded-2xl overflow-hidden border border-zinc-800/80">
+      <div className="relative h-9 bg-pace-900 rounded-2xl overflow-hidden border border-pace-700/50">
         <AnimatePresence mode="wait">
           <motion.div
             key={area}
@@ -170,27 +170,27 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
               style={{ backgroundColor: accent, boxShadow: `0 0 5px ${accent}` }}
             />
             <span className="font-black flex-shrink-0" style={{ color: accent }}>{areaLabel(area, lang)}</span>
-            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className="text-pace-600/60 flex-shrink-0">•</span>
             <span className="text-zinc-200 font-mono flex-shrink-0">{formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}</span>
             {deltaText && (
               <>
-                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-pace-600/60 flex-shrink-0">•</span>
                 <span className={`font-medium flex-shrink-0 ${deltaColor}`}>{deltaText}</span>
               </>
             )}
             {age && (
               <>
-                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-pace-600/60 flex-shrink-0">•</span>
                 <span className="text-zinc-400 font-medium flex-shrink-0">{age}</span>
               </>
             )}
             {gender && (
               <>
-                <span className="text-zinc-700 flex-shrink-0">•</span>
+                <span className="text-pace-600/60 flex-shrink-0">•</span>
                 <span className={`font-medium flex-shrink-0 ${gender.className}`}>{gender.label}</span>
               </>
             )}
-            <span className="text-zinc-700 flex-shrink-0">•</span>
+            <span className="text-pace-600/60 flex-shrink-0">•</span>
             <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-400'}`}>
               {congestLabel(data.congest_lvl, lang)}
             </span>
