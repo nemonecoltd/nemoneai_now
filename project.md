@@ -996,3 +996,88 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 - matmatch(nemoneai.com) 헤더의 "Nowhere" 초록 뱃지 버튼을 다크배경용 가로형 PACE 로고 버튼으로 교체(`pace-logo-horizontal-40-dark.svg`)
 - home.nemoneai.com(정적 export, GitHub Actions 배포가 구 서버 시크릿을 그대로 물고 있어 실패 — msm VM의 `~/apps/home_dist/dist`에 직접 rsync로 배포)와 matmatch 전체에서 "지금여기"/"NOW HERE" 잔존 텍스트 정리. matmatch는 UI 라벨뿐 아니라 실제 발행된 기사 8건의 제목/본문/태그에도 박혀있어 DB 직접 수정 + 랭킹 인메모리 캐시(`_top_ranking_cache`, 백엔드 재시작 전까지 안 갱신) 재기동 + 프론트 `.next/cache` 삭제 후 재빌드까지 필요했음(자세한 내용은 matmatch 저장소 기록 참고)
 - home.nemoneai.com 어드민(`/admin`)에 소식 수정(PUT) 기능이 없어서 추가 — matmatch 백엔드에 `PUT /news/{id}` 신설, 어드민 페이지에 연필 아이콘 버튼으로 기존 "새 소식 작성" 모달을 수정 모드로 재사용
+
+### 2026-08-09 — 서울시 실시간 도시데이터(유동인구/혼잡도) 신규 기능 + 일본어 파이프라인 버그 수정
+
+#### 1. 사전 진단 — API 키/지점명 실검증
+- 기존 `SEOUL_API_KEY`(서울 열린데이터광장)가 `openapi.seoul.go.kr:8088`의 citydata(실시간 도시데이터) 서비스에도 별도 신청 없이 그대로 유효함을 실호출로 확인
+- 지점명은 반드시 정확한 등록명이어야 하는데 상식적 추정과 실제가 계속 어긋남 — 후보 문자열을 여러 개 만들어 실제 API 호출로 하나씩 검증하는 방식으로 확정
+  - `홍대관광특구`(오류) → `홍대 관광특구`(공백 포함, POI007)
+  - `이태원`(오류) → `이태원 관광특구`(POI004)
+  - `성수카페거리`(POI068), `강남역`(POI014), `광화문·덕수궁`(POI009)은 예상대로 정확
+- 응답 JSON 구조(`LIVE_PPLTN_STTS`의 혼잡도/인구범위/예측배열/연령·성비, `WEATHER_STTS`) 실제 필드명 확인
+
+#### 2. DB/백엔드
+- `crowd_status` 테이블 신규(지점당 1행, PK=area_nm) — 지점명 매핑은 `deps.py`의 `CROWD_AREA_MAP`(프론트 짧은 키 ↔ API 실등록명)에서 관리, 여기 한 줄만 추가하면 폴링·API·프론트 전체에 자동 반영되는 구조
+- `scraper_seoul_crowd.py` 신규: UPSERT 시 `prev_congest_lvl = crowd_status.congest_lvl`처럼 ON CONFLICT 안에서 갱신 전 값을 그대로 참조해, 별도 SELECT 없이 "현재값→prev 이동, 신규값 반영"을 한 번의 쿼리로 원자적 처리. `crowd_status`는 지점당 1행이라 `cleanup_expired_data()`의 45일 TTL 대상에서 예외로 명시
+- **로컬 launchd → 서버 cron 이전**: 최초엔 다른 스크래퍼들과 같은 관례로 로컬 launchd(1시간 간격)로 구현했으나, "실시간" 데이터가 로컬 맥 전원/네트워크 상태에 좌우되면 서비스 연속성이 깨진다는 지적으로 `main.py` APScheduler(`IntervalTrigger(minutes=10)`)로 완전 이전. 서버 재시작 직후에도 스케줄러 첫 틱(최대 10분)을 기다리지 않도록 기동 시 1회 동기 호출 추가(`ranking.refresh_place_popularity()`와 동일 패턴). 로컬 launchd job은 이중 폴링 방지를 위해 unload
+  - 10분 간격 근거: 서울시 원본 데이터 자체가 내부적으로 약 5분 주기로 갱신돼 그보다 촘촘히 폴링해도 새 값을 못 받음. 지점 5개×6회/시간 호출량도 미미
+- `routers/crowd.py`: `GET /crowd?area=`(단건) + `GET /crowd/all`(전체 일괄, 메인 티커용 — 지점별 개별 호출을 하나의 쿼리로 통합). 델타(%)는 서버에서 계산해 반환, prev 없는 최초 수집 직후엔 델타 필드 자체를 생략(프론트 오해석 방지)
+- 강남역(POI014)·이태원 관광특구(POI004)·광화문·덕수궁(POI009) 순차 추가 — `CROWD_AREA_MAP`에 한 줄씩만 추가, 폴링/검증 로직 변경 없이 자동 반영됨을 확인
+
+#### 3. 프론트 — 지도 탭 카드 + 메인 티커
+- `CrowdCard.tsx`(지도 탭 sticky 카드): 강북처럼 넓은 지역은 지점이 여러 개일 수 있어 `REGION_CROWD_POINTS`(지역→지점 배열)로 관리, 드롭다운으로 지점 전환. 레이아웃은 "혼잡도가 잘린다"는 피드백을 여러 차례 받으며 반복 압축 — 최종적으로 상단 얇은 헤더(지점선택·연령·날씨·자세히) 1줄 + 혼잡도·인구수·델타·성별을 전부 한 flex 컨테이너에 담은 강조 1줄, 총 2줄로 정리. 남/여를 둘 다 보여주면 줄이 밀려 우세한 쪽 하나만(동률이면 "남여동일") 표시
+- `CrowdTicker.tsx`(메인 상단): 5개 지점을 순환 노출하는 티커. 진짜 기계식 split-flap 느낌을 내려고 `react-split-flap`(LongFlap) 라이브러리를 검증 후 도입했으나, 내부 콘텐츠가 전부 `position:absolute`라 `digitWidth`를 명시하지 않으면 부모가 0×0으로 찌그러져 실기기에서 검은 배경만 남는 문제 발견 — 고정폭으로 재시도했으나 여전히 부적합해 기존 framer-motion 슬라이드 버전으로 롤백, 의존성 제거(LED 점 애니메이션 + 어두운 배경 + 모노스페이스 숫자로 "전광판" 느낌은 CSS만으로 유지)
+- 좁은 화면에서 혼잡도가 계속 잘리는 문제로 여러 차례 우선순위 조정: 온도/날씨 제거 → 델타는 숫자만(라벨 없이) → 그래도 부족해 결국 카드(공간 여유)와 티커(공간 빠듯)를 다른 기준으로 분리 적용
+- 티커 탭 시 해당 지역의 지도 탭으로 이동(`page.tsx`→`Recommendation`→`CrowdTicker`로 콜백 프롭 체인 연결)
+- 4개 언어(ko/en/zh/ja) 전체 대응 — 혼잡도 단계·성별·연령대·인구단위·지점명까지 번역, API/내부 키는 한글 유지하고 표시 레이어에서만 매핑(백엔드 응답 자체는 항상 한글)
+
+#### 4. 다국어 점검 중 발견한 별개 버그 — title_ja 파이프라인 누락
+- 혼잡도 기능 다국어 작업 김에 전체 다국어 상태를 재점검하다가, 최근 수집분(부산 등)은 `title_ja`/`content_ja`가 DB에 정상 저장돼 있는데도 화면엔 계속 한글로만 뜨는 걸 발견
+- 원인 2가지: (1) `routers/places.py`의 `GET /places`(목록)·`GET /places/{id}`(상세) SELECT 문에 애초에 `title_ja`/`content_ja` 컬럼이 빠져있었음(`ranking_service.py`의 `/places/popular`만 포함하고 있었음) (2) 프론트 5개 컴포넌트(`Recommendation`/`ClosingSoonTicker`/`MapView`/`PlaceList`/`PlaceDetailClient`)가 en/zh 분기는 있는데 ja 분기만 통째로 빠져있었음
+
+### 2026-08-10 — 순위변동 배지·PWA·Web Push(리텐션 루프) + shadcn/ui 디자인 시스템 도입 + 랭킹 지역 버그 수정
+
+#### 1. 순위변동 배지 (종합 랭킹만)
+- `ranking_service.py`의 `refresh_place_popularity()`가 NEW 배지 판별용으로 이전 톱25를 읽을 때 `set(prev_snapshot[0])`으로 즉시 집합화하고 있어서, 순서(=순위) 정보가 읽는 시점에 버려지는 걸 발견 — 순위 델타(▲/▼N) 계산 자체가 불가능한 상태였음. `prev_top25_list`(순서 보존 리스트)와 `prev_rank_by_id` 매핑을 추가해 이전순위-현재순위 계산, 종합(`ranking_snapshot`)·지역 서브탭(`place_region_ranking_snapshot`) 둘 다 반영
+- 공연/축제/쇼핑/전시 4개 카테고리는 같은 함수 안에 거의 동일한 패턴이 4번 더 중복돼 있어 전부 고치면 리스크가 커서, "종합만" 범위로 한정(사용자 판단)
+- `RankBadge.tsx` 신설(▲N 초록/▼N 회색/0·신규는 무표시), `Recommendation.tsx` 종합 탭에 적용. 어드민 CSV(`routers/admin.py`의 `/admin/ranking/weekly7d`, 프론트 `admin/page.tsx`)에도 순위변동 컬럼 추가 — 이쪽은 화면표시용 캐시(`ranking_snapshot.top25_ids`)를 비교 기준으로 재사용
+
+#### 2. PWA 설치 유도
+- `public/manifest.json` 신규(PACE 아이콘 재사용), `layout.tsx`에 `manifest` 메타데이터 연결, `viewport.themeColor` 추가
+- `lib/pwaInstall.ts`(모듈 싱글턴으로 `beforeinstallprompt` 캡처 — 이벤트가 페이지당 한 번만 발생해서 늦게 구독하면 놓치므로 전역에서 미리 잡아둠) + `usePwaInstall.ts` 훅 + `PwaInstallBanner.tsx`
+- 노출 시점: 코스 발행 완료 직후(`course/[id]/page.tsx`에 `?published=1` 쿼리로 신호), 찜 3개 이상 달성 시점(`PlaceDetailClient.tsx`의 `toggleLike` 성공 후 좋아요 개수 체크). iOS Safari는 `beforeinstallprompt` 미지원이라 UA로 감지해 "공유→홈 화면에 추가" 수동 안내 문구로 분기
+
+#### 3. Web Push (익명 구독)
+- VAPID 키페어 발급(`.env`의 `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`), `push_subscriptions` 테이블(user_id 없이 endpoint 기준 익명 구독), `routers/push.py`(`/push/vapid-public-key`·`/push/subscribe`·`/push/unsubscribe`), `push_service.py`(발송 + 410/404 실패 시 구독 자동삭제)
+- **버그 1 — TTL 기본값 0**: `pywebpush.webpush()`에 `ttl`을 안 넘기면 기본값 0이 적용되는데, 이는 "그 순간 브라우저가 푸시 서비스에 연결돼있지 않으면 즉시 폐기"라는 뜻이라 FCM이 발송 자체는 성공(`success:1`)으로 응답해도 실제로는 조용히 사라짐 — 실제로 첫 발송 테스트에서 재현 확인 후 `ttl=86400`으로 수정
+- **버그 2 — 로컬 테스트가 운영 텔레그램으로 누출**: `notification.py`의 `send_alert()`가 로컬 `.env`에 있는 텔레그램 토큰이 프로덕션과 동일 채널이라, 로컬에서 발송 테스트(`run_weekly_push`)를 돌렸더니 사장님 텔레그램에 실제 알림이 감 — `TELEGRAM_ALERTS_DISABLED=true`를 로컬 `.env`에만 추가해서 이 경로만 억제(프로덕션 `.env`엔 추가 안 함)
+- `public/sw.js`(push 이벤트 수신→알림 표시, notificationclick→url 이동), `lib/pushSubscription.ts`(구독/해제 API 연동) + `usePushSubscription.ts` 훅
+- 노출 시점: 랭킹 톱25 스크롤 중 13번째 카드가 뷰포트에 절반 이상 들어오면(`IntersectionObserver`) 하단 배너(`PushSubscribeBanner.tsx`), 코스 발행 완료 화면 보조 버튼(`PushSubscribeButton.tsx`)
+- 마이페이지 알림 토글은 처음엔 커스텀 버튼으로 구현했다가 이후 shadcn 도입 후 `Switch`+`Card`로 교체(4번 항목 참고)
+- 목요일 주간 발송 스케줄 등록(`main.py`, KST 12:30) — "구독자 수와 무관하게 정기 발송해야 한다"는 판단으로 수동 트리거 검증만 하고 미루지 않고 바로 크론 등록. 발송 카피는 처음에 TOP3를 전부 나열했더니 "너무 빡빡하다"는 피드백으로, 1위만 보여주고 나머지는 궁금하게 남기는 방식으로 수정
+
+#### 4. shadcn/ui 디자인 시스템 도입 — Tailwind v3 호환성 이슈 다발
+- `npx shadcn@latest init -b radix -p nova`로 초기화(Radix 베이스, Lucide 아이콘 프리셋이 기존 `lucide-react` 의존성과 맞음). 초기화 직후 `next build`가 `"The border-border class does not exist"`로 즉시 실패 — 최신 shadcn CLI(v4.16.2)가 Tailwind v4를 전제로 CSS를 생성하는데 이 프로젝트는 v3.4.1이라 발생
+- **원인 1**: `tailwind.config.js`에 shadcn이 만든 CSS 변수(`--primary` 등)를 `bg-primary`/`border-border` 같은 v3 유틸로 쓸 수 있게 하는 색상 매핑이 아예 없었음 — v4는 이 매핑 없이도 동작하지만 v3는 명시적 연결이 필요. `colors`/`borderRadius`에 직접 추가해 해결
+- **원인 2**: `globals.css`에 자동 삽입된 `@import "tw-animate-css"`와 `@import "shadcn/tailwind.css"`가 통째로 Tailwind v4 전용 문법(`@theme inline`, `@utility`, `@custom-variant`)이라 v3에서는 완전히 죽은 코드 — `data-checked:`/`data-open:` 같은 커스텀 베리언트, `--spacing(4)` 같은 CSS 함수, `bg-(--var)` 괄호 축약 문법이 전부 무효 처리됨. `tw-animate-css`는 제거하고 v3 호환 정식 대체 패키지 `tailwindcss-animate`로 교체, `switch.tsx`/`card.tsx`/`sheet.tsx`/`button.tsx`의 v4 전용 문법을 Radix가 실제로 세팅하는 `data-state=checked|open` 등 기준으로 대괄호 문법(`data-[state=checked]:`)으로 전부 재작성
+- 컬러 토큰 매핑: shadcn 기본 중립색(oklch) → 기존 PACE 브랜드 토큰(Jeju Blue `#35577A` 등)으로 치환, 새 색상 정의 없이 기존 값만 대입. `body`의 `bg-background`(아직 컬러 매핑 전 상태에서 shadcn init이 자동으로 바꿔놓은 것)는 점진적 교체 원칙에 따라 원래 `bg-zinc-50`으로 되돌림
+- 마이페이지(`my/edit/page.tsx`) 알림 토글을 커스텀 버튼에서 shadcn `Switch`+`Card`로 교체 — 첫 적용 사례
+- `Sheet`(바텀시트) 도입해 `CrowdCard.tsx`의 유동인구 상세 바텀시트를 교체했으나, 애니메이션·접근성(ESC/스크롤락)만 추가될 뿐 사용자 체감 차이가 작다고 판단해 롤백 — `CrowdCard.tsx` 원상복구, `sheet.tsx`/`button.tsx`/`tailwindcss-animate` 제거
+- **bento-grid**: 랭킹 톱3를 1위(세로로 긴 큰 타일)+2·3위(작은 타일 2개) 카드형 레이아웃으로 전환(Aceternity bento-grid 패턴을 순수 CSS grid로 직접 구현, 의존성 없음). 종합 탭에 먼저 적용 후 공연/축제/쇼핑/전시 4개 탭까지 확장 — `computePlaceMeta`/`BentoTop3`/`placeToBentoItem` 공용 헬퍼로 5개 탭의 중복 배지 로직을 정리. 광고 삽입 위치도 톱3(바뀐 bento 블록) 직후로 재조정
+- **버그**: 1위 타일 이미지 박스에 `aspect-[3/4]` 고정 비율을 썼더니, 그리드 행의 실제 높이(2·3위 타일 합산 높이)가 그보다 길 때 카드 배경(흰색)이 이미지 아래로 드러나는 문제 발생 — 고정 비율 대신 `flex-1`로 부모 그리드 셀 높이를 그대로 채우도록 수정
+
+#### 5. 프로필 사진 리퍼러 정책 누락
+- 헤더 프로필 사진(`HeaderControls.tsx`, `page.tsx`, `my/page.tsx` 3곳)의 `<img>`에 다른 이미지들과 달리 `referrerPolicy="no-referrer"`가 빠져있어서, 구글 아바타 CDN이 리퍼러 기반으로 이미지를 차단할 가능성이 있던 기존 결함 발견·수정(로컬 `localhost`가 리퍼러로 잡히면 더 잘 걸릴 수 있음)
+
+#### 6. 제주·부산 랭킹 지역 예외 처리
+- 종합 랭킹이 48시간 윈도우로도 25개 이상 채워지면 지역 서브탭도 전부 같은 48시간 기준을 강제하는 기존 로직(2026-08-07, 지역마다 기간이 다르면 같은 장소 점수가 화면마다 달라 보이는 문제 방지용) 때문에, 활동량이 절대적으로 적은 제주(48시간 내 0건, 30일로 넓히면 5건)·부산이 통째로 빈 탭으로 보이는 문제 발견
+- 부산·제주 두 지역만 예외로, 자체 결과가 25개 미만이면 30일까지 독립적으로 확장하도록 수정(`ranking_service.py`) — 성수/홍대/강남/강북은 종합 상위권과 풀을 많이 공유해 점수 불일치 리스크가 크지만, 부산·제주는 종합 상위권과 거의 안 겹쳐서 그 리스크가 낮다고 판단
+
+#### 7. SEO 점검 (코드 변경 없음)
+- 오늘 작업(bento-grid 등)이 전부 기존에 이미 완전 CSR이던 홈 화면(`Recommendation.tsx`) 안에서 구조만 바꾼 것이라 크롤러 노출 특성에 변화가 없음을 `curl -A "Yeti"`로 직접 재확인(2026-06-21 히스토리 문서에 이미 기록된 now 홈의 CSR 특성과 일치)
+- 네이버 서치어드바이저 CSV 3종(색인현황/크롤완료/다운로드크기) 대조 결과, 8/6에 색인 관련 지표(색인·수집제한·색인제외·SEO)만 전부 0으로 찍히고 같은 날 크롤완료(762건)·다운로드(52.6MB)는 전후 날짜와 동일 범위로 정상이었음 — 사이트 문제가 아니라 네이버 대시보드의 색인현황 스냅샷 리포팅 결측(reporting gap)으로 진단, 조치 불필요
+
+#### 8. 홈 SSR 전환 — 크롤러에게 랭킹 콘텐츠가 아예 안 보이던 구조 결함 수정 (SEO 핵심)
+- `#7`에서 "홈이 완전 CSR이지만 노출은 잘 된다(2026-06-21 문서 기록)"고 넘겼으나, 이후 "PACE 네이버 노출이 계속 하락 중이고 그 문서는 예전 글"이라는 지적으로 재점검 — `curl -A "Yeti" https://now.nemoneai.com/`로 확인 시 홈 초기 HTML에 **posts 링크 0개·이미지 1개**(nav/footer 텍스트만), 랭킹 카드가 통째로 크롤러에게 안 보이던 상태였음
+- 원인: 홈 `page.tsx`가 route 파일 자체로 `'use client'`라 region/tab 상태를 `window.location`으로 클라이언트에서만 읽고, 랭킹 데이터(`/places/popular`)도 `useEffect`로 브라우저에서만 fetch → 서버가 크롤러에게 주는 첫 HTML엔 데이터가 하나도 안 담김
+- **서버/클라이언트 컴포넌트 분리**: `page.tsx`를 서버 컴포넌트로 바꿔 종합 랭킹을 서버에서 미리 fetch(5분 ISR) 후 prop으로 전달, 기존 전체 로직(상태·탭 전환·애니메이션)은 `HomeClient.tsx`(신규)로 그대로 이동해 초기 데이터로 첫 렌더부터 실제 카드가 박히게 함. 과거 matmatch에서 문제됐던 `useSearchParams()` 훅 패턴은 쓰지 않아 홈이 완전 정적(`○ Static`)으로 프리렌더됨
+- 검증: 배포 후 운영 서버를 Yeti로 재확인 — 초기 HTML에 **posts 링크 25개·이미지 26개** 노출 확인(title/메타데이터도 정상 유지). 색인·노출 회복은 네이버 재크롤링 주기 대기(자세한 진단은 SEO 히스토리 문서 10장 참고)
+
+#### 9. 브랜드 잔존 텍스트 정리 + 기타
+- 리브랜딩(8/5)이 일부 파일만 반영되고 "지금여기"/"NOW HERE"/"Now Here"가 13개 파일에 잔존한 걸 발견(상세페이지 풋터에서 확인 시작) — 랭킹 다국어 페이지(en/zh/ja) title, 개인정보처리방침, 어드민 헤더, 지도 fallback 텍스트, 매거진 설명, 상세 풋터(4개 언어) 등 전부 `NEMONE PACE`로 교체. 안 쓰이는 죽은 상수(`BRAND_TITLE`, dict의 미사용 `title` 키)는 삭제
+- 하단 탭바 애니메이션: framer-motion `layoutId`로 활성 탭 배경(pace-50 pill)이 탭 사이를 부드럽게 슬라이드 + `whileTap` scale(홈 `HomeClient.tsx`의 NavButton, 타 페이지 공용 `BottomNav.tsx` 둘 다)
+- 유동인구 전광판(`CrowdTicker.tsx`) 배경을 검정(`bg-zinc-950`)에서 제주블루(`bg-pace-900`)로 변경, 구분점 색도 pace 톤으로 통일
+- **matmatch 연관**: `posts/195` 스포티파이 임베드가 안 뜨는 문제 — 최근 100개 정적 생성(SSG) 목록에 포함된 글이라 빌드 시점 이후 저장된 video_url이 재빌드 전까지 반영 안 되는 구조(PM2 재시작·`.next/cache` 삭제로도 안 지워짐). matmatch frontend 재빌드·배포로 해결
+- **로컬 배치 알림 누락 사고**: 8/10 오전 웹푸시 테스트 누출 방지용으로 `notification.py`의 공용 `send_alert()`에 넣었던 전역 `TELEGRAM_ALERTS_DISABLED` 억제가, 같은 함수를 공유하는 로컬 스크래퍼들(서울 전시 수집 등)의 정상 완료 알림까지 묵음 처리하는 부작용 발견 — 전역 억제를 제거하고 `push_service.run_weekly_push()` 호출부에서만 개별 억제하도록 범위 축소
+- 번역 자체가 안 된 게 아니라 조회 API와 화면 표시 사이에서 완성된 번역 데이터가 버려지고 있던 것 — 백엔드 SELECT 2곳 + 프론트 5곳 모두 수정. 과거 수집 데이터는 애초에 title_ja가 비어있어 기존 방침대로 미조치(신규 데이터부터 정상 노출)
