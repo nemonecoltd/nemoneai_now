@@ -19,11 +19,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // 2. 동적 상세 페이지 URL 생성 (개별 스팟 및 테마 장소)
+  // 상세페이지는 ?lang= 쿼리로 4개 언어를 서빙하는데, 링크·메타데이터만으론 크롤러가
+  // 언어판을 잘 발견하지 못함 — 대규모 사이트에선 sitemap의 hreflang(alternates.languages)이
+  // 언어판 발견의 정석이라, 각 posts URL에 4개 언어 + x-default를 실어준다.
+  // 번역이 없는 로우도 서버가 한국어로 폴백하므로 URL 자체는 유효.
   const placeUrls = places.map((place) => ({
     url: `${baseUrl}/posts/${place.id}`,
     lastModified: new Date(place.created_at || new Date()),
     changeFrequency: 'weekly' as const,
     priority: 0.7,
+    alternates: {
+      languages: {
+        ko: `${baseUrl}/posts/${place.id}`,
+        en: `${baseUrl}/posts/${place.id}?lang=en`,
+        zh: `${baseUrl}/posts/${place.id}?lang=zh`,
+        ja: `${baseUrl}/posts/${place.id}?lang=ja`,
+        'x-default': `${baseUrl}/posts/${place.id}`,
+      },
+    },
   }))
 
   // 3. 고정 페이지 URL 생성 (홈 화면 + 랭킹 페이지)

@@ -50,7 +50,8 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_ja || p.title).join('、');
-  const title = 'ソウル・済州リアルタイム人気ホットスポット TOP 25 | NEMONE PACE';
+  // root layout의 title.template이 접미사를 붙이므로 여기선 안 붙임(이중 방지)
+  const title = 'ソウル・済州リアルタイム人気ホットスポット TOP 25';
   const description = `ソンス、ホンデ、カンブク、カンナム、済州のポップアップストア・展示・イベントのリアルタイム人気ランキング。${top || '今一番人気のスポットをチェックしよう。'}`;
   return {
     title,
@@ -98,7 +99,7 @@ export default async function PlaceRankingPageJa() {
         {places.map((place, idx) => (
           <div key={place.id}>
           <Link
-            href={`/posts/${place.id}`}
+            href={`/posts/${place.id}?lang=ja`}
             className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
           >
             <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">

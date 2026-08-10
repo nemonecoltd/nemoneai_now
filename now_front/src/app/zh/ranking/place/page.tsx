@@ -50,7 +50,8 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_zh || p.title).join('、');
-  const title = '首尔·济州实时人气快闪店排行榜 TOP 25 | NEMONE PACE';
+  // root layout의 title.template이 접미사를 붙이므로 여기선 안 붙임(이중 방지)
+  const title = '首尔·济州实时人气快闪店排行榜 TOP 25';
   const description = `圣水洞、弘大、江北、江南、济州快闪店、展览、活动实时人气排行榜。${top || '快来看看现在最热门的地方吧。'}`;
   return {
     title,
@@ -98,7 +99,7 @@ export default async function PlaceRankingPageZh() {
         {places.map((place, idx) => (
           <div key={place.id}>
           <Link
-            href={`/posts/${place.id}`}
+            href={`/posts/${place.id}?lang=zh`}
             className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
           >
             <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">

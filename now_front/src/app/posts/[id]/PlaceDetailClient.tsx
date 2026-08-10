@@ -156,6 +156,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   const [banner, setBanner] = React.useState<{ text: string; url: string } | null>(null);
   const [availableCategories, setAvailableCategories] = React.useState<string[]>([...CATEGORY_ORDER]);
 
+  // 공유 root layout이 searchParam(?lang=)을 못 읽어 초기 HTML은 <html lang="ko"> 고정 —
+  // 실제 콘텐츠 언어와 선언 언어가 어긋나지 않도록, 언어가 바뀌면 문서 lang 속성을 맞춤.
+  // 초기 HTML엔 못 반영되지만 JS를 렌더링하는 크롤러(Googlebot)와 실제 사용자에겐 정확히 적용됨.
+  React.useEffect(() => {
+    const htmlLang = lang === 'en' ? 'en' : lang === 'zh' ? 'zh' : lang === 'ja' ? 'ja' : 'ko';
+    document.documentElement.lang = htmlLang;
+  }, [lang]);
+
   React.useEffect(() => {
     fetch('/api-now/banner')
       .then(res => res.json())

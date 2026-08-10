@@ -50,7 +50,8 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_en || p.title).join(', ');
-  const title = 'Real-Time Popular Pop-ups & Hot Spots in Seoul & Jeju TOP 25 | NEMONE PACE';
+  // root layout의 title.template("%s | NEMONE PACE")이 접미사를 붙이므로 여기선 안 붙임(이중 방지)
+  const title = 'Real-Time Popular Pop-ups & Hot Spots in Seoul & Jeju TOP 25';
   const description = `Live ranking of the most popular pop-up stores, exhibitions, and events across Seongsu, Hongdae, Gangbuk, Gangnam, and Jeju. ${top || 'Check out the hottest spots right now.'}`;
   return {
     title,
@@ -98,7 +99,7 @@ export default async function PlaceRankingPageEn() {
         {places.map((place, idx) => (
           <div key={place.id}>
           <Link
-            href={`/posts/${place.id}`}
+            href={`/posts/${place.id}?lang=en`}
             className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
           >
             <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">
