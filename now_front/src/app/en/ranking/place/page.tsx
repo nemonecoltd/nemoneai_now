@@ -50,7 +50,7 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_en || p.title).join(', ');
-  const title = 'Real-Time Popular Pop-ups & Hot Spots in Seoul & Jeju TOP 25 | NOW HERE';
+  const title = 'Real-Time Popular Pop-ups & Hot Spots in Seoul & Jeju TOP 25 | NEMONE PACE';
   const description = `Live ranking of the most popular pop-up stores, exhibitions, and events across Seongsu, Hongdae, Gangbuk, Gangnam, and Jeju. ${top || 'Check out the hottest spots right now.'}`;
   return {
     title,

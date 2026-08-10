@@ -189,10 +189,11 @@ export default function MyPage() {
       <div className="bg-white px-8 pt-28 pb-10 rounded-b-[40px] shadow-sm">
         <div className="flex items-center gap-6 mb-8">
           <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-pace-50 shadow-lg flex-shrink-0 bg-zinc-100">
-            <img 
-              src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`} 
-              alt={user.user_metadata?.full_name || ""} 
-              className="w-full h-full object-cover" 
+            <img
+              src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`}
+              alt={user.user_metadata?.full_name || ""}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
             />
           </div>
           <div className="min-w-0 flex-1">

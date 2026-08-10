@@ -50,7 +50,7 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_ja || p.title).join('、');
-  const title = 'ソウル・済州リアルタイム人気ホットスポット TOP 25 | NOW HERE';
+  const title = 'ソウル・済州リアルタイム人気ホットスポット TOP 25 | NEMONE PACE';
   const description = `ソンス、ホンデ、カンブク、カンナム、済州のポップアップストア・展示・イベントのリアルタイム人気ランキング。${top || '今一番人気のスポットをチェックしよう。'}`;
   return {
     title,

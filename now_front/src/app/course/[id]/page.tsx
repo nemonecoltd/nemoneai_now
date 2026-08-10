@@ -5,9 +5,10 @@ import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import HeaderControls from '@/components/HeaderControls';
 import Logo from '@/components/Logo';
+import PwaInstallBanner from '@/components/PwaInstallBanner';
+import PushSubscribeButton from '@/components/PushSubscribeButton';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
-const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE', ja: 'NOW HERE' };
 
 interface Step {
   place_id: number;
@@ -87,7 +88,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     return { title: '코스를 찾을 수 없습니다', alternates: { canonical }, robots: { index: false, follow: true } };
   }
 
-  const title = `${course.title} | 지금여기 코스`;
+  const title = `${course.title} | NEMONE PACE 코스`;
   const description = cleanDescription(course.description) || `${course.region}에서 즐기는 ${course.scope === 'timed' ? '3시간' : ''} 코스 — ${course.steps.length}곳`;
 
   return {
@@ -99,9 +100,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function CourseDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string }> }) {
+export default async function CourseDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string; published?: string }> }) {
   const { id } = await params;
-  const { lang: rawLang } = await searchParams;
+  const { lang: rawLang, published } = await searchParams;
   const lang = rawLang === 'en' || rawLang === 'zh' || rawLang === 'ja' ? rawLang : 'ko';
   const course = await getCourse(id);
 
@@ -179,9 +180,11 @@ export default async function CourseDetailPage({ params, searchParams }: { param
         <Link href="/course" className="block text-center mt-6 px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">
           나만의 코스 만들러 가기
         </Link>
+        <PushSubscribeButton show={published === '1'} regionPref={course.region} />
       </main>
 
       <BottomNav region={course.region} lang={lang} />
+      <PwaInstallBanner show={published === '1'} dismissKey="pace_pwa_course_publish" />
     </div>
   );
 }

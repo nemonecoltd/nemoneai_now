@@ -50,7 +50,7 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title_zh || p.title).join('、');
-  const title = '首尔·济州实时人气快闪店排行榜 TOP 25 | NOW HERE';
+  const title = '首尔·济州实时人气快闪店排行榜 TOP 25 | NEMONE PACE';
   const description = `圣水洞、弘大、江北、江南、济州快闪店、展览、活动实时人气排行榜。${top || '快来看看现在最热门的地方吧。'}`;
   return {
     title,

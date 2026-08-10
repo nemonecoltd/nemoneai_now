@@ -39,7 +39,7 @@ async function getCourses(): Promise<Course[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const courses = await getCourses();
   const top = courses.slice(0, 5).map(c => c.title).join(', ');
-  const title = '이번 주 인기 AI 코스 랭킹 | 지금여기';
+  const title = '이번 주 인기 AI 코스 랭킹 | NEMONE PACE';
   const description = `성수·홍대·강북·제주에서 유저들이 직접 만든 AI 3시간 코스 랭킹. ${top || '지금 인기 있는 코스를 확인해보세요.'}`;
   return {
     title,

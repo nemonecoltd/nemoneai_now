@@ -2,8 +2,8 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata = {
-  title: '개인정보처리방침 | NOW HERE',
-  description: '지금여기 서비스 개인정보처리방침',
+  title: '개인정보처리방침 | NEMONE PACE',
+  description: 'NEMONE PACE 서비스 개인정보처리방침',
 };
 
 export default function PrivacyPolicy() {

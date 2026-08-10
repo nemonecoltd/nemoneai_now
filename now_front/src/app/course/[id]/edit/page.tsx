@@ -13,8 +13,6 @@ import BrandTagline from '@/components/BrandTagline';
 import HeaderControls from '@/components/HeaderControls';
 import Logo from '@/components/Logo';
 
-const BRAND_TITLE: Record<string, string> = { ko: '지금 여기', en: 'NOW HERE', zh: 'NOW HERE' };
-
 interface Step {
   place_id: number;
   place_name: string;
@@ -185,7 +183,7 @@ export default function CourseEditPage() {
         body: JSON.stringify({ title: title.trim() || null }),
       });
       if (!res.ok) throw new Error('발행 실패');
-      router.push(`/course/${courseId}`);
+      router.push(`/course/${courseId}?published=1`);
     } catch (e) {
       console.error(e);
       alert('발행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');

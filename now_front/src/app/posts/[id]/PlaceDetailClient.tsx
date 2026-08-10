@@ -12,6 +12,7 @@ import BrandTagline from '@/components/BrandTagline';
 import BottomNav from '@/components/BottomNav';
 import Logo from '@/components/Logo';
 import RecommendedCoursePromo from '@/components/RecommendedCoursePromo';
+import PwaInstallBanner from '@/components/PwaInstallBanner';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -107,7 +108,7 @@ const T = {
     hotVerified: '핫플인증', closingSoon: '마감임박', new: 'NEW', updatedAt: '기준',
     duration: '운영 기간', openDaily: '상시 운영', status: '상태', active: '운영 중', ended: '운영 종료',
     details: '상세 정보', moreToExplore: '이런 곳도 있어요', location: '위치 안내',
-    locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: '지금여기',
+    locationSyncing: '정확한 위치 정보 준비 중', watchVideo: '실시간 영상 보기', nowHere: 'NEMONE PACE',
     linkCopied: '링크가 복사되었습니다!',
     my: '마이',
     tagline: '당신 3시간의 알찬 설계',
@@ -117,7 +118,7 @@ const T = {
     hotVerified: 'Hot Pick', closingSoon: 'Closing Soon', new: 'NEW', updatedAt: 'as of',
     duration: 'Duration', openDaily: 'Open Daily', status: 'Status', active: 'Active', ended: 'Ended',
     details: 'Details', moreToExplore: 'More to explore', location: 'Location',
-    locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NOW HERE',
+    locationSyncing: 'Location Data Syncing', watchVideo: 'Watch Video', nowHere: 'NEMONE PACE',
     linkCopied: 'Link copied!',
     my: 'My',
     tagline: 'A fulfilling plan for your 3 hours',
@@ -127,7 +128,7 @@ const T = {
     hotVerified: '认证热门', closingSoon: '即将结束', new: 'NEW', updatedAt: '更新于',
     duration: '运营期间', openDaily: '全年营业', status: '状态', active: '营业中', ended: '已结束',
     details: '详细信息', moreToExplore: '更多推荐', location: '位置信息',
-    locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NOW HERE',
+    locationSyncing: '位置信息准备中', watchVideo: '观看实时视频', nowHere: 'NEMONE PACE',
     linkCopied: '链接已复制！',
     my: '我的',
     tagline: '为您3小时的充实安排',
@@ -137,7 +138,7 @@ const T = {
     hotVerified: '人気認証', closingSoon: '終了間近', new: 'NEW', updatedAt: '基準',
     duration: '運営期間', openDaily: '常時営業', status: 'ステータス', active: '営業中', ended: '終了',
     details: '詳細情報', moreToExplore: 'こんな場所も', location: '位置案内',
-    locationSyncing: '位置情報を準備中', watchVideo: 'ライブ映像を見る', nowHere: 'NOW HERE',
+    locationSyncing: '位置情報を準備中', watchVideo: 'ライブ映像を見る', nowHere: 'NEMONE PACE',
     linkCopied: 'リンクをコピーしました！',
     my: 'マイ',
     tagline: 'あなたの3時間を充実させる',
@@ -149,6 +150,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   const { user, signInWithGoogle } = useAuth();
   const [navIndex, setNavIndex] = React.useState(0);
   const [liked, setLiked] = React.useState(false);
+  const [showPwaNudge, setShowPwaNudge] = React.useState(false);
   const [lang, setLang] = React.useState(initialLang);
   const t = T[(lang as keyof typeof T)] || T.ko;
   const [banner, setBanner] = React.useState<{ text: string; url: string } | null>(null);
@@ -192,6 +194,13 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
       if (res.ok) {
         const { liked: nowLiked } = await res.json();
         setLiked(nowLiked);
+        // 찜 3개 이상 달성 시점에 PWA 설치 배너 노출 — 이미 관심을 보인 유저에게만 자연스럽게 제안
+        if (nowLiked) {
+          fetch(`/api-now/users/${user.id}/likes`)
+            .then((r) => r.json())
+            .then((data: unknown[]) => { if (data.length >= 3) setShowPwaNudge(true); })
+            .catch(() => {});
+        }
       }
     } catch (e) {
       console.error(e);
@@ -881,6 +890,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
       </div>
 
       <BottomNav region={place.region || '성수'} lang={lang} isPerformanceRegion={isPerformanceRegion} />
+      <PwaInstallBanner show={showPwaNudge} dismissKey="pace_pwa_likes3" />
     </div>
   );
 }

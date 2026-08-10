@@ -21,7 +21,6 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const t = {
-    title: lang === 'ko' ? '지금 여기' : 'Now Here',
     subtitle: lang === 'ko' ? '계정 만들기' : 'Create an account',
     nameLabel: lang === 'ko' ? '이름' : 'Full Name',
     namePlaceholder: lang === 'ko' ? '홍길동' : 'John Doe',

@@ -178,7 +178,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
                 ? `${REGION_TITLE[region]?.en || 'Seongsu'} Map`
                 : lang === 'zh'
                   ? `${REGION_TITLE[region]?.zh || '圣水洞'}地图`
-                  : (REGIONS[region as keyof typeof REGIONS]?.title || '지금 여기 팝업 맵')}
+                  : (REGIONS[region as keyof typeof REGIONS]?.title || 'NEMONE PACE 팝업 맵')}
               <span
                 className="ml-2 text-xs font-bold"
                 style={{ color: REGION_COLOR[region] || REGION_COLOR['성수'] }}

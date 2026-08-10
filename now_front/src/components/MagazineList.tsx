@@ -17,7 +17,7 @@ interface MagazinePost {
 }
 
 const dict = {
-  ko: { title: '매거진', desc: '네모네AIM에 실린 지금여기 관련 아티클', empty: '아직 등록된 아티클이 없어요.' },
+  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.' },
   en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.' },
   zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。' },
 };

@@ -44,6 +44,7 @@ export default function HeaderControls() {
               src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`}
               className="w-full h-full object-cover"
               alt="profile"
+              referrerPolicy="no-referrer"
             />
           </div>
           <span className="text-[10px] font-black tracking-tight text-zinc-900 uppercase">{MY_LABEL[lang] || MY_LABEL.ko}</span>

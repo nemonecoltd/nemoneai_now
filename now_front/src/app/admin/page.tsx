@@ -236,13 +236,15 @@ export default function AdminPage() {
       const data: typeof weeklyRanking = await res.json();
 
       const escapeCsv = (v: string) => `"${(v || '').replace(/"/g, '""')}"`;
+      const formatDelta = (d: number | 'new' | null | undefined) =>
+        d === 'new' ? 'NEW' : typeof d === 'number' ? (d > 0 ? `▲${d}` : d < 0 ? `▼${Math.abs(d)}` : '-') : '';
       const rows = [
-        ['순위', '제목', 'URL', '썸네일URL', '운영기간'],
+        ['순위', '제목', 'URL', '썸네일URL', '운영기간', '순위변동'],
         ...data.map((item, idx) => {
           const img = item.image_url
             ? (item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`)
             : '';
-          return [String(idx + 1), item.title, `https://now.nemoneai.com/posts/${item.id}`, img, item.date_range || '상시 운영'];
+          return [String(idx + 1), item.title, `https://now.nemoneai.com/posts/${item.id}`, img, item.date_range || '상시 운영', formatDelta((item as any).rank_delta)];
         }),
       ];
       const csv = '﻿' + rows.map(r => r.map(escapeCsv).join(',')).join('\n');
@@ -459,7 +461,7 @@ export default function AdminPage() {
               <ShieldCheck size={18} />
               <span className="text-[10px] font-black uppercase tracking-widest">Admin Control Panel</span>
             </div>
-            <h1 className="text-xl md:text-3xl font-bold text-zinc-900">지금 여기 관리자 <span className="text-pace-500">.</span></h1>
+            <h1 className="text-xl md:text-3xl font-bold text-zinc-900">NEMONE PACE 관리자 <span className="text-pace-500">.</span></h1>
 
             <div className="flex items-center gap-4 md:gap-6 mt-4 md:mt-6 border-b border-zinc-200 overflow-x-auto no-scrollbar">
               <div className="flex items-center gap-4 flex-shrink-0">
