@@ -14,9 +14,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 import ranking_service as ranking
+import push_service
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
 from scraper_seoul_crowd import poll_crowd
-from routers import admin, ai, courses, crowd, magazine, places, rankings, social
+from routers import admin, ai, courses, crowd, magazine, places, push, rankings, social
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
 
@@ -69,6 +70,7 @@ app.include_router(magazine.router)
 app.include_router(places.router)
 app.include_router(admin.router)
 app.include_router(crowd.router)
+app.include_router(push.router)
 
 ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
 poll_crowd()  # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보
@@ -82,6 +84,9 @@ scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=23, minute=5, i
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_1200', kwargs={'is_cron': True})
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600', kwargs={'is_cron': True})
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000', kwargs={'is_cron': True})
+# 목요일 주간 Web Push — 구독자 수와 무관하게 매주 발송(0명이면 push_service 내부에서 그냥 아무것도 안 보내고 끝남).
+# 한국시간(KST=UTC+9) 목요일 12:30 = UTC 목요일 03:30
+scheduler.add_job(push_service.run_weekly_push, 'cron', day_of_week='thu', hour=3, minute=30, id='push_weekly_kst_thu_1230')
 scheduler.start()
 
 
