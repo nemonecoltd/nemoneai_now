@@ -1,4 +1,5 @@
 """장소 CRUD·조회 — 목록/카테고리/상세/조회수/생성/수정/삭제/이미지 업로드/블로그갱신 트리거."""
+import asyncio
 import threading
 from typing import Optional
 
@@ -137,8 +138,9 @@ async def create_place(place: PlaceUpdate):
         if data.get("image_url"):
             data["image_url"] = rehost_image(data["image_url"])
 
-        # 임베딩 생성
-        data["embedding"] = f"[{','.join(map(str, get_embedding(data['content'])))}]"
+        # 임베딩 생성 (동기 호출이 이벤트 루프를 막지 않도록 스레드로 분리)
+        embedding = await asyncio.to_thread(get_embedding, data["content"])
+        data["embedding"] = f"[{','.join(map(str, embedding))}]"
         
         columns = ", ".join(data.keys())
         placeholders = ", ".join([f":{k}" for k in data.keys()])
@@ -171,7 +173,8 @@ async def update_place(place_id: int, place: PlaceUpdate):
             if is_internal_url(new_image) and is_internal_url(old_image) and new_image != old_image:
                 delete_image(old_image)
         if "content" in update_data:
-            update_data["embedding"] = f"[{','.join(map(str, get_embedding(update_data['content'])))}]"
+            embedding = await asyncio.to_thread(get_embedding, update_data["content"])
+            update_data["embedding"] = f"[{','.join(map(str, embedding))}]"
         # 어드민이 title/content를 직접 수정하면 영문 번역도 같이 갱신 (안 그러면 예전 번역이 새 내용과 어긋난 채 남음)
         # AI 호출(수 초 소요)로 저장 응답이 느려지지 않도록 백그라운드 스레드로 분리 — title/content 저장은 즉시 반영되고, 번역은 잠시 후 뒤따라 채워짐
         if "title" in update_data or "content" in update_data:
