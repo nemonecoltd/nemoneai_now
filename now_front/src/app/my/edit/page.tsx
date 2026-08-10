@@ -3,15 +3,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Camera, Loader2, Save, User, Globe, Trash2 } from 'lucide-react';
+import { ChevronLeft, Camera, Loader2, Save, User, Globe, Trash2, Bell, BellOff } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
 import { createClient } from '@/utils/supabase/client';
+import { usePushSubscription } from '@/lib/usePushSubscription';
+import { Switch } from '@/components/ui/switch';
+import { Card } from '@/components/ui/card';
 
 export default function EditProfilePage() {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushSubscription();
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -264,8 +268,28 @@ export default function EditProfilePage() {
           {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> 변경사항 저장</>}
         </button>
 
+        {pushSupported && (
+          <Card className="p-5 flex-row items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${pushSubscribed ? 'bg-pace-50 text-pace-500' : 'bg-zinc-100 text-zinc-400'}`}>
+                {pushSubscribed ? <Bell size={18} /> : <BellOff size={18} />}
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-sm text-zinc-900">알림 설정</p>
+                <p className="text-xs text-zinc-400 truncate">매주 목요일 핫플랭킹 알림을 받아보세요</p>
+              </div>
+            </div>
+            <Switch
+              checked={pushSubscribed}
+              onCheckedChange={() => (pushSubscribed ? pushUnsubscribe() : pushSubscribe())}
+              disabled={pushLoading}
+              aria-label="알림 토글"
+            />
+          </Card>
+        )}
+
         <div className="pt-8 border-t border-zinc-200">
-          <button 
+          <button
             onClick={handleDeleteAccount}
             className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-rose-100 transition-all"
           >
