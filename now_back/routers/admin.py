@@ -13,6 +13,12 @@ import ranking_service as ranking
 
 router = APIRouter()
 
+@router.post("/admin/push/weekly")
+async def trigger_weekly_push():
+    """Web Push 주간 발송 수동 트리거 — 스케줄 등록 전 검증용. 자동 스케줄은 아직 미등록."""
+    import push_service
+    return push_service.run_weekly_push()
+
 @router.get("/admin/themes")
 async def admin_get_all_themes():
     """어드민 전용 — 전체 테마 조회 ([퍼감] 제외)"""
@@ -128,7 +134,17 @@ async def admin_weekly_ranking_7d():
         result = list(ranking._popularity_rows(conn, 7, exclude_jeju=True))
         if len(result) < 25:
             result = list(ranking._popularity_rows(conn, 30, exclude_jeju=True))
-        return [dict(row._mapping) for row in result[:25]]
+        top25 = [dict(row._mapping) for row in result[:25]]
+        # 순위변동(rank_delta) — 화면 표시용 캐시(ranking_snapshot.top25_ids, 최근 갱신 주기 기준)를
+        # 비교 기준으로 재사용. 이 엔드포인트 자체는 별도 이력을 쌓지 않으므로 새 스냅샷은 기록하지 않는다.
+        prev_row = conn.execute(text("SELECT top25_ids FROM ranking_snapshot WHERE id = 1")).fetchone()
+        prev_rank_by_id = {pid: idx for idx, pid in enumerate(prev_row[0])} if prev_row and prev_row[0] else {}
+        for idx, item in enumerate(top25):
+            if item["id"] in prev_rank_by_id:
+                item["rank_delta"] = prev_rank_by_id[item["id"]] - idx
+            else:
+                item["rank_delta"] = "new"
+        return top25
 
 @router.get("/admin/places")
 async def admin_list_all_places(region: Optional[str] = None):

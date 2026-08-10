@@ -103,7 +103,12 @@ def refresh_place_popularity(is_cron: bool = False):
         conn.commit()
 
         prev_snapshot = conn.execute(text("SELECT top25_ids, updated_at FROM ranking_snapshot WHERE id = 1")).fetchone()
-        prev_top25_ids = set(prev_snapshot[0]) if prev_snapshot else set()
+        # 순위변동 배지(▲/▼N)용 — 이전 톱25는 순서(=순위)가 보존된 리스트로 받아 id→이전순위(0-base) 매핑을 만든다.
+        # NEW 배지 판별(있었는지 없었는지)만 필요할 땐 set()으로 바꿔서 쓰던 기존 방식이었는데,
+        # 그러면 순위 정보가 여기서 버려져서 델타 계산이 불가능해짐 — 리스트를 그대로 보존.
+        prev_top25_list = list(prev_snapshot[0]) if prev_snapshot else []
+        prev_top25_ids = set(prev_top25_list)
+        prev_rank_by_id = {pid: idx for idx, pid in enumerate(prev_top25_list)}
         # 배포/재시작 때마다 이 함수가 module-level에서 다시 호출되는데(is_cron=False), 그걸로 스냅샷을
         # 갱신하면 재배포 타이밍에 따라 기준점이 "4시간 전"이 아니라 "마지막 재시작 시점"으로 흔들림
         # (실제로 하루에 여러 번 재배포하면서 기준점이 그때그때 달라졌던 적 있음) — 그래서 스케줄러가
@@ -119,10 +124,21 @@ def refresh_place_popularity(is_cron: bool = False):
 
         current_top25_ids = [item["id"] for item in _place_popularity_cache[:25]]
         new_ids = set(current_top25_ids) - prev_top25_ids
-        for item in _place_popularity_cache:
+        for idx, item in enumerate(_place_popularity_cache):
             item["is_new"] = item["id"] in new_ids
+            # 순위변동 배지: 톱25 밖은 계산 대상 아님(None), 신규 진입은 "new", 그 외엔 이전순위-현재순위
+            # (둘 다 0-base 인덱스라 그대로 빼면 됨 — 예: 이전 5위(idx=4)→현재 2위(idx=1) = 4-1 = +3 상승)
+            if idx >= 25:
+                item["rank_delta"] = None
+            elif item["id"] in new_ids:
+                item["rank_delta"] = "new"
+            elif item["id"] in prev_rank_by_id:
+                item["rank_delta"] = prev_rank_by_id[item["id"]] - idx
+            else:
+                # prev_snapshot 자체가 없던 최초 1회 등 — 비교 기준 없음
+                item["rank_delta"] = None
         if is_real_cycle:
-            logger.info("[ranking] NEW 배지 계산 — 직전 톱25=%s / 이번 톱25=%s / new_ids=%s", sorted(prev_top25_ids), sorted(current_top25_ids), sorted(new_ids))
+            logger.info("[ranking] NEW 배지 계산 — 직전 톱25=%s / 이번 톱25=%s / new_ids=%s", prev_top25_list, sorted(current_top25_ids), sorted(new_ids))
             conn.execute(
                 text("""
                     INSERT INTO ranking_snapshot (id, top25_ids, prev_top25_ids, updated_at)
@@ -132,7 +148,7 @@ def refresh_place_popularity(is_cron: bool = False):
                         top25_ids = CAST(:ids AS jsonb),
                         updated_at = NOW()
                 """),
-                {"ids": json.dumps(current_top25_ids), "prev_ids": json.dumps(sorted(prev_top25_ids))},
+                {"ids": json.dumps(current_top25_ids), "prev_ids": json.dumps(prev_top25_list)},
             )
             conn.commit()
 
@@ -154,14 +170,31 @@ def refresh_place_popularity(is_cron: bool = False):
         by_region: dict = {}
         for r in _PLACE_RANKING_REGIONS:
             r_result = list(_popularity_rows(conn, overall_interval_days, min_score=_MIN_RANKING_SCORE, only_region=r))
+            # 부산/제주는 예외 — 종합과 같은 기간을 강제하면 활동량이 워낙 적어서 통째로 비어버림
+            # (2026-08-10 실측: 종합이 48시간 기준일 때 제주 0건, 30일로 넓히면 5건). 성수/홍대/강남/
+            # 강북은 종합 상위권과 풀을 많이 공유해서 기간이 갈리면 같은 장소 점수가 화면마다 달라
+            # 보이는 문제가 있었지만(2026-08-07), 부산/제주는 종합 상위권과 거의 안 겹쳐서 그 리스크가
+            # 낮다고 보고 이 두 지역만 자체적으로 30일까지 확장을 허용.
+            if r in ('부산', '제주') and len(r_result) < 25:
+                r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
             region_cache = [dict(row._mapping) for row in r_result]
 
             prev_r_snapshot = conn.execute(text("SELECT top25_ids FROM place_region_ranking_snapshot WHERE region = :region"), {"region": r}).fetchone()
-            prev_r_ids = set(prev_r_snapshot[0]) if prev_r_snapshot else set()
+            prev_r_list = list(prev_r_snapshot[0]) if prev_r_snapshot else []
+            prev_r_ids = set(prev_r_list)
+            prev_r_rank_by_id = {pid: idx for idx, pid in enumerate(prev_r_list)}
             current_r_ids = [item["id"] for item in region_cache[:25]]
             r_new_ids = set(current_r_ids) - prev_r_ids
-            for item in region_cache:
+            for idx, item in enumerate(region_cache):
                 item["is_new"] = item["id"] in r_new_ids
+                if idx >= 25:
+                    item["rank_delta"] = None
+                elif item["id"] in r_new_ids:
+                    item["rank_delta"] = "new"
+                elif item["id"] in prev_r_rank_by_id:
+                    item["rank_delta"] = prev_r_rank_by_id[item["id"]] - idx
+                else:
+                    item["rank_delta"] = None
             by_region[r] = region_cache
 
             if is_real_cycle:
@@ -174,7 +207,7 @@ def refresh_place_popularity(is_cron: bool = False):
                             top25_ids = CAST(:ids AS jsonb),
                             updated_at = NOW()
                     """),
-                    {"region": r, "ids": json.dumps(current_r_ids), "prev_ids": json.dumps(sorted(prev_r_ids))},
+                    {"region": r, "ids": json.dumps(current_r_ids), "prev_ids": json.dumps(prev_r_list)},
                 )
                 conn.commit()
         _place_popularity_by_region = by_region
