@@ -170,7 +170,9 @@ async def admin_region_stats():
     4시간 단위 시간대별 집계는 지역 불문 모양이 거의 똑같아 판단에 도움이 안 돼(2026-08-11, 실사용 피드백)
     카테고리별 분해로 교체 — 실제 어느 카테고리가 트래픽을 만드는지가 운영 대응에 더 유의미함.
     category IN ('전시','행사')→전시, 'class'→클래스, 'shopping'→쇼핑, 그 외(NULL 포함, 공연 장르 등)→팝업으로
-    귀속시켜 4개 버킷이 지역 전체를 빠짐없이 분할하도록 함(place_count/조회수 총합이 항상 region 총합과 일치)."""
+    귀속시켜 4개 버킷이 지역 전체를 빠짐없이 분할하도록 함(place_count/조회수 총합이 항상 region 총합과 일치).
+    직전 48시간(48~96시간 전) 조회수도 함께 계산해 전주기 대비 변화율을 같이 내려줌 — 급격한 변화(±20%)를
+    프론트에서 강조 표시하기 위함(2026-08-11)."""
     category_case = """
         CASE
             WHEN p.category IN ('전시', '행사') THEN '전시'
@@ -181,22 +183,44 @@ async def admin_region_stats():
     """
     with engine.connect() as conn:
         rows = conn.execute(text(f"""
-            SELECT p.region, ({category_case}) AS bucket,
-                   COUNT(DISTINCT p.id) AS place_count,
-                   COUNT(v.id) AS views
-            FROM seongsu_places p
-            LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
-            WHERE p.region = ANY(:regions)
-            GROUP BY p.region, bucket
+            WITH curr AS (
+                SELECT p.id AS place_id, p.region, ({category_case}) AS bucket,
+                       COUNT(v.id) AS views
+                FROM seongsu_places p
+                LEFT JOIN place_views v ON v.place_id = p.id
+                    AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
+                WHERE p.region = ANY(:regions)
+                GROUP BY p.id, p.region, bucket
+            ),
+            prev AS (
+                SELECT p.id AS place_id, COUNT(v.id) AS views
+                FROM seongsu_places p
+                LEFT JOIN place_views v ON v.place_id = p.id
+                    AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS * 2} hours'
+                    AND v.viewed_at < NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
+                WHERE p.region = ANY(:regions)
+                GROUP BY p.id
+            )
+            SELECT curr.region, curr.bucket,
+                   COUNT(*) AS place_count,
+                   SUM(curr.views) AS views,
+                   SUM(prev.views) AS prev_views
+            FROM curr JOIN prev ON prev.place_id = curr.place_id
+            GROUP BY curr.region, curr.bucket
         """), {"regions": _STATS_REGIONS}).fetchall()
 
     by_region: dict = {
-        r: {c: {"place_count": 0, "views": 0} for c in _STATS_CATEGORIES}
+        r: {c: {"place_count": 0, "views": 0, "prev_views": 0} for c in _STATS_CATEGORIES}
         for r in _STATS_REGIONS
     }
-    for region, bucket, place_count, views in rows:
+    for region, bucket, place_count, views, prev_views in rows:
         if region in by_region and bucket in by_region[region]:
-            by_region[region][bucket] = {"place_count": place_count, "views": views}
+            by_region[region][bucket] = {"place_count": place_count, "views": views, "prev_views": prev_views}
+
+    def _delta_pct(curr: int, prev: int):
+        if prev == 0:
+            return None if curr == 0 else 100.0
+        return round((curr - prev) / prev * 100, 1)
 
     return {
         "categories": _STATS_CATEGORIES,
@@ -207,7 +231,13 @@ async def admin_region_stats():
                 "place_count": sum(c["place_count"] for c in by_region[r].values()),
                 "total_views": sum(c["views"] for c in by_region[r].values()),
                 "by_category": [
-                    {"category": c, "place_count": by_region[r][c]["place_count"], "views": by_region[r][c]["views"]}
+                    {
+                        "category": c,
+                        "place_count": by_region[r][c]["place_count"],
+                        "views": by_region[r][c]["views"],
+                        "prev_views": by_region[r][c]["prev_views"],
+                        "delta_pct": _delta_pct(by_region[r][c]["views"], by_region[r][c]["prev_views"]),
+                    }
                     for c in _STATS_CATEGORIES
                 ],
             }

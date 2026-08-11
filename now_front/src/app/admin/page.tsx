@@ -86,7 +86,7 @@ interface RegionStatsResponse {
     region: string;
     place_count: number;
     total_views: number;
-    by_category: { category: string; place_count: number; views: number }[];
+    by_category: { category: string; place_count: number; views: number; prev_views: number; delta_pct: number | null }[];
   }[];
 }
 
@@ -104,6 +104,7 @@ export default function AdminPage() {
   const router = useRouter();
   
   const [viewMode, setViewMode] = useState<ViewMode>('ranking');
+  const [rankingSubTab, setRankingSubTab] = useState<'stats' | 'banner' | 'top25'>('stats');
   const [places, setPlaces] = useState<Place[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -593,7 +594,36 @@ export default function AdminPage() {
           </div>
         )}
 
-        {viewMode === 'ranking' && regionStats && (
+        {viewMode === 'ranking' && (
+          <div className="flex gap-1 bg-zinc-100 p-1 rounded-2xl mb-6 w-fit">
+            <button
+              onClick={() => setRankingSubTab('stats')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rankingSubTab === 'stats' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+              }`}
+            >
+              🗂️ 분야별 분포
+            </button>
+            <button
+              onClick={() => setRankingSubTab('banner')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rankingSubTab === 'banner' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+              }`}
+            >
+              📣 공지 배너
+            </button>
+            <button
+              onClick={() => setRankingSubTab('top25')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                rankingSubTab === 'top25' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
+              }`}
+            >
+              📊 TOP25
+            </button>
+          </div>
+        )}
+
+        {viewMode === 'ranking' && rankingSubTab === 'stats' && regionStats && (
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base font-black text-zinc-900">🗂️ 분야별 카테고리 분포</span>
@@ -602,10 +632,13 @@ export default function AdminPage() {
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mb-4">
-              카테고리 미분류(공연 장르 등)는 팝업으로 집계 — 장소수/조회수 합계는 항상 분야 전체 합계와 일치
+              카테고리 미분류(공연 장르 등)는 팝업으로 집계 — 장소수/조회수 합계는 항상 분야 전체 합계와 일치. 막대는 회색=장소수, 남색=조회수(각 분야 내 최댓값 기준 상대 비교). 조회수 옆 %는 직전 48시간 대비 변화율 — +20% 이상은 빨간 테두리, -20% 이하는 파란 테두리로 강조
             </p>
             <div className="flex flex-col gap-3">
-              {regionStats.regions.map((r) => (
+              {regionStats.regions.map((r) => {
+                const maxPlaceCount = Math.max(1, ...r.by_category.map(c => c.place_count));
+                const maxViews = Math.max(1, ...r.by_category.map(c => c.views));
+                return (
                 <div key={r.region} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
                   <div className="flex items-center gap-3 sm:w-40 flex-shrink-0">
                     <div>
@@ -620,32 +653,69 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="flex-grow grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-0">
-                    {r.by_category.map((c) => (
-                      <div key={c.category} className="bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-center">
-                        <div className="text-[9px] font-bold text-zinc-400">{c.category}</div>
-                        <div className="text-xs font-black text-zinc-800">{c.place_count.toLocaleString()}곳</div>
-                        <div className="text-[10px] font-bold text-pace-600">{c.views.toLocaleString()}회</div>
+                    {r.by_category.map((c) => {
+                      // 국내 증시 관례(상승=빨강/하락=파랑)로 통일 — ±20% 이상일 때만 카드 강조
+                      const isSpikeUp = c.delta_pct != null && c.delta_pct >= 20;
+                      const isSpikeDown = c.delta_pct != null && c.delta_pct <= -20;
+                      return (
+                      <div
+                        key={c.category}
+                        className={`bg-white rounded-xl px-2 py-2 text-center border ${
+                          isSpikeUp ? 'border-red-400 ring-1 ring-red-200'
+                          : isSpikeDown ? 'border-blue-400 ring-1 ring-blue-200'
+                          : 'border-zinc-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-center gap-1 mb-1.5">
+                          <span className="text-[9px] font-bold text-zinc-400">{c.category}</span>
+                          {c.delta_pct != null && (
+                            <span className={`text-[8px] font-black ${c.delta_pct > 0 ? 'text-red-500' : c.delta_pct < 0 ? 'text-blue-500' : 'text-zinc-300'}`}>
+                              {c.delta_pct > 0 ? '+' : ''}{c.delta_pct}%
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-end justify-center gap-1.5 h-12">
+                          <div className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
+                            <span className="text-[8px] font-bold text-zinc-500 leading-none">{c.place_count.toLocaleString()}</span>
+                            <div
+                              className="w-full max-w-[18px] rounded-t bg-zinc-300"
+                              style={{ height: `${Math.max(4, (c.place_count / maxPlaceCount) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
+                            <span className="text-[8px] font-bold text-pace-600 leading-none">{c.views.toLocaleString()}</span>
+                            <div
+                              className={`w-full max-w-[18px] rounded-t ${isSpikeUp ? 'bg-red-500' : isSpikeDown ? 'bg-blue-500' : 'bg-pace-500'}`}
+                              style={{ height: `${Math.max(4, (c.views / maxViews) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-center gap-3 mt-1 text-[7px] font-bold text-zinc-300 uppercase">
+                          <span>장소</span><span>조회</span>
+                        </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="sm:w-20 flex-shrink-0 text-right">
                     <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">조회수 합</div>
                     <div className="text-sm font-black text-pace-600">{r.total_views.toLocaleString()}</div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
-        {viewMode === 'ranking' && (
+        {viewMode === 'ranking' && rankingSubTab === 'banner' && (
           <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-base font-black text-zinc-900">📣 플레이스 페이지 상단 공지 배너</span>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">전체 페이지 공통 · 수동 운영</span>
             </div>
             <p className="text-[11px] text-zinc-400 mb-3">텍스트를 비우고 갱신하면 배너가 사라집니다.</p>
-            <div className="flex flex-col sm:flex-row gap-2 mb-6">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={bannerText}
@@ -668,7 +738,11 @@ export default function AdminPage() {
                 {savingBanner ? '저장 중...' : '갱신'}
               </button>
             </div>
+          </div>
+        )}
 
+        {viewMode === 'ranking' && rankingSubTab === 'top25' && (
+          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-base font-black text-zinc-900">📊 조회수 TOP {weeklyRanking.length}</span>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 48시간</span>

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 import ranking_service as ranking
 import push_service
+import notification
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
 from scraper_seoul_crowd import poll_crowd
 from routers import admin, ai, courses, crowd, magazine, places, push, rankings, social
@@ -84,6 +85,17 @@ scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=23, minute=5, i
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=3, minute=5, id='ranking_kst_1200', kwargs={'is_cron': True})
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=7, minute=5, id='ranking_kst_1600', kwargs={'is_cron': True})
 scheduler.add_job(ranking.refresh_place_popularity, 'cron', hour=11, minute=5, id='ranking_kst_2000', kwargs={'is_cron': True})
+# 4시간마다 분야별 조회수 리포트 텔레그램 발송 — 같은 6개 시각에 등록하되, 새벽 4시(KST) 발송만
+# 함수 내부에서 건너뜀(요청 사항). 랭킹 갱신(minute=5) 이후 실행되도록 minute=15로 살짝 늦춤.
+# 로컬(TELEGRAM_BOT_ENABLED=true, 텔레그램 봇 전용 게이트)에서는 등록 안 함 — 로컬 개발 서버가 켜져
+# 있는 동안 같은 시각에 서버와 로컬 양쪽에서 중복 발송되는 것을 방지(2026-08-11).
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=15, minute=15, id='report_kst_0000')
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=19, minute=15, id='report_kst_0400')
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=23, minute=15, id='report_kst_0800')
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=3, minute=15, id='report_kst_1200')
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=7, minute=15, id='report_kst_1600')
+    scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=11, minute=15, id='report_kst_2000')
 # 목요일 주간 Web Push — 구독자 수와 무관하게 매주 발송(0명이면 push_service 내부에서 그냥 아무것도 안 보내고 끝남).
 # 한국시간(KST=UTC+9) 목요일 12:30 = UTC 목요일 03:30
 scheduler.add_job(push_service.run_weekly_push, 'cron', day_of_week='thu', hour=3, minute=30, id='push_weekly_kst_thu_1230')
