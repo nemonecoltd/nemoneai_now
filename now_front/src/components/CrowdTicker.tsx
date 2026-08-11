@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import CongestionRing from './CongestionRing';
 
 interface CrowdData {
   area: string;
@@ -165,13 +166,15 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="absolute inset-0 flex items-center gap-1.5 px-4 text-[11px] font-bold whitespace-nowrap overflow-x-auto no-scrollbar"
           >
-            <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0 animate-pulse"
-              style={{ backgroundColor: accent, boxShadow: `0 0 5px ${accent}` }}
-            />
+            <CongestionRing level={data.congest_lvl} size={18} lang={lang} showLabel={false} />
             <span className="font-black flex-shrink-0" style={{ color: accent }}>{areaLabel(area, lang)}</span>
             <span className="text-pace-600/60 flex-shrink-0">•</span>
-            <span className="text-zinc-200 font-mono flex-shrink-0">{formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}</span>
+            <span
+              className={`font-mono font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-200'}`}
+              title={congestLabel(data.congest_lvl, lang)}
+            >
+              {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}
+            </span>
             {deltaText && (
               <>
                 <span className="text-pace-600/60 flex-shrink-0">•</span>
@@ -190,10 +193,6 @@ export default function CrowdTicker({ lang = 'ko', onNavigateToMap }: { lang?: s
                 <span className={`font-medium flex-shrink-0 ${gender.className}`}>{gender.label}</span>
               </>
             )}
-            <span className="text-pace-600/60 flex-shrink-0">•</span>
-            <span className={`font-black flex-shrink-0 ${CONGEST_COLOR[data.congest_lvl] || 'text-zinc-400'}`}>
-              {congestLabel(data.congest_lvl, lang)}
-            </span>
           </motion.div>
         </AnimatePresence>
       </div>

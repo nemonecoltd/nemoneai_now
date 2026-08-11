@@ -143,7 +143,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={lang === 'en' ? 'Search places...' : lang === 'zh' ? '搜索地点...' : '장소 검색'}
-              className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm border border-zinc-200 bg-white outline-none focus:border-pace-400 transition-colors"
+              // text-base(16px) 고정 — iOS Safari는 입력창 글자가 16px 미만이면 포커스 시 페이지를
+              // 자동으로 확대함(검색창 클릭 순간 화면이 커지고 밀려나는 증상의 원인, 2026-08-11)
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl text-base border border-zinc-200 bg-white outline-none focus:border-pace-400 transition-colors"
             />
             {searchQuery && (
               <button

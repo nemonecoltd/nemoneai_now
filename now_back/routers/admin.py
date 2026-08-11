@@ -160,6 +160,61 @@ async def admin_list_all_places(region: Optional[str] = None):
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
+_STATS_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주', '공연', '축제']
+_STATS_CATEGORIES = ['팝업', '클래스', '쇼핑', '전시']
+_STATS_WINDOW_HOURS = 48
+
+@router.get("/admin/region-stats")
+async def admin_region_stats():
+    """어드민 대시보드 — 분야(지역)별 등록 장소 수/최근 48시간 조회수 + 팝업·클래스·쇼핑·전시 카테고리별 세부 분해.
+    4시간 단위 시간대별 집계는 지역 불문 모양이 거의 똑같아 판단에 도움이 안 돼(2026-08-11, 실사용 피드백)
+    카테고리별 분해로 교체 — 실제 어느 카테고리가 트래픽을 만드는지가 운영 대응에 더 유의미함.
+    category IN ('전시','행사')→전시, 'class'→클래스, 'shopping'→쇼핑, 그 외(NULL 포함, 공연 장르 등)→팝업으로
+    귀속시켜 4개 버킷이 지역 전체를 빠짐없이 분할하도록 함(place_count/조회수 총합이 항상 region 총합과 일치)."""
+    category_case = """
+        CASE
+            WHEN p.category IN ('전시', '행사') THEN '전시'
+            WHEN p.category = 'class' THEN '클래스'
+            WHEN p.category = 'shopping' THEN '쇼핑'
+            ELSE '팝업'
+        END
+    """
+    with engine.connect() as conn:
+        rows = conn.execute(text(f"""
+            SELECT p.region, ({category_case}) AS bucket,
+                   COUNT(DISTINCT p.id) AS place_count,
+                   COUNT(v.id) AS views
+            FROM seongsu_places p
+            LEFT JOIN place_views v ON v.place_id = p.id AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
+            WHERE p.region = ANY(:regions)
+            GROUP BY p.region, bucket
+        """), {"regions": _STATS_REGIONS}).fetchall()
+
+    by_region: dict = {
+        r: {c: {"place_count": 0, "views": 0} for c in _STATS_CATEGORIES}
+        for r in _STATS_REGIONS
+    }
+    for region, bucket, place_count, views in rows:
+        if region in by_region and bucket in by_region[region]:
+            by_region[region][bucket] = {"place_count": place_count, "views": views}
+
+    return {
+        "categories": _STATS_CATEGORIES,
+        "window_hours": _STATS_WINDOW_HOURS,
+        "regions": [
+            {
+                "region": r,
+                "place_count": sum(c["place_count"] for c in by_region[r].values()),
+                "total_views": sum(c["views"] for c in by_region[r].values()),
+                "by_category": [
+                    {"category": c, "place_count": by_region[r][c]["place_count"], "views": by_region[r][c]["views"]}
+                    for c in _STATS_CATEGORIES
+                ],
+            }
+            for r in _STATS_REGIONS
+        ],
+    }
+
 @router.get("/banner")
 async def get_banner():
     """플레이스 상세페이지 상단에 표시할 전역 공지/기사 배너 (공지사항 게시판 대체용, 수동 운영)."""

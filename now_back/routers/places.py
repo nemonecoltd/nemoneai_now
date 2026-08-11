@@ -1,9 +1,10 @@
 """장소 CRUD·조회 — 목록/카테고리/상세/조회수/생성/수정/삭제/이미지 업로드/블로그갱신 트리거."""
 import asyncio
+import re
 import threading
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import text
 
 from database import engine
@@ -106,13 +107,21 @@ async def get_place(place_id: int):
         place["hot_rank_updated_at"] = ranking.get_last_refreshed() if hot_rank else None
         return place
 
+_BOT_UA_RE = re.compile(r"bot|spider|crawl|yeti|slurp|facebookexternalhit", re.IGNORECASE)
+
 @router.post("/places/{place_id}/view")
-async def record_place_view(place_id: int):
-    """장소 조회수 기록 — 상세 페이지 진입 시 호출"""
+async def record_place_view(place_id: int, request: Request):
+    """장소 조회수 기록 — 상세 페이지 진입 시 호출.
+    Googlebot이 상세페이지를 JS까지 렌더링하며 크롤링할 때 이 엔드포인트를 그대로 호출해
+    조회수/인기 랭킹 점수가 실제 사람 트래픽 없이 부풀려지던 문제(2026-08-11, nginx 로그 기준
+    /view 호출의 상당수가 Googlebot UA) — User-Agent로 알려진 크롤러를 걸러 집계에서 제외."""
+    ua = request.headers.get("user-agent", "")
+    if _BOT_UA_RE.search(ua):
+        return {"ok": True, "counted": False}
     with engine.connect() as conn:
         conn.execute(text("INSERT INTO place_views (place_id) VALUES (:place_id)"), {"place_id": place_id})
         conn.commit()
-    return {"ok": True}
+    return {"ok": True, "counted": True}
 
 @router.post("/places/upload-image")
 async def upload_place_image(file: UploadFile = File(...)):

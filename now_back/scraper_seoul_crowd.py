@@ -124,6 +124,9 @@ def poll_crowd():
                 # ON CONFLICT 내에서 prev_* = 갱신 전(crowd_status.*) 값을 그대로 참조 —
                 # 별도 SELECT 없이 한 번의 UPSERT로 "현재값→prev로 이동, 새값 반영"을 원자적으로 처리.
                 # 최초 INSERT(행 없음)는 prev_* 컬럼을 안 채우므로 NULL 그대로.
+                # ppltn_min/max는 COALESCE로 기존 값을 보존 — 서울시 API가 특정 주기에 해당 필드를
+                # 빈 값으로 주면(=ppltn_min/max가 None) 직전 정상값을 NULL로 덮어써 /crowd 500 에러를
+                # 유발했음(2026-08-11). API 응답 누락은 "값 없음"이 아니라 "이번엔 못 받음"으로 취급.
                 conn.execute(text("""
                     INSERT INTO crowd_status
                         (area_nm, area_cd, congest_lvl, ppltn_min, ppltn_max, fcst_text,
@@ -137,8 +140,8 @@ def poll_crowd():
                         congest_lvl = EXCLUDED.congest_lvl,
                         prev_ppltn_min = crowd_status.ppltn_min,
                         prev_ppltn_max = crowd_status.ppltn_max,
-                        ppltn_min = EXCLUDED.ppltn_min,
-                        ppltn_max = EXCLUDED.ppltn_max,
+                        ppltn_min = COALESCE(EXCLUDED.ppltn_min, crowd_status.ppltn_min),
+                        ppltn_max = COALESCE(EXCLUDED.ppltn_max, crowd_status.ppltn_max),
                         fcst_text = EXCLUDED.fcst_text,
                         age_gender_summary = EXCLUDED.age_gender_summary,
                         weather_summary = EXCLUDED.weather_summary,

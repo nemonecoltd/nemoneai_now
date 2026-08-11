@@ -18,6 +18,21 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// 4위 이하 리스트 행의 순위 숫자 배지 — 예전엔 플랫 검정 사각형+숫자였는데 밋밋하다는 피드백(2026-08-11)으로
+// 그라데이션 + 진입 시 스프링 팝 애니메이션으로 교체. place/concert/festival/shopping/exhibition 5개 탭 공용.
+function RankNumberBadge({ rank }: { rank: number }) {
+  return (
+    <motion.div
+      initial={{ scale: 0, rotate: -12 }}
+      animate={{ scale: 1, rotate: 0 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 16 }}
+      className="absolute -left-2 -top-2 w-6 h-6 rounded-lg flex items-center justify-center shadow-lg z-10 text-white text-[10px] font-black bg-gradient-to-br from-zinc-700 to-zinc-900 ring-1 ring-white/20"
+    >
+      {rank}
+    </motion.div>
+  );
+}
+
 // 장소 카드(리스트 행/bento 타일 공용)에 필요한 표시용 값 계산 — 톱3 bento와 4위 이하 리스트가
 // 동일한 지역배지/제목/부가텍스트 로직을 공유하도록 분리(2026-08-10, bento-grid 도입 시 추출)
 function computePlaceMeta(place: any, lang: string) {
@@ -579,7 +594,13 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
   const handleShareTheme = async (theme: any) => {
     try {
       const themePlaces = typeof theme.places === 'string' ? JSON.parse(theme.places) : theme.places;
-      const items = themePlaces.slice(0, 10).map((p: any) => ({ id: p.id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }));
+      // 자동생성 테마(예: "이번주 TOP10 핫플")의 places는 id가 아니라 place_id로 실제 장소를 가리킴 —
+      // id만 읽으면 항상 undefined가 되고, 백엔드가 id 없는 항목을 전부 걸러내 결국 "유효한 item 없음"으로
+      // 실패했음(2026-08-11). id가 진짜 없는(사용자가 직접 입력한 자유 항목) 곳은 공유 대상에서 제외.
+      const items = themePlaces
+        .slice(0, 10)
+        .map((p: any) => ({ id: p.id ?? p.place_id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }))
+        .filter((p: any) => p.id != null);
       const { id } = await createRankingShare({ tab: 'theme', label: theme.title, items });
       const url = `${window.location.origin}/ranking/share/${id}`;
       await navigator.clipboard.writeText(url);
@@ -815,9 +836,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 return (
                 <div key={place.id} ref={idx === 12 ? pushTriggerRef : undefined}>
                     <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                        {idx + 1}
-                      </div>
+                      <RankNumberBadge rank={idx + 1} />
                       <div className="relative flex-shrink-0">
                         <img src={place.image_url || `https://picsum.photos/seed/${place.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={placeTitle || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${place.id}/200`; }} />
                         <div className="absolute -bottom-1 -right-1 shadow-lg">
@@ -895,9 +914,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       return (
                         <div key={place.id}>
                     <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                        {idx + 1}
-                      </div>
+                      <RankNumberBadge rank={idx + 1} />
                       <div className="relative flex-shrink-0">
                         <img src={item.image_url || `https://picsum.photos/seed/${item.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={item.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${item.id}/200`; }} />
                         <div className="absolute -bottom-1 -right-1 shadow-lg">
@@ -964,9 +981,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       return (
                         <div key={place.id}>
                     <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                        {idx + 1}
-                      </div>
+                      <RankNumberBadge rank={idx + 1} />
                       <div className="relative flex-shrink-0">
                         <img src={item.image_url || `https://picsum.photos/seed/${item.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={item.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${item.id}/200`; }} />
                         <div className="absolute -bottom-1 -right-1 shadow-lg">
@@ -1048,9 +1063,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       return (
                         <div key={place.id}>
                     <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                        {idx + 1}
-                      </div>
+                      <RankNumberBadge rank={idx + 1} />
                       <div className="relative flex-shrink-0">
                         <img src={item.image_url || `https://picsum.photos/seed/${item.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={item.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${item.id}/200`; }} />
                         <div className="absolute -bottom-1 -right-1 shadow-lg">
@@ -1132,9 +1145,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       return (
                         <div key={place.id}>
                     <div className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group mb-4">
-                      <div className="absolute -left-2 -top-2 w-6 h-6 bg-zinc-900 text-white text-[10px] font-black rounded-lg flex items-center justify-center shadow-lg z-10">
-                        {idx + 1}
-                      </div>
+                      <RankNumberBadge rank={idx + 1} />
                       <div className="relative flex-shrink-0">
                         <img src={item.image_url || `https://picsum.photos/seed/${item.id}/200`} className="w-16 h-16 rounded-2xl object-cover border border-zinc-50" alt={item.title || ''} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/rank-${item.id}/200`; }} />
                         <div className="absolute -bottom-1 -right-1 shadow-lg">
@@ -1174,14 +1185,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
         </AnimatePresence>
         {isShareableTab && (
           <div className="flex gap-2 pt-2 pb-4">
-            <button onClick={handleShareRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+            <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={handleShareRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
               <Share2 size={14} />
               {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유하기'}
-            </button>
-            <button onClick={handleSaveRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={handleSaveRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
               <Save size={14} />
               {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : '마이페이지에 저장'}
-            </button>
+            </motion.button>
           </div>
         )}
       </div>
@@ -1241,12 +1252,14 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 ))}
               </div>
 
-              <button 
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.02 }}
                 onClick={() => handleForkCourse(selectedCourse)}
                 className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all"
               >
                 <Save size={20} /> 이 코스 내 마이페이지로 퍼가기
-              </button>
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
@@ -1294,16 +1307,18 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 ))}
               </div>
 
-              <button onClick={() => handleShareTheme(selectedTheme)} className="w-full mb-3 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
+              <motion.button whileTap={{ scale: 0.96 }} whileHover={{ scale: 1.02 }} onClick={() => handleShareTheme(selectedTheme)} className="w-full mb-3 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
                 <Share2 size={14} /> 공유하기
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.02 }}
                 onClick={() => handleForkTheme(selectedTheme)}
                 className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all"
               >
                 <Save size={20} /> 이 테마 내 마이페이지로 퍼가기
-              </button>
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
@@ -1417,7 +1432,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                 </div>
               </div>
 
-              <button
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                whileHover={{ scale: 1.02 }}
                 onClick={createAiCourse}
                 disabled={isCreatingCourse}
                 className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all disabled:opacity-50 shadow-xl"
@@ -1432,7 +1449,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                     <Clock size={18} /> 3시간코스 만들기
                   </>
                 )}
-              </button>
+              </motion.button>
 
               <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
             </motion.div>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, Minus, Users, X } from 'lucide-react';
+import CongestionRing from './CongestionRing';
+import AdUnit from './AdUnit';
 
 // 지역 → 서울시 도시데이터 지점 후보. now_back deps.py CROWD_AREA_MAP과 키를 맞출 것.
 // 강북은 넓은 지역이라 이태원 외 지점(광화문 등)으로 향후 확장 예정 — 여기 배열에 추가하면
@@ -46,25 +48,6 @@ interface CrowdData {
   updated_at: string;
   ppltn_delta_pct?: number;
   prev_congest_lvl?: string;
-}
-
-// 서울시 실시간 도시데이터 혼잡도 4단계 공식 표기 — 배지 색상 매핑(원본 한글 키 기준, API가 항상 한글로 내려줌)
-const CONGEST_STYLE: Record<string, string> = {
-  '여유': 'bg-emerald-50 text-emerald-600 border-emerald-200',
-  '보통': 'bg-amber-50 text-amber-600 border-amber-200',
-  '약간 붐빔': 'bg-orange-50 text-orange-600 border-orange-200',
-  '붐빔': 'bg-rose-50 text-rose-600 border-rose-200',
-};
-
-const CONGEST_LABEL: Record<string, Record<string, string>> = {
-  '여유': { en: 'Not Crowded', zh: '空闲', ja: '余裕' },
-  '보통': { en: 'Moderate', zh: '一般', ja: '普通' },
-  '약간 붐빔': { en: 'Slightly Busy', zh: '略拥挤', ja: 'やや混雑' },
-  '붐빔': { en: 'Crowded', zh: '拥挤', ja: '混雑' },
-};
-
-function congestLabel(lvl: string, lang: string): string {
-  return CONGEST_LABEL[lvl]?.[lang] ?? lvl;
 }
 
 function formatNum(n: number): string {
@@ -182,9 +165,7 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
 
         {/* 2줄: 혼잡도+인구수+델타+남녀를 한 줄에 — 가장 중요한 정보라 크게, 줄을 나누지 않음 */}
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <span className={`text-sm font-black px-2.5 py-1 rounded-xl border flex-shrink-0 ${CONGEST_STYLE[data.congest_lvl] || 'bg-zinc-50 text-zinc-500 border-zinc-200'}`}>
-            {congestLabel(data.congest_lvl, lang)}
-          </span>
+          <CongestionRing level={data.congest_lvl} size={30} lang={lang} />
           <span className="text-base font-black text-zinc-900 flex-shrink-0">
             {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}
           </span>
@@ -229,6 +210,21 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
               {lang === 'en' ? 'as of' : lang === 'zh' ? '更新于' : lang === 'ja' ? '時点' : '기준'}
             </p>
 
+            <div className="flex items-center gap-4 mb-6">
+              <CongestionRing level={data.congest_lvl} size={84} lang={lang} />
+              <div>
+                <p className="text-xl font-black text-zinc-900">
+                  {formatNum(data.ppltn_min)}~{formatNum(data.ppltn_max)}{ppltnUnit(lang)}
+                </p>
+                {typeof data.ppltn_delta_pct === 'number' && Math.abs(data.ppltn_delta_pct) >= 1 && (
+                  <span className={`inline-flex items-center gap-0.5 mt-1 text-xs font-bold px-1.5 py-0.5 rounded-full ${data.ppltn_delta_pct > 0 ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
+                    {data.ppltn_delta_pct > 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
+                    {Math.abs(data.ppltn_delta_pct)}%
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3 mb-6">
               <div className="bg-zinc-50 rounded-2xl p-4">
                 <p className="text-[10px] text-zinc-400 font-bold mb-1">{maleLabel}</p>
@@ -258,6 +254,8 @@ export default function CrowdCard({ region, lang = 'ko' }: { region: string; lan
                 ))}
               </div>
             )}
+
+            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
           </div>
         </>
       )}

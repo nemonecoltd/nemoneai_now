@@ -133,11 +133,11 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
         <form onSubmit={handleCreateSubmit} className="space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">테마 제목</label>
-            <input required type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-pace-500" placeholder="예: 비오는 날 가기 좋은 성수 카페" />
+            <input required type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500" placeholder="예: 비오는 날 가기 좋은 성수 카페" />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">테마 설명</label>
-            <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-pace-500 resize-none h-24" placeholder="이 테마에 대한 간단한 설명을 적어주세요." />
+            <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500 resize-none h-24" placeholder="이 테마에 대한 간단한 설명을 적어주세요." />
           </div>
 
           <div className="space-y-4">
@@ -150,30 +150,30 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                 <button type="button" onClick={() => setPlaces(places.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-zinc-400 hover:text-rose-500"><X size={16} /></button>
                 <div className="space-y-1 pr-8">
                   <label className="text-[10px] font-bold text-zinc-400">플레이스 이름</label>
-                  <input required type="text" value={place.title} onChange={e => handlePlaceChange(idx, 'title', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
+                  <input required type="text" value={place.title} onChange={e => handlePlaceChange(idx, 'title', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400">주소</label>
-                  <input required type="text" value={place.location} onChange={e => handlePlaceChange(idx, 'location', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" placeholder="상세 주소를 입력하세요" />
+                  <input required type="text" value={place.location} onChange={e => handlePlaceChange(idx, 'location', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="상세 주소를 입력하세요" />
                   {place.location && (
                     <a href={`https://map.naver.com/v5/search/${encodeURIComponent(place.location)}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-pace-500 hover:underline inline-block mt-1">네이버 지도로 확인</a>
                   )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400">설명 / 팁</label>
-                  <textarea required value={place.content} onChange={e => handlePlaceChange(idx, 'content', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500 resize-none" />
+                  <textarea required value={place.content} onChange={e => handlePlaceChange(idx, 'content', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500 resize-none" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400">운영 일시 (선택)</label>
-                  <input type="text" value={place.date_range} onChange={e => handlePlaceChange(idx, 'date_range', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" placeholder="예: 2026.04.01 ~ 04.30" />
+                  <input type="text" value={place.date_range} onChange={e => handlePlaceChange(idx, 'date_range', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="예: 2026.04.01 ~ 04.30" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400">이미지 URL (선택)</label>
-                  <input type="text" value={place.image_url} onChange={e => handlePlaceChange(idx, 'image_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" />
+                  <input type="text" value={place.image_url} onChange={e => handlePlaceChange(idx, 'image_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-zinc-400">영상 URL (선택)</label>
-                  <input type="text" value={place.video_url} onChange={e => handlePlaceChange(idx, 'video_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-pace-500" placeholder="YouTube 또는 Spotify 링크" />
+                  <input type="text" value={place.video_url} onChange={e => handlePlaceChange(idx, 'video_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="YouTube 또는 Spotify 링크" />
                 </div>
               </div>
             ))}

@@ -5,7 +5,11 @@ import { X, Bell } from 'lucide-react';
 import { usePushSubscription } from '@/lib/usePushSubscription';
 
 // 랭킹 스크롤 중간 지점처럼 "이미 관심을 보인" 시점에서만 부모가 show=true로 넘겨준다.
-// 강제 팝업 대신 하단 배너로만, 세션당(dismissKey 기준) 1회만 노출.
+// 강제 팝업 대신 하단 배너로만 노출. 닫기를 누르면 localStorage에 시각을 남겨 DISMISS_DURATION_MS
+// 동안 재노출 안 함(원래 sessionStorage였는데, 탭/브라우저를 닫으면 바로 초기화돼 다음날 다시 뜨는
+// 문제가 있었음 — 2026-08-11, "닫기=한동안 안 봄" 기대와 어긋나서 3개월로 변경).
+const DISMISS_DURATION_MS = 90 * 24 * 60 * 60 * 1000; // 3개월
+
 export default function PushSubscribeBanner({
   show,
   dismissKey,
@@ -21,7 +25,8 @@ export default function PushSubscribeBanner({
 
   useEffect(() => {
     try {
-      setSeen(sessionStorage.getItem(dismissKey) === '1');
+      const dismissedAt = parseInt(localStorage.getItem(dismissKey) || '0', 10);
+      setSeen(Date.now() - dismissedAt < DISMISS_DURATION_MS);
     } catch {
       setSeen(false);
     }
@@ -36,7 +41,7 @@ export default function PushSubscribeBanner({
   const dismiss = () => {
     setVisible(false);
     try {
-      sessionStorage.setItem(dismissKey, '1');
+      localStorage.setItem(dismissKey, String(Date.now()));
     } catch {}
   };
 

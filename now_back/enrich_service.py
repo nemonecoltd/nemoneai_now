@@ -53,6 +53,14 @@ def _translate_and_save(place_id: int, new_title: Optional[str], new_content: Op
                 conn.commit()
     except Exception as e:
         logger.error(f"❌ 백그라운드 번역 실패 (place_id={place_id}): {e}")
+def _limit_sentences(text: str, max_sentences: int) -> str:
+    """프롬프트로 문장수를 요청해도 모델이 가끔 넘겨서 줄 때가 있어 코드에서 한 번 더 상한을 강제.
+    '.', '!', '?', '다.', '요.' 등 한국어 문장부호까지 포괄하려면 정규식보다 마침표 계열 기호 분리가 안전."""
+    import re as _re
+    sentences = [s.strip() for s in _re.split(r'(?<=[.!?])\s+', text.strip()) if s.strip()]
+    return ' '.join(sentences[:max_sentences])
+
+
 async def _enrich_place_core(place_id: int) -> dict:
     """블로그갱신 실제 처리 로직 — HTTP 엔드포인트(/places/{id}/enrich)와 텔레그램 봇 둘 다에서 재사용.
     FastAPI에 종속되지 않도록 HTTPException 대신 ValueError/RuntimeError를 던짐."""
@@ -155,13 +163,10 @@ async def _enrich_place_core(place_id: int) -> dict:
             blog_block = "\n실제 방문자 블로그 후기 제목:\n" + "\n".join(f"- {r['title']}" for r in blog_reviews)
         road_block = f"\n찾아오는 길: {road_text}" if road_text else ""
 
-        if blog_reviews:
-            length_guide = "3~4문장, 1문단으로"
-        else:
-            length_guide = "2~3문단으로 구체적으로 (각 문단은 빈 줄로 구분)"
-
+        # 문장이 길면 상세페이지에서 소개글 아래 광고 위치가 너무 아래로 밀려 UX/수익에 안 좋다는
+        # 피드백(2026-08-11)으로 문단 수 대신 문장 수 상한(6문장)으로 통일 — 리뷰 유무와 무관하게 적용.
         prompt = (
-            f"다음 팝업스토어 소개 글을 {length_guide} 작성해줘.\n"
+            f"다음 팝업스토어 소개 글을 최대 6문장 이내로, 1문단으로 간결하게 작성해줘.\n"
             f"장소명: {title}\n위치: {location}"
             f"{blog_block}"
             f"{road_block}\n\n"
@@ -171,8 +176,14 @@ async def _enrich_place_core(place_id: int) -> dict:
 
         resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         generated = (resp.text or "").strip()[:600]
+        generated = _limit_sentences(generated, 6)
     except Exception as e:
         raise RuntimeError(f"Gemini 생성 실패: {e}")
+
+    # Gemini가 드물게 빈 응답을 반환해도(세이프티 필터/일시 오류 등) 그대로 저장하면 기존 소개글이
+    # 통째로 사라짐(2026-08-11 실제 발생) — 빈 응답이면 DB를 건드리지 않고 실패로 처리해 기존 글 보존.
+    if not generated:
+        raise RuntimeError("Gemini가 빈 응답을 반환했습니다 — 기존 소개글을 유지합니다")
 
     # 4. DB 저장 — content 업데이트 + blog_reviews 저장 + 갱신 시각 기록
     # blog_reviews가 빈 배열([])일 때 "if blog_reviews else None"이 False로 평가돼 NULL로 저장되던 버그 —

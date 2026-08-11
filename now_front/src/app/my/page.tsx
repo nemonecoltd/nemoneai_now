@@ -405,11 +405,11 @@ export default function MyPage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">제목</label>
-                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm font-bold focus:outline-none focus:border-pace-500" />
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-bold focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">설명</label>
-                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-sm h-24 resize-none focus:outline-none focus:border-pace-500" />
+                  <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base h-24 resize-none focus:outline-none focus:border-pace-500" />
                 </div>
 
                 <div className="space-y-4">
@@ -420,12 +420,12 @@ export default function MyPage() {
                   {editPlaces.map((p, idx) => (
                     <div key={idx} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-3 relative">
                       <button onClick={() => setEditPlaces(editPlaces.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-zinc-300 hover:text-rose-500"><X size={16} /></button>
-                      <input placeholder="장소명" value={p.title} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], title: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs font-bold" />
-                      <input placeholder="주소" value={p.location} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], location: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs" />
-                      <textarea placeholder="설명" value={p.content} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], content: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs h-16 resize-none" />
-                      <input placeholder="운영 일시" value={p.date_range || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], date_range: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs" />
-                      <input placeholder="이미지 URL" value={p.image_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], image_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs" />
-                      <input placeholder="영상 URL" value={p.video_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], video_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-xs" />
+                      <input placeholder="장소명" value={p.title} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], title: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base font-bold" />
+                      <input placeholder="주소" value={p.location} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], location: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <textarea placeholder="설명" value={p.content} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], content: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base h-16 resize-none" />
+                      <input placeholder="운영 일시" value={p.date_range || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], date_range: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <input placeholder="이미지 URL" value={p.image_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], image_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <input placeholder="영상 URL" value={p.video_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], video_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
                     </div>
                   ))}
                 </div>

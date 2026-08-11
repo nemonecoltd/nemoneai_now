@@ -79,6 +79,17 @@ interface AdminStats {
   storage_percent?: number;
 }
 
+interface RegionStatsResponse {
+  categories: string[];
+  window_hours: number;
+  regions: {
+    region: string;
+    place_count: number;
+    total_views: number;
+    by_category: { category: string; place_count: number; views: number }[];
+  }[];
+}
+
 type Region = '성수' | '홍대' | '강북' | '강남' | '부산' | '공연' | '제주' | '축제';
 // 서비스(page.tsx)와 동일한 순서 — 장소형 지역(성수~제주) 다음 이벤트형 지역(공연/축제)
 const REGIONS: Region[] = ['성수', '홍대', '강북', '강남', '부산', '제주', '공연', '축제'];
@@ -96,6 +107,7 @@ export default function AdminPage() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [regionStats, setRegionStats] = useState<RegionStatsResponse | null>(null);
   const [region, setRegion] = useState<Region>('성수');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -177,6 +189,9 @@ export default function AdminPage() {
       fetchAdminStats();
       fetchWeeklyRanking();
       fetchBanner();
+      if (viewMode === 'ranking') {
+        fetchRegionStats();
+      }
       if (viewMode === 'spots') {
         fetchPlaces();
       } else if (viewMode === 'themes') {
@@ -226,6 +241,11 @@ export default function AdminPage() {
   const fetchWeeklyRanking = async () => {
     const res = await fetch('/api-now/admin/ranking/weekly');
     if (res.ok) setWeeklyRanking(await res.json());
+  };
+
+  const fetchRegionStats = async () => {
+    const res = await fetch('/api-now/admin/region-stats');
+    if (res.ok) setRegionStats(await res.json());
   };
 
   const handleDownloadRanking = async () => {
@@ -569,6 +589,51 @@ export default function AdminPage() {
                   {((stats?.storage_used_bytes ?? 0) / 1024 / 1024).toFixed(1)}MB
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'ranking' && regionStats && (
+          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base font-black text-zinc-900">🗂️ 분야별 카테고리 분포</span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
+                최근 {regionStats.window_hours}시간 조회수 · 팝업/클래스/쇼핑/전시
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-400 mb-4">
+              카테고리 미분류(공연 장르 등)는 팝업으로 집계 — 장소수/조회수 합계는 항상 분야 전체 합계와 일치
+            </p>
+            <div className="flex flex-col gap-3">
+              {regionStats.regions.map((r) => (
+                <div key={r.region} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                  <div className="flex items-center gap-3 sm:w-40 flex-shrink-0">
+                    <div>
+                      <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                        {REGION_LABEL_EN[r.region as Region] || r.region}
+                      </div>
+                      <div className="text-sm font-black text-zinc-900">{r.region}</div>
+                    </div>
+                    <div className="ml-auto sm:ml-0 text-right sm:text-left">
+                      <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">장소수</div>
+                      <div className="text-sm font-black text-zinc-700">{r.place_count.toLocaleString()}</div>
+                    </div>
+                  </div>
+                  <div className="flex-grow grid grid-cols-2 sm:grid-cols-4 gap-2 min-w-0">
+                    {r.by_category.map((c) => (
+                      <div key={c.category} className="bg-white border border-zinc-200 rounded-xl px-2.5 py-1.5 text-center">
+                        <div className="text-[9px] font-bold text-zinc-400">{c.category}</div>
+                        <div className="text-xs font-black text-zinc-800">{c.place_count.toLocaleString()}곳</div>
+                        <div className="text-[10px] font-bold text-pace-600">{c.views.toLocaleString()}회</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="sm:w-20 flex-shrink-0 text-right">
+                    <div className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">조회수 합</div>
+                    <div className="text-sm font-black text-pace-600">{r.total_views.toLocaleString()}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

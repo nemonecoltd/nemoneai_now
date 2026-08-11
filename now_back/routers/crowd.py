@@ -31,8 +31,12 @@ def _serialize(row: RowMapping) -> dict:
         "weather_summary": row["weather_summary"],
         "updated_at": row["updated_at"],
     }
-    # prev가 없는 최초 수집 직후엔 델타 필드 자체를 생략(프론트가 0%/화살표를 오해석하지 않도록)
-    if row["prev_ppltn_min"] is not None and row["prev_ppltn_max"] is not None:
+    # prev나 curr 중 하나라도 없으면(최초 수집 직후, 또는 API가 이번 폴링에 값을 못 준 경우)
+    # 델타 필드 자체를 생략 — curr가 없는 경우는 스크래퍼가 COALESCE로 막지만, 방어적으로 한 번 더 확인.
+    if (
+        row["prev_ppltn_min"] is not None and row["prev_ppltn_max"] is not None
+        and row["ppltn_min"] is not None and row["ppltn_max"] is not None
+    ):
         prev_mid = (row["prev_ppltn_min"] + row["prev_ppltn_max"]) / 2
         curr_mid = (row["ppltn_min"] + row["ppltn_max"]) / 2
         if prev_mid > 0:
