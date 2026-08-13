@@ -33,6 +33,87 @@ def _delta_text(curr: float, prev: float, is_currency: bool = False) -> str:
     return f"{sign}{abs(diff):,.0f}"
 
 
+def _pct_text(curr: float, prev: float) -> str:
+    if prev == 0:
+        return "0%" if curr == 0 else "+100%"
+    pct = (curr - prev) / prev * 100
+    sign = "+" if pct >= 0 else ""
+    return f"{sign}{pct:.1f}%"
+
+
+def _period_totals(property_id: str, curr_range: tuple, prev_range: tuple) -> dict:
+    """기간(구간) 단위 방문자/조회수/광고수익 합계 — dimension 없이 named DateRange 2개만 조회하면
+    GA4가 자동으로 dateRange를 유일한 차원으로 붙여줌(2026-08-13 GA4 API 조사 때 확인한 동작)."""
+    from google.analytics.data_v1beta.types import RunReportRequest, DateRange, Metric
+
+    client = _client()
+    req = RunReportRequest(
+        property=f"properties/{property_id}",
+        metrics=[Metric(name="activeUsers"), Metric(name="screenPageViews"), Metric(name="totalAdRevenue")],
+        date_ranges=[
+            DateRange(start_date=str(curr_range[0]), end_date=str(curr_range[1]), name="curr"),
+            DateRange(start_date=str(prev_range[0]), end_date=str(prev_range[1]), name="prev"),
+        ],
+    )
+    resp = client.run_report(req)
+    sums = {"curr": [0, 0, 0.0], "prev": [0, 0, 0.0]}
+    for row in resp.rows:
+        key = row.dimension_values[-1].value
+        if key in sums:
+            sums[key][0] += int(row.metric_values[0].value)
+            sums[key][1] += int(row.metric_values[1].value)
+            sums[key][2] += float(row.metric_values[2].value)
+    return sums
+
+
+def _send_period_report(emoji_title: str, period_display: str, period_label: str, prev_label: str,
+                         curr_range: tuple, prev_range: tuple) -> None:
+    property_id = os.getenv("GA4_PROPERTY_ID", "542035264")
+    sums = _period_totals(property_id, curr_range, prev_range)
+    users, views, revenue = sums["curr"]
+    p_users, p_views, p_revenue = sums["prev"]
+
+    lines = [
+        f"{emoji_title} ({period_display})",
+        "",
+        f"{period_label} 누적 방문자: {users:,}명 ({prev_label} 대비 {_pct_text(users, p_users)})",
+        f"{period_label} 누적 조회수: {views:,}회 ({prev_label} 대비 {_pct_text(views, p_views)})",
+        f"{period_label} 누적 광고수익: ₩{revenue:,.0f} ({prev_label} 대비 {_pct_text(revenue, p_revenue)})",
+    ]
+    send_alert("\n".join(lines))
+
+
+def send_weekly_ga4_report() -> None:
+    """매주 월요일 KST 07시 발송 — 지난주(월~일) 누적을 지지난주와 비교."""
+    today = datetime.now(timezone.utc).astimezone(_KST).date()
+    last_week_end = today - timedelta(days=1)            # 어제(일요일)
+    last_week_start = last_week_end - timedelta(days=6)   # 지난주 월요일
+    prev_week_end = last_week_start - timedelta(days=1)
+    prev_week_start = prev_week_end - timedelta(days=6)
+
+    period_display = f"{last_week_start.strftime('%m/%d')}~{last_week_end.strftime('%m/%d')}, 지난주 누적"
+    _send_period_report(
+        "📊 주간 GA4 리포트", period_display, "지난주", "지지난주",
+        (last_week_start, last_week_end), (prev_week_start, prev_week_end),
+    )
+
+
+def send_monthly_ga4_report() -> None:
+    """매월 1일 KST 10시 발송 — 지난달(1일~말일) 누적을 지지난달과 비교."""
+    today = datetime.now(timezone.utc).astimezone(_KST).date()
+    this_month_start = today.replace(day=1)
+    last_month_end = this_month_start - timedelta(days=1)
+    last_month_start = last_month_end.replace(day=1)
+    prev_month_end = last_month_start - timedelta(days=1)
+    prev_month_start = prev_month_end.replace(day=1)
+
+    period_display = f"{last_month_start.strftime('%Y년 %m월')}, 지난달 누적"
+    _send_period_report(
+        "📊 월간 GA4 리포트", period_display, "지난달", "지지난달",
+        (last_month_start, last_month_end), (prev_month_start, prev_month_end),
+    )
+
+
 def send_ga4_report() -> None:
     """KST 6/9/12/15/18/21/24시 발송 — 오늘 0시부터 지금(발송 시각)까지 누적치를 어제·지난주 같은
     요일의 같은 시간대(0시~같은 시각)와 비교. GA4 데이터는 몇 시간 처리 지연이 있을 수 있어

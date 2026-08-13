@@ -110,6 +110,11 @@ if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=9, minute=20, id='ga4_kst_1800')
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=12, minute=20, id='ga4_kst_2100')
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=14, minute=59, id='ga4_kst_2359')
+# GA4 주간/월간 리포트 — 지난주/지난달 누적을 그 전 기간과 비교해서 발송.
+# 주간: 월요일 KST 07:00 = UTC 일요일 22:00 / 월간: 매월 1일 KST 10:00 = UTC 매월 1일 01:00
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    scheduler.add_job(ga4_service.send_weekly_ga4_report, 'cron', day_of_week='sun', hour=22, minute=10, id='ga4_weekly_kst_mon_0700')
+    scheduler.add_job(ga4_service.send_monthly_ga4_report, 'cron', day=1, hour=1, minute=10, id='ga4_monthly_kst_1st_1000')
 # 목요일 주간 Web Push — 구독자 수와 무관하게 매주 발송(0명이면 push_service 내부에서 그냥 아무것도 안 보내고 끝남).
 # 한국시간(KST=UTC+9) 목요일 12:30 = UTC 목요일 03:30
 # 로컬(TELEGRAM_BOT_ENABLED=true)에서는 등록 안 함 — 실구독자에게 나가는 진짜 발송이라, 로컬 개발서버가
