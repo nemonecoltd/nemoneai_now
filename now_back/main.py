@@ -97,8 +97,10 @@ if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=3, minute=15, id='report_kst_1200')
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=7, minute=15, id='report_kst_1600')
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=11, minute=15, id='report_kst_2000')
-# GA4 리포트 — KST 6/9/12/15/18/21/24시(=익일 0시)에 방문자/조회수/광고수익/국가별 통계 발송.
-# UTC = KST-9h: 6→21(전날), 9→0, 12→3, 15→6, 18→9, 21→12, 24→15. 다른 리포트들과 동일하게
+# GA4 리포트 — KST 6/9/12/15/18/21/23:59시에 방문자/조회수/광고수익/국가별 통계 발송.
+# UTC = KST-9h: 6→21(전날), 9→0, 12→3, 15→6, 18→9, 21→12, 23:59→14:59. 마지막 슬롯은 원래
+# 익일 0시20분(자정 직후)이었는데, 그 시점엔 "오늘 00시~현재 누적"이 20분치뿐이라 전부 0으로
+# 찍혀 무의미했음(2026-08-14 리포트 확인) — 하루 거의 전체(23:59)를 담도록 자정 직전으로 당김.
 # 로컬(TELEGRAM_BOT_ENABLED=true)에서는 등록 안 함(서버·로컬 중복 발송 방지).
 if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=21, minute=20, id='ga4_kst_0600')
@@ -107,7 +109,7 @@ if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=6, minute=20, id='ga4_kst_1500')
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=9, minute=20, id='ga4_kst_1800')
     scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=12, minute=20, id='ga4_kst_2100')
-    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=15, minute=20, id='ga4_kst_2400')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=14, minute=59, id='ga4_kst_2359')
 # 목요일 주간 Web Push — 구독자 수와 무관하게 매주 발송(0명이면 push_service 내부에서 그냥 아무것도 안 보내고 끝남).
 # 한국시간(KST=UTC+9) 목요일 12:30 = UTC 목요일 03:30
 # 로컬(TELEGRAM_BOT_ENABLED=true)에서는 등록 안 함 — 실구독자에게 나가는 진짜 발송이라, 로컬 개발서버가
