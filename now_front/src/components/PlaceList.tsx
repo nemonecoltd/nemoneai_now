@@ -123,11 +123,11 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     }
   };
 
-  const sortOptions: { key: PlaceSort; ko: string; en: string; zh: string }[] = [
-    { key: 'random', ko: '랜덤순', en: 'Random', zh: '随机排序' },
-    { key: 'popular', ko: '인기순', en: 'Popular', zh: '人气排序' },
-    { key: 'latest', ko: '최신순', en: 'Latest', zh: '最新排序' },
-    { key: 'closing', ko: '마감임박순', en: 'Closing Soon', zh: '即将结束' },
+  const sortOptions: { key: PlaceSort; ko: string; en: string; zh: string; ja: string }[] = [
+    { key: 'random', ko: '랜덤순', en: 'Random', zh: '随机排序', ja: 'ランダム順' },
+    { key: 'popular', ko: '인기순', en: 'Popular', zh: '人气排序', ja: '人気順' },
+    { key: 'latest', ko: '최신순', en: 'Latest', zh: '最新排序', ja: '新着順' },
+    { key: 'closing', ko: '마감임박순', en: 'Closing Soon', zh: '即将结束', ja: '終了間近順' },
   ];
 
   const displayPlaces = isSearchMode ? searchResults : places;
@@ -142,7 +142,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={lang === 'en' ? 'Search places...' : lang === 'zh' ? '搜索地点...' : '장소 검색'}
+              placeholder={lang === 'en' ? 'Search places...' : lang === 'zh' ? '搜索地点...' : lang === 'ja' ? '場所を検索...' : '장소 검색'}
               // text-base(16px) 고정 — iOS Safari는 입력창 글자가 16px 미만이면 포커스 시 페이지를
               // 자동으로 확대함(검색창 클릭 순간 화면이 커지고 밀려나는 증상의 원인, 2026-08-11)
               className="w-full pl-9 pr-8 py-2.5 rounded-xl text-base border border-zinc-200 bg-white outline-none focus:border-pace-400 transition-colors"
@@ -168,7 +168,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
             >
               {sortOptions.map((opt) => (
                 <option key={opt.key} value={opt.key}>
-                  {lang === 'en' ? opt.en : lang === 'zh' ? opt.zh : opt.ko}
+                  {lang === 'en' ? opt.en : lang === 'zh' ? opt.zh : lang === 'ja' ? opt.ja : opt.ko}
                 </option>
               ))}
             </select>
@@ -212,7 +212,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               <div className="absolute top-4 left-4 flex gap-2">
                 <span className="px-3 py-1 rounded-full text-[10px] font-bold text-white bg-pace-500 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  {lang === 'en' ? 'Live' : lang === 'zh' ? '营业中' : '운영 중'}
+                  {lang === 'en' ? 'Live' : lang === 'zh' ? '营业中' : lang === 'ja' ? '営業中' : '운영 중'}
                 </span>
               </div>
               
@@ -243,7 +243,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               <div className="flex items-center gap-2 pt-1">
                 <Clock size={12} className="text-zinc-400" />
                 <span className="text-[10px] font-medium text-zinc-400">
-                  {place.date_range || (lang === 'en' ? "Open Daily" : lang === 'zh' ? "全年营业" : "상시 운영")}
+                  {place.date_range || (lang === 'en' ? "Open Daily" : lang === 'zh' ? "全年营业" : lang === 'ja' ? "通年営業" : "상시 운영")}
                 </span>
               </div>
             </div>
@@ -254,8 +254,8 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
         {!isSearching && displayPlaces.length === 0 && (
           <div className="text-center py-20 text-zinc-400 italic">
             {isSearchMode
-              ? (lang === 'en' ? 'No matching places.' : lang === 'zh' ? '没有匹配的地点。' : '검색 결과가 없습니다.')
-              : (lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : '데이터가 없습니다.')}
+              ? (lang === 'en' ? 'No matching places.' : lang === 'zh' ? '没有匹配的地点。' : lang === 'ja' ? '一致する場所がありません。' : '검색 결과가 없습니다.')
+              : (lang === 'en' ? 'No data available.' : lang === 'zh' ? '暂无数据。' : lang === 'ja' ? 'データがありません。' : '데이터가 없습니다.')}
           </div>
         )}
         {hasMore && !isSearchMode && (

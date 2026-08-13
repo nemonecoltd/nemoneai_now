@@ -47,13 +47,13 @@ const REGION_COLOR: Record<string, string> = {
   '부산': '#0ea5e9',
   '제주': '#0369a1',
 };
-const REGION_TITLE: Record<string, { en: string; zh: string }> = {
-  '성수': { en: 'Seongsu', zh: '圣水洞' },
-  '홍대': { en: 'Hongdae', zh: '弘大' },
-  '강북': { en: 'Gangbuk', zh: '江北' },
-  '강남': { en: 'Gangnam', zh: '江南' },
-  '부산': { en: 'Busan', zh: '釜山' },
-  '제주': { en: 'Jeju', zh: '济州' },
+const REGION_TITLE: Record<string, { en: string; zh: string; ja: string }> = {
+  '성수': { en: 'Seongsu', zh: '圣水洞', ja: 'ソンス' },
+  '홍대': { en: 'Hongdae', zh: '弘大', ja: 'ホンデ' },
+  '강북': { en: 'Gangbuk', zh: '江北', ja: 'カンブク' },
+  '강남': { en: 'Gangnam', zh: '江南', ja: 'カンナム' },
+  '부산': { en: 'Busan', zh: '釜山', ja: '釜山' },
+  '제주': { en: 'Jeju', zh: '济州', ja: '済州' },
 };
 
 export default function MapView({ places = [], region = '성수', lang = 'ko' }: { places?: Place[], region?: string, lang?: string }) {
@@ -138,7 +138,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           new window.google.maps.Marker({
             position: pos,
             map: mapInstance,
-            title: lang === 'en' ? "My Location" : lang === 'zh' ? "我的位置" : "내 위치",
+            title: lang === 'en' ? "My Location" : lang === 'zh' ? "我的位置" : lang === 'ja' ? "現在地" : "내 위치",
             icon: {
               path: window.google.maps.SymbolPath.CIRCLE,
               fillColor: '#3b82f6',
@@ -149,10 +149,10 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
             }
           });
         },
-        () => alert(lang === 'en' ? "Unable to retrieve your location." : lang === 'zh' ? "无法获取您的位置。" : "현재 위치를 가져올 수 없습니다.")
+        () => alert(lang === 'en' ? "Unable to retrieve your location." : lang === 'zh' ? "无法获取您的位置。" : lang === 'ja' ? "現在地を取得できません。" : "현재 위치를 가져올 수 없습니다.")
       );
     } else {
-      alert(lang === 'en' ? "Geolocation is not supported by your browser." : lang === 'zh' ? "您的浏览器不支持地理定位。" : "브라우저가 위치 정보를 지원하지 않습니다.");
+      alert(lang === 'en' ? "Geolocation is not supported by your browser." : lang === 'zh' ? "您的浏览器不支持地理定位。" : lang === 'ja' ? "お使いのブラウザは位置情報に対応していません。" : "브라우저가 위치 정보를 지원하지 않습니다.");
     }
   };
 
@@ -178,16 +178,18 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
                 ? `${REGION_TITLE[region]?.en || 'Seongsu'} Map`
                 : lang === 'zh'
                   ? `${REGION_TITLE[region]?.zh || '圣水洞'}地图`
-                  : (REGIONS[region as keyof typeof REGIONS]?.title || 'NEMONE PACE 팝업 맵')}
+                  : lang === 'ja'
+                    ? `${REGION_TITLE[region]?.ja || 'ソンス'}マップ`
+                    : (REGIONS[region as keyof typeof REGIONS]?.title || 'NEMONE PACE 팝업 맵')}
               <span
                 className="ml-2 text-xs font-bold"
                 style={{ color: REGION_COLOR[region] || REGION_COLOR['성수'] }}
               >
-                (지금 당장 {places.length}개)
+                {lang === 'en' ? `(${places.length} now)` : lang === 'zh' ? `(现在${places.length}个)` : lang === 'ja' ? `(現在${places.length}件)` : `(지금 당장 ${places.length}개)`}
               </span>
             </h4>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-              {lang === 'en' ? 'Tap markers for details' : lang === 'zh' ? '点击标记查看详情' : '마커를 누르면 상세 정보를 확인합니다'}
+              {lang === 'en' ? 'Tap markers for details' : lang === 'zh' ? '点击标记查看详情' : lang === 'ja' ? 'マーカーをタップすると詳細を確認できます' : '마커를 누르면 상세 정보를 확인합니다'}
             </p>
           </div>
         </div>
@@ -217,7 +219,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           <div className="flex flex-col items-center gap-4">
             <div className="w-10 h-10 border-4 border-pace-500 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs font-bold text-zinc-400 animate-pulse">
-              {lang === 'en' ? 'Syncing Map...' : lang === 'zh' ? '地图同步中...' : '지도를 연동 중입니다...'}
+              {lang === 'en' ? 'Syncing Map...' : lang === 'zh' ? '地图同步中...' : lang === 'ja' ? 'マップ同期中...' : '지도를 연동 중입니다...'}
             </p>
           </div>
         </div>
@@ -279,7 +281,7 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
                 className="w-full py-3 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2"
                 style={{ backgroundColor: REGION_COLOR[region] || REGION_COLOR['성수'] }}
               >
-                {lang === 'en' ? 'View Details' : lang === 'zh' ? '查看详情' : '자세히 보기'}
+                {lang === 'en' ? 'View Details' : lang === 'zh' ? '查看详情' : lang === 'ja' ? '詳しく見る' : '자세히 보기'}
                 <ChevronRight size={16} />
               </button>
             </div>

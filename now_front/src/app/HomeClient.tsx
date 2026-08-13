@@ -188,9 +188,9 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
     if (r) setRegionState(r);
     // 구버전 링크 호환: '테마'는 그대로 '코스' 밑 서브탭 유지, 'AI코스(tour)'는 신규 /course 페이지로 리다이렉트
     if (t === 'theme') { setActiveTab('course'); setCourseSub('theme'); }
-    else if (t === 'tour') { router.push('/course'); return; }
+    else if (t === 'tour') { router.push(`/course${l ? `?lang=${l}` : ''}`); return; }
     else if (t) setActiveTab(t as Tab);
-    if (l === 'en' || l === 'zh' || l === 'ko') setLang(l);
+    if (l === 'en' || l === 'zh' || l === 'ja' || l === 'ko') setLang(l);
     if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
   }, []);
@@ -477,7 +477,7 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
               <div className="flex gap-2 px-6 pt-4 pb-1">
                 {isPlaceRegion && (
                   <button
-                    onClick={() => router.push('/course')}
+                    onClick={() => router.push(`/course?lang=${lang}`)}
                     className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all bg-zinc-100 text-zinc-400"
                   >
                     {t.courseSubAi}
@@ -594,7 +594,7 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
         />
         <NavButton
           active={activeTab === 'course'}
-          onClick={() => router.push('/course')}
+          onClick={() => router.push(`/course?lang=${lang}`)}
           icon={<RouteIcon size={22} />}
           label={t.navCourse}
         />

@@ -79,23 +79,41 @@ function cleanDescription(raw: string): string {
   return flat.length <= 160 ? flat : flat.slice(0, 160).trim() + '...';
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+function tr(lang: string, ko: string, en: string, zh: string, ja: string): string {
+  return lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
+}
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ lang?: string }> }): Promise<Metadata> {
   const { id } = await params;
+  const { lang: rawLang } = await searchParams;
+  const lang = rawLang === 'en' || rawLang === 'zh' || rawLang === 'ja' ? rawLang : 'ko';
   const course = await getCourse(id);
   const canonical = `https://now.nemoneai.com/course/${id}`;
 
   if (!course) {
-    return { title: '코스를 찾을 수 없습니다', alternates: { canonical }, robots: { index: false, follow: true } };
+    return {
+      title: tr(lang, '코스를 찾을 수 없습니다', 'Course Not Found', '找不到该课程', 'コースが見つかりません'),
+      alternates: { canonical },
+      robots: { index: false, follow: true },
+    };
   }
 
-  const title = `${course.title} | NEMONE PACE 코스`;
-  const description = cleanDescription(course.description) || `${course.region}에서 즐기는 ${course.scope === 'timed' ? '3시간' : ''} 코스 — ${course.steps.length}곳`;
+  const title = `${course.title} | NEMONE PACE ${tr(lang, '코스', 'Course', '课程', 'コース')}`;
+  const scopeLabel = course.scope === 'timed' ? tr(lang, '3시간', '3-Hour', '3小时', '3時間') : '';
+  const description = cleanDescription(course.description) || tr(
+    lang,
+    `${course.region}에서 즐기는 ${scopeLabel} 코스 — ${course.steps.length}곳`,
+    `A ${scopeLabel} course in ${course.region} — ${course.steps.length} spots`,
+    `在${course.region}享受的${scopeLabel}课程 — ${course.steps.length}处`,
+    `${course.region}で楽しむ${scopeLabel}コース — ${course.steps.length}ヶ所`
+  );
+  const OG_LOCALE: Record<string, string> = { ko: 'ko_KR', en: 'en_US', zh: 'zh_CN', ja: 'ja_JP' };
 
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description, url: canonical, type: 'article', locale: 'ko_KR' },
+    openGraph: { title, description, url: canonical, type: 'article', locale: OG_LOCALE[lang] },
     twitter: { card: 'summary_large_image', title, description },
   };
 }
@@ -109,9 +127,9 @@ export default async function CourseDetailPage({ params, searchParams }: { param
   if (!course) {
     return (
       <div className="min-h-screen bg-zinc-50 max-w-md mx-auto flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-lg font-bold text-zinc-800">코스를 찾을 수 없습니다</p>
-        <p className="text-sm text-zinc-400">비공개 코스이거나 삭제되었을 수 있어요.</p>
-        <Link href="/course" className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">코스 홈으로</Link>
+        <p className="text-lg font-bold text-zinc-800">{tr(lang, '코스를 찾을 수 없습니다', 'Course Not Found', '找不到该课程', 'コースが見つかりません')}</p>
+        <p className="text-sm text-zinc-400">{tr(lang, '비공개 코스이거나 삭제되었을 수 있어요.', 'This course may be private or deleted.', '该课程可能为私密课程或已被删除。', '非公開のコースか、削除された可能性があります。')}</p>
+        <Link href={`/course?lang=${lang}`} className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{tr(lang, '코스 홈으로', 'Go to Course Home', '返回课程首页', 'コースホームへ')}</Link>
       </div>
     );
   }
@@ -124,7 +142,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Link href="/course" className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
+            <Link href={`/course?lang=${lang}`} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
               <ChevronLeft size={20} strokeWidth={2.5} />
             </Link>
             <Logo />
@@ -138,7 +156,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
       <main className="px-6 pt-6 pb-28 space-y-6">
         <div className="space-y-2">
           <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase">
-            {course.scope === 'timed' ? '3시간코스' : '자유코스'} · {course.region}
+            {course.scope === 'timed' ? tr(lang, '3시간코스', '3-Hour Course', '3小时课程', '3時間コース') : tr(lang, '자유코스', 'Free Course', '自由课程', 'フリーコース')} · {course.region}
           </span>
           {course.description && <p className="text-sm text-zinc-500 leading-relaxed">{course.description}</p>}
         </div>
@@ -150,7 +168,7 @@ export default async function CourseDetailPage({ params, searchParams }: { param
               <div className="space-y-2">
                 {course.scope === 'timed' && (
                   <div className="flex items-center gap-1.5 text-[10px] font-black text-zinc-400 font-mono">
-                    <Clock size={11} /> {times[idx]} · {step.duration}분
+                    <Clock size={11} /> {times[idx]} · {step.duration}{tr(lang, '분', 'min', '分钟', '分')}
                   </div>
                 )}
                 <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden flex gap-3 p-4">
@@ -161,13 +179,13 @@ export default async function CourseDetailPage({ params, searchParams }: { param
                     <div className="flex items-center gap-1.5">
                       <h4 className="font-bold text-zinc-900 text-sm truncate">{step.place_name}</h4>
                       {!step.active && (
-                        <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-zinc-100 text-zinc-400 border-zinc-200">종료됨</span>
+                        <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-zinc-100 text-zinc-400 border-zinc-200">{tr(lang, '종료됨', 'Ended', '已结束', '終了')}</span>
                       )}
                     </div>
                     {step.activity && <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{step.activity}</p>}
                     {step.active && (
                       <Link href={`/posts/${step.place_id}`} className="inline-flex items-center gap-0.5 text-[11px] font-bold text-pace-600 mt-1.5">
-                        자세히 보기 <ChevronRight size={12} />
+                        {tr(lang, '자세히 보기', 'View Details', '查看详情', '詳しく見る')} <ChevronRight size={12} />
                       </Link>
                     )}
                   </div>
@@ -177,8 +195,8 @@ export default async function CourseDetailPage({ params, searchParams }: { param
           ))}
         </div>
 
-        <Link href="/course" className="block text-center mt-6 px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">
-          나만의 코스 만들러 가기
+        <Link href={`/course?lang=${lang}`} className="block text-center mt-6 px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">
+          {tr(lang, '나만의 코스 만들러 가기', 'Create My Own Course', '去创建我的专属课程', '自分だけのコースを作る')}
         </Link>
         <PushSubscribeButton show={published === '1'} regionPref={course.region} />
       </main>

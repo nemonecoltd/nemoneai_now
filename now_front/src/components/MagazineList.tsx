@@ -17,10 +17,13 @@ interface MagazinePost {
 }
 
 const dict = {
-  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.' },
-  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.' },
-  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。' },
+  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.', loading: '불러오는 중...' },
+  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.', loading: 'Loading...' },
+  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。', loading: '加载中...' },
+  ja: { title: 'マガジン', desc: 'ネモネAIMに掲載されたNEMONE PACE関連記事', empty: 'まだ記事がありません。', loading: '読み込み中...' },
 };
+
+const DATE_LOCALE: Record<string, string> = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP' };
 
 export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
   const [posts, setPosts] = useState<MagazinePost[]>([]);
@@ -50,7 +53,7 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-zinc-300 text-xs font-bold">불러오는 중...</div>
+        <div className="py-16 text-center text-zinc-300 text-xs font-bold">{t.loading}</div>
       ) : posts.length === 0 ? (
         <div className="text-center py-20 text-zinc-400 italic">{t.empty}</div>
       ) : (
@@ -98,7 +101,7 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
                       <div className="flex items-center gap-2 pt-1">
                         <Clock size={12} className="text-zinc-400" />
                         <span className="text-[10px] font-medium text-zinc-400">
-                          {new Date(post.created_at).toLocaleDateString('ko-KR')}
+                          {new Date(post.created_at).toLocaleDateString(DATE_LOCALE[lang] || 'ko-KR')}
                         </span>
                       </div>
                     )}

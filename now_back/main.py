@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 import ranking_service as ranking
 import push_service
 import notification
+import ga4_service
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
 from scraper_seoul_crowd import poll_crowd
 from routers import admin, ai, courses, crowd, magazine, places, push, rankings, social
@@ -96,9 +97,23 @@ if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=3, minute=15, id='report_kst_1200')
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=7, minute=15, id='report_kst_1600')
     scheduler.add_job(notification.send_four_hourly_report, 'cron', hour=11, minute=15, id='report_kst_2000')
+# GA4 리포트 — KST 6/9/12/15/18/21/24시(=익일 0시)에 방문자/조회수/광고수익/국가별 통계 발송.
+# UTC = KST-9h: 6→21(전날), 9→0, 12→3, 15→6, 18→9, 21→12, 24→15. 다른 리포트들과 동일하게
+# 로컬(TELEGRAM_BOT_ENABLED=true)에서는 등록 안 함(서버·로컬 중복 발송 방지).
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=21, minute=20, id='ga4_kst_0600')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=0, minute=20, id='ga4_kst_0900')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=3, minute=20, id='ga4_kst_1200')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=6, minute=20, id='ga4_kst_1500')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=9, minute=20, id='ga4_kst_1800')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=12, minute=20, id='ga4_kst_2100')
+    scheduler.add_job(ga4_service.send_ga4_report, 'cron', hour=15, minute=20, id='ga4_kst_2400')
 # 목요일 주간 Web Push — 구독자 수와 무관하게 매주 발송(0명이면 push_service 내부에서 그냥 아무것도 안 보내고 끝남).
 # 한국시간(KST=UTC+9) 목요일 12:30 = UTC 목요일 03:30
-scheduler.add_job(push_service.run_weekly_push, 'cron', day_of_week='thu', hour=3, minute=30, id='push_weekly_kst_thu_1230')
+# 로컬(TELEGRAM_BOT_ENABLED=true)에서는 등록 안 함 — 실구독자에게 나가는 진짜 발송이라, 로컬 개발서버가
+# 그 순간 켜져 있으면 서버와 중복으로 두 번 발송될 수 있음(2026-08-13, "목요일 웹푸시가 2번 왔다" 신고로 발견).
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    scheduler.add_job(push_service.run_weekly_push, 'cron', day_of_week='thu', hour=3, minute=30, id='push_weekly_kst_thu_1230')
 scheduler.start()
 
 

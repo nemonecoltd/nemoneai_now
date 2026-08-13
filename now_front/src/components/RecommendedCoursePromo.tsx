@@ -20,7 +20,7 @@ function formatStepTimes(steps: any[]): string[] {
   });
 }
 
-export default function RecommendedCoursePromo() {
+export default function RecommendedCoursePromo({ lang = 'ko' }: { lang?: string }) {
   const router = useRouter();
   const { user, signInWithGoogle } = useAuth();
   const [pick, setPick] = useState<Pick | null>(null);
@@ -91,10 +91,12 @@ export default function RecommendedCoursePromo() {
               places: items,
             }),
           });
-      alert(res.ok ? '내 마이페이지로 가져왔습니다!' : '저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      alert(res.ok
+        ? (lang === 'en' ? 'Added to My Page!' : lang === 'zh' ? '已添加到我的页面！' : lang === 'ja' ? 'マイページに追加しました！' : '내 마이페이지로 가져왔습니다!')
+        : (lang === 'en' ? 'Save failed. Please try again later.' : lang === 'zh' ? '保存失败，请稍后重试。' : lang === 'ja' ? '保存に失敗しました。しばらくしてから再試行してください。' : '저장에 실패했습니다. 잠시 후 다시 시도해주세요.'));
     } catch (e) {
       console.error(e);
-      alert('저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      alert(lang === 'en' ? 'Save failed. Please try again later.' : lang === 'zh' ? '保存失败，请稍后重试。' : lang === 'ja' ? '保存に失敗しました。しばらくしてから再試行してください。' : '저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -114,10 +116,10 @@ export default function RecommendedCoursePromo() {
         url = `${window.location.origin}/ranking/share/${id}`;
       }
       await navigator.clipboard.writeText(url);
-      alert('공유 링크가 복사되었습니다!');
+      alert(lang === 'en' ? 'Share link copied!' : lang === 'zh' ? '分享链接已复制！' : lang === 'ja' ? '共有リンクをコピーしました！' : '공유 링크가 복사되었습니다!');
     } catch (e) {
       console.error(e);
-      alert('공유 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      alert(lang === 'en' ? 'Failed to create share link. Please try again later.' : lang === 'zh' ? '生成分享链接失败，请稍后重试。' : lang === 'ja' ? '共有リンクの生成に失敗しました。しばらくしてから再試行してください。' : '공유 링크 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -127,7 +129,10 @@ export default function RecommendedCoursePromo() {
         <div className="flex justify-between items-start mb-4">
           <div>
             <span className="text-[9px] font-black text-pace-600 bg-pace-50 px-1.5 py-0.5 rounded uppercase">
-              {pick.type === 'course' ? '3시간코스' : '테마'} 1위
+              {pick.type === 'course'
+                ? (lang === 'en' ? '3-Hour Course' : lang === 'zh' ? '3小时课程' : lang === 'ja' ? '3時間コース' : '3시간코스')
+                : (lang === 'en' ? 'Theme' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마')}
+              {' '}{lang === 'en' ? '#1' : lang === 'zh' ? '第1名' : lang === 'ja' ? '1位' : '1위'}
             </span>
             <h3 className="text-lg font-black text-zinc-900 tracking-tight mt-1">{pick.data.title}</h3>
           </div>
@@ -188,13 +193,13 @@ export default function RecommendedCoursePromo() {
 
         <div className="grid grid-cols-3 gap-2 pb-2">
           <button onClick={handleSave} className="flex flex-col items-center gap-1 py-3 bg-zinc-100 text-zinc-700 rounded-2xl font-bold text-xs hover:bg-zinc-200 transition-all">
-            <Save size={16} /> 저장하기
+            <Save size={16} /> {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : lang === 'ja' ? '保存' : '저장하기'}
           </button>
           <button onClick={handleShare} className="flex flex-col items-center gap-1 py-3 bg-zinc-100 text-zinc-700 rounded-2xl font-bold text-xs hover:bg-zinc-200 transition-all">
-            <Share2 size={16} /> 공유하기
+            <Share2 size={16} /> {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : lang === 'ja' ? '共有' : '공유하기'}
           </button>
-          <button onClick={() => router.push('/course')} className="flex flex-col items-center gap-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-xs hover:bg-pace-600 transition-all">
-            <Sparkles size={16} /> 코스생성
+          <button onClick={() => router.push(`/course?lang=${lang}`)} className="flex flex-col items-center gap-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-xs hover:bg-pace-600 transition-all">
+            <Sparkles size={16} /> {lang === 'en' ? 'Create' : lang === 'zh' ? '创建课程' : lang === 'ja' ? 'コース作成' : '코스생성'}
           </button>
         </div>
       </div>
@@ -204,7 +209,8 @@ export default function RecommendedCoursePromo() {
   return (
     <div className="space-y-3">
       <p className="text-sm font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-        <Sparkles size={14} className="text-pace-500" /> 추천! 인기코스
+        <Sparkles size={14} className="text-pace-500" />
+        {lang === 'en' ? 'Recommended! Popular Course' : lang === 'zh' ? '推荐！人气课程' : lang === 'ja' ? 'おすすめ！人気コース' : '추천! 인기코스'}
       </p>
       <button
         onClick={() => setShowModal(true)}
@@ -220,12 +226,12 @@ export default function RecommendedCoursePromo() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[9px] font-black text-pace-600 bg-pace-50 px-1.5 py-0.5 rounded uppercase">
-              {pick.type === 'course' ? '3시간' : '테마'}
+              {pick.type === 'course' ? (lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : lang === 'ja' ? '3時間' : '3시간') : (lang === 'en' ? 'Theme' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마')}
             </span>
-            <span className="text-[9px] font-black text-zinc-400">1위</span>
+            <span className="text-[9px] font-black text-zinc-400">{lang === 'en' ? '#1' : lang === 'zh' ? '第1名' : lang === 'ja' ? '1位' : '1위'}</span>
           </div>
           <p className="text-sm font-bold text-zinc-900 truncate">{pick.data.title}</p>
-          <p className="text-xs text-zinc-400 mt-0.5">{items.length}곳</p>
+          <p className="text-xs text-zinc-400 mt-0.5">{items.length}{lang === 'en' ? ' spots' : lang === 'zh' ? '处' : lang === 'ja' ? 'ヶ所' : '곳'}</p>
         </div>
         <ChevronRight size={18} className="text-zinc-300 flex-shrink-0" />
       </button>

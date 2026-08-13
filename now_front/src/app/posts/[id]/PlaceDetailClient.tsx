@@ -459,7 +459,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                     ? (c === '연극' ? 'Play' : c === '뮤지컬' ? 'Musical' : c === '음악' ? 'Music' : 'Others')
                     : lang === 'zh'
                       ? (c === '연극' ? '话剧' : c === '뮤지컬' ? '音乐剧' : c === '음악' ? '音乐' : '综合')
-                      : c}
+                      : lang === 'ja'
+                        ? (c === '연극' ? '演劇' : c === '뮤지컬' ? 'ミュージカル' : c === '음악' ? '音楽' : 'その他')
+                        : c}
                 </button>
               );
             })}
@@ -577,14 +579,14 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 </a>
                 <button
                   onClick={toggleLike}
-                  aria-label={lang === 'en' ? 'Save' : lang === 'zh' ? '收藏' : '찜하기'}
+                  aria-label={lang === 'en' ? 'Save' : lang === 'zh' ? '收藏' : lang === 'ja' ? '保存' : '찜하기'}
                   className="w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform"
                 >
                   <Heart size={16} className={liked ? 'fill-rose-500 text-rose-500' : ''} />
                 </button>
                 <button
                   onClick={handleShare}
-                  aria-label={lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유하기'}
+                  aria-label={lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : lang === 'ja' ? '共有' : '공유하기'}
                   className="w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/40 shadow-lg active:scale-95 transition-transform"
                 >
                   <Share2 size={16} />
@@ -771,7 +773,9 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 ? 'This content is AI-generated from public information and may differ from actual facts.'
                 : lang === 'zh'
                   ? '本内容由AI根据公开信息生成，可能与实际情况有所出入。'
-                  : 'AI로 분석하여 생성되어 실제 사실과 다를 수 있습니다.'}
+                  : lang === 'ja'
+                    ? '公開情報をもとにAIが生成した内容のため、実際の事実と異なる場合があります。'
+                    : 'AI로 분석하여 생성되어 실제 사실과 다를 수 있습니다.'}
             </p>
           )}
 
@@ -779,7 +783,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
         <InArticleAd />
 
-        <RecommendedCoursePromo />
+        <RecommendedCoursePromo lang={lang} />
 
         {suggestions.length > 0 && (
           <div className="space-y-4">

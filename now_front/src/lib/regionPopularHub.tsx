@@ -7,6 +7,7 @@ import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import SiteFooter from '@/components/SiteFooter';
 import AdUnit from '@/components/AdUnit';
+import RegionHubTickers from '@/components/RegionHubTickers';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 export const revalidate = 3600;
@@ -185,6 +186,8 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">{c.heading(region)}</h1>
         <BrandTagline />
       </header>
+
+      <RegionHubTickers lang={lang} />
 
       <main className="px-6 pt-6 space-y-3">
         <div className="flex flex-wrap gap-1.5 pb-2">

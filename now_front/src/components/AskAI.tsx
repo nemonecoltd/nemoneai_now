@@ -113,10 +113,39 @@ const dict = {
         '"推荐济州市区可以购物的地方"'
       ]
     }
+  },
+  ja: {
+    title: 'AIガイドに聞く',
+    subtitle: '{region}のリアルタイム情報や人気スポットについて質問してみてください。',
+    placeholder: '何でも聞いてください...',
+    error: '申し訳ございません。回答の生成中にエラーが発生しました。',
+    connError: 'サーバーに接続できません。',
+    saveTheme: 'テーマとして保存',
+    saving: '保存中...',
+    saved: '保存済み',
+    saveFailed: '保存に失敗しました。',
+    examples: {
+      '성수': [
+        '"今すぐ行けるファッションポップアップを教えて"',
+        '"ヨンムジャンギル周辺のグルメコースを組んで"'
+      ],
+      '홍대': [
+        '"今日ホンデでバスキングやライブ情報ある?"',
+        '"サンス洞周辺の雰囲気の良いカフェを教えて"'
+      ],
+      '부산': [
+        '"今釜山でやっているポップアップストアを教えて"',
+        '"ソミョン周辺のポップアップコースを組んで"'
+      ],
+      '제주': [
+        '"最近済州でやっているフェスティバルやイベントある?"',
+        '"済州市内でショッピングできる場所を教えて"'
+      ]
+    }
   }
 };
 
-const LINK_LABEL: Record<string, string> = { ko: '바로가기', en: 'Link', zh: '链接' };
+const LINK_LABEL: Record<string, string> = { ko: '바로가기', en: 'Link', zh: '链接', ja: 'リンク' };
 
 // 마크다운·표·URL 정리 후 줄바꿈 처리
 function formatMessage(text: string, lang: string = 'ko'): React.ReactNode {
@@ -184,7 +213,10 @@ export default function AskAI({ region = '성수', lang = 'ko', fullHeight = fal
   const REGION_NAME_ZH: Record<string, string> = {
     '성수': '圣水洞', '홍대': '弘大', '강북': '江北', '강남': '江南', '부산': '釜山', '제주': '济州', '공연': '演出', '축제': '节庆',
   };
-  const displayRegion = lang === 'en' ? (REGION_NAME_EN[region] || region) : lang === 'zh' ? (REGION_NAME_ZH[region] || region) : region;
+  const REGION_NAME_JA: Record<string, string> = {
+    '성수': 'ソンス', '홍대': 'ホンデ', '강북': 'カンブク', '강남': 'カンナム', '부산': '釜山', '제주': '済州', '공연': 'コンサート', '축제': 'フェスティバル',
+  };
+  const displayRegion = lang === 'en' ? (REGION_NAME_EN[region] || region) : lang === 'zh' ? (REGION_NAME_ZH[region] || region) : lang === 'ja' ? (REGION_NAME_JA[region] || region) : region;
   const currentExamples = t.examples[region as keyof typeof t.examples] || t.examples['성수'];
 
   useEffect(() => {

@@ -51,6 +51,8 @@ export default function CourseEditPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = searchParams.get('lang') || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
   const { user, session, isLoading: authLoading } = useAuth();
 
   const [course, setCourse] = useState<Course | null>(null);
@@ -165,12 +167,14 @@ export default function CourseEditPage() {
 
   const handleSaveDraft = async () => {
     const ok = await persist();
-    alert(ok ? '임시저장되었습니다.' : '저장에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    alert(ok
+      ? tr('임시저장되었습니다.', 'Saved as draft.', '已暂存。', '一時保存しました。')
+      : tr('저장에 실패했습니다. 잠시 후 다시 시도해주세요.', 'Save failed. Please try again later.', '保存失败，请稍后重试。', '保存に失敗しました。しばらくしてから再試行してください。'));
   };
 
   const handlePublish = async () => {
     if (steps.length === 0) {
-      alert('장소를 1곳 이상 담아야 발행할 수 있습니다.');
+      alert(tr('장소를 1곳 이상 담아야 발행할 수 있습니다.', 'You need at least 1 place to publish.', '至少需要添加1个地点才能发布。', '発行するには最低1つの場所が必要です。'));
       return;
     }
     setIsPublishing(true);
@@ -186,7 +190,7 @@ export default function CourseEditPage() {
       router.push(`/course/${courseId}?published=1`);
     } catch (e) {
       console.error(e);
-      alert('발행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      alert(tr('발행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'An error occurred while publishing. Please try again later.', '发布时发生错误，请稍后重试。', '発行中にエラーが発生しました。しばらくしてから再試行してください。'));
     } finally {
       setIsPublishing(false);
       setShowPublishConfirm(false);
@@ -196,16 +200,16 @@ export default function CourseEditPage() {
   if (notFound) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 max-w-md mx-auto px-6 text-center">
-        <p className="text-lg font-bold text-zinc-800">코스를 찾을 수 없습니다</p>
-        <button onClick={() => router.push('/course')} className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">코스 홈으로</button>
+        <p className="text-lg font-bold text-zinc-800">{tr('코스를 찾을 수 없습니다', 'Course Not Found', '找不到该课程', 'コースが見つかりません')}</p>
+        <button onClick={() => router.push(`/course?lang=${lang}`)} className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{tr('코스 홈으로', 'Go to Course Home', '返回课程首页', 'コースホームへ')}</button>
       </div>
     );
   }
   if (forbidden) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 max-w-md mx-auto px-6 text-center">
-        <p className="text-lg font-bold text-zinc-800">내가 만든 코스만 편집할 수 있어요</p>
-        <button onClick={() => router.push(`/course/${courseId}`)} className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">코스 보러가기</button>
+        <p className="text-lg font-bold text-zinc-800">{tr('내가 만든 코스만 편집할 수 있어요', 'You can only edit courses you created', '只能编辑自己创建的课程', '自分が作成したコースのみ編集できます')}</p>
+        <button onClick={() => router.push(`/course/${courseId}?lang=${lang}`)} className="px-6 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{tr('코스 보러가기', 'View Course', '查看课程', 'コースを見る')}</button>
       </div>
     );
   }
@@ -220,7 +224,7 @@ export default function CourseEditPage() {
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-40 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <button onClick={() => router.push('/course')} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
+            <button onClick={() => router.push(`/course?lang=${lang}`)} className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all">
               <ChevronLeft size={20} strokeWidth={2.5} />
             </button>
             <Logo />
@@ -228,9 +232,9 @@ export default function CourseEditPage() {
           <HeaderControls />
         </div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-bold text-zinc-500 truncate">코스 편집</span>
+          <span className="text-sm font-bold text-zinc-500 truncate">{tr('코스 편집', 'Edit Course', '编辑课程', 'コース編集')}</span>
           <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase flex-shrink-0">
-            {course.scope === 'timed' ? '3시간코스' : '자유코스'}
+            {course.scope === 'timed' ? tr('3시간코스', '3-Hour Course', '3小时课程', '3時間コース') : tr('자유코스', 'Free Course', '自由课程', 'フリーコース')}
           </span>
         </div>
         <BrandTagline lang={lang} />
@@ -240,14 +244,14 @@ export default function CourseEditPage() {
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="코스 제목을 입력하세요 (비워두면 발행 시 자동 생성)"
+          placeholder={tr('코스 제목을 입력하세요 (비워두면 발행 시 자동 생성)', 'Enter a course title (auto-generated if left blank)', '请输入课程标题（留空则发布时自动生成）', 'コースタイトルを入力してください（空欄の場合、発行時に自動生成されます）')}
           className="w-full text-xl font-bold text-zinc-900 bg-transparent border-b border-zinc-200 focus:border-pace-400 outline-none py-2"
         />
 
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="코스에 대한 소개를 적어주세요"
+          placeholder={tr('코스에 대한 소개를 적어주세요', 'Write an introduction for this course', '请写一段课程介绍', 'コースの紹介を書いてください')}
           rows={3}
           className="w-full text-sm text-zinc-600 bg-white border border-zinc-100 rounded-2xl p-4 outline-none focus:border-pace-200 resize-none"
         />
@@ -278,7 +282,7 @@ export default function CourseEditPage() {
                 <input
                   value={step.activity}
                   onChange={(e) => updateStepActivity(idx, e.target.value)}
-                  placeholder="이곳에서 무엇을 할까요?"
+                  placeholder={tr('이곳에서 무엇을 할까요?', 'What will you do here?', '在这里做什么？', 'ここで何をしますか？')}
                   className="w-full text-xs text-zinc-600 bg-zinc-50 rounded-xl px-3 py-2 outline-none focus:bg-pace-50"
                 />
               </div>
@@ -289,7 +293,7 @@ export default function CourseEditPage() {
             onClick={() => setShowSearch(true)}
             className="w-full py-4 border-2 border-dashed border-zinc-200 rounded-2xl text-zinc-400 font-bold text-sm flex items-center justify-center gap-2 hover:border-pace-200 hover:text-pace-600 transition-all"
           >
-            <Plus size={18} /> 장소 추가
+            <Plus size={18} /> {tr('장소 추가', 'Add Place', '添加地点', '場所を追加')}
           </button>
         </div>
       </main>
@@ -300,14 +304,14 @@ export default function CourseEditPage() {
           disabled={isSaving || isPublishing}
           className="flex-1 py-4 bg-zinc-100 text-zinc-700 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all disabled:opacity-50 text-sm"
         >
-          <Save size={18} /> 임시저장
+          <Save size={18} /> {tr('임시저장', 'Save Draft', '暂存', '一時保存')}
         </button>
         <button
           onClick={() => setShowPublishConfirm(true)}
           disabled={isSaving || isPublishing}
           className="flex-1 py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all disabled:opacity-50 text-sm shadow-xl"
         >
-          <Send size={18} /> 발행하기
+          <Send size={18} /> {tr('발행하기', 'Publish', '发布', '発行する')}
         </button>
       </div>
 
@@ -322,7 +326,7 @@ export default function CourseEditPage() {
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={`${course.region}에서 장소 검색`}
+                  placeholder={tr(`${course.region}에서 장소 검색`, `Search places in ${course.region}`, `搜索${course.region}的地点`, `${course.region}で場所を検索`)}
                   className="flex-1 bg-transparent outline-none text-sm"
                 />
               </div>
@@ -332,13 +336,13 @@ export default function CourseEditPage() {
 
                 {!searching && searchQuery.trim() && searchResults.length === 0 && (
                   <div className="py-10 text-center space-y-3">
-                    <p className="text-sm text-zinc-400">검색 결과가 없어요.</p>
+                    <p className="text-sm text-zinc-400">{tr('검색 결과가 없어요.', 'No results found.', '没有找到相关结果。', '検索結果がありません。')}</p>
                     {!reported ? (
                       <button onClick={reportMissingPlace} className="inline-flex items-center gap-1.5 px-4 py-2 bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all">
-                        <MessageSquarePlus size={14} /> 이 장소 제보하기
+                        <MessageSquarePlus size={14} /> {tr('이 장소 제보하기', 'Report This Place', '提交该地点信息', 'この場所を報告する')}
                       </button>
                     ) : (
-                      <p className="text-xs text-pace-600 font-bold">제보해주셔서 감사합니다!</p>
+                      <p className="text-xs text-pace-600 font-bold">{tr('제보해주셔서 감사합니다!', 'Thanks for the report!', '感谢您的反馈！', 'ご報告ありがとうございます！')}</p>
                     )}
                   </div>
                 )}
@@ -372,16 +376,16 @@ export default function CourseEditPage() {
         {showPublishConfirm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center px-6" onClick={() => !isPublishing && setShowPublishConfirm(false)}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-lg font-black text-zinc-900">코스를 발행할까요?</h3>
+              <h3 className="text-lg font-black text-zinc-900">{tr('코스를 발행할까요?', 'Publish this course?', '要发布该课程吗？', 'コースを発行しますか？')}</h3>
               <p className="text-sm text-zinc-500 leading-relaxed">
-                발행하면 다른 사람들도 이 코스를 볼 수 있어요.
-                {!title.trim() && ' 제목을 비워두셔서 지역·장소 구성으로 제목이 자동 생성돼요.'}
+                {tr('발행하면 다른 사람들도 이 코스를 볼 수 있어요.', 'Once published, other people can view this course too.', '发布后，其他人也可以查看该课程。', '発行すると、他のユーザーもこのコースを見られるようになります。')}
+                {!title.trim() && ' ' + tr('제목을 비워두셔서 지역·장소 구성으로 제목이 자동 생성돼요.', 'Since you left the title blank, one will be auto-generated from the region and places.', '由于标题为空，将根据地区和地点自动生成标题。', 'タイトルが空欄のため、エリアと場所の構成からタイトルが自動生成されます。')}
               </p>
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowPublishConfirm(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-2xl font-bold text-sm">취소</button>
+                <button onClick={() => setShowPublishConfirm(false)} className="flex-1 py-3 bg-zinc-100 text-zinc-600 rounded-2xl font-bold text-sm">{tr('취소', 'Cancel', '取消', 'キャンセル')}</button>
                 <button onClick={handlePublish} disabled={isPublishing} className="flex-1 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2">
                   {isPublishing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  발행하기
+                  {tr('발행하기', 'Publish', '发布', '発行する')}
                 </button>
               </div>
             </motion.div>

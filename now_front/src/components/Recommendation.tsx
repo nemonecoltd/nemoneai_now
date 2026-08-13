@@ -51,19 +51,23 @@ function computePlaceMeta(place: any, lang: string) {
     ? (place.region === '홍대' ? 'HONGDAE' : place.region === '강북' ? 'GANGBUK' : place.region === '강남' ? 'GANGNAM' : place.region === '공연' ? 'CONCERT' : place.region === '부산' ? 'BUSAN' : place.region === '제주' ? 'JEJU' : place.region === '축제' ? 'FESTIVAL' : 'SEONGSU')
     : lang === 'zh'
       ? (place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '공연' ? '演出' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : place.region === '축제' ? '节庆' : '圣水洞')
-      : (place.region || '성수');
+      : lang === 'ja'
+        ? (place.region === '홍대' ? 'ホンデ' : place.region === '강북' ? 'カンブク' : place.region === '강남' ? 'カンナム' : place.region === '공연' ? 'コンサート' : place.region === '부산' ? '釜山' : place.region === '제주' ? '済州' : place.region === '축제' ? 'フェスティバル' : 'ソンス')
+        : (place.region || '성수');
   const placeTitle = (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title;
   const secondaryText = place.region === '공연'
-    ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연')
+    ? (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : lang === 'ja' ? 'ソウルの公演' : '서울 공연')
     : place.region === '축제'
-      ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : '전국 축제')
+      ? (lang === 'en' ? 'Local Festival' : lang === 'zh' ? '全国节庆' : lang === 'ja' ? '全国のフェスティバル' : '전국 축제')
       : (place.category === 'class' || place.category === 'shopping')
-        ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : '상시 운영')
+        ? (lang === 'en' ? 'Always Open' : lang === 'zh' ? '常年营业' : lang === 'ja' ? '通年営業' : '상시 운영')
         : place.date_range || (lang === 'en'
             ? `Near ${place.region === '홍대' ? 'Hongdae' : place.region === '강북' ? 'Gangbuk' : place.region === '강남' ? 'Gangnam' : place.region === '부산' ? 'Busan' : place.region === '제주' ? 'Jeju' : 'Seongsu'}`
             : lang === 'zh'
               ? `${place.region === '홍대' ? '弘大' : place.region === '강북' ? '江北' : place.region === '강남' ? '江南' : place.region === '부산' ? '釜山' : place.region === '제주' ? '济州' : '圣水洞'}附近`
-              : `${place.region} 근처`);
+              : lang === 'ja'
+                ? `${place.region === '홍대' ? 'ホンデ' : place.region === '강북' ? 'カンブク' : place.region === '강남' ? 'カンナム' : place.region === '부산' ? '釜山' : place.region === '제주' ? '済州' : 'ソンス'}近く`
+                : `${place.region} 근처`);
   const href = `/posts/${place.id}?region=${encodeURIComponent(place.region || '성수')}&lang=${lang}`;
   return { regionBadgeClass, regionLabel, placeTitle, secondaryText, href };
 }
@@ -138,7 +142,7 @@ function BentoTop3({ items, lang }: { items: BentoItem[]; lang: string }) {
           />
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
-            <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+            <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : lang === 'ja' ? '位' : '위'}
           </div>
           {first.isNew && (
             <span className="absolute top-2 right-2 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase bg-rose-500 text-white border border-rose-400 animate-pulse">
@@ -687,7 +691,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           </div>
                         ))}
                         <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-zinc-900/90 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
-                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : '위'}
+                          <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'zh' ? '位' : lang === 'ja' ? '位' : '위'}
                         </div>
                       </div>
                     )}
@@ -723,7 +727,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                               ? (course.region === '홍대' ? 'Hongdae' : course.region === '강북' ? 'Gangbuk' : course.region === '강남' ? 'Gangnam' : course.region === '공연' ? 'Concert' : course.region === '제주' ? 'Jeju' : course.region === '축제' ? 'Festival' : 'Seongsu')
                               : lang === 'zh'
                                 ? (course.region === '홍대' ? '弘大' : course.region === '강북' ? '江北' : course.region === '강남' ? '江南' : course.region === '공연' ? '演出' : course.region === '제주' ? '济州' : course.region === '축제' ? '节庆' : '圣水洞')
-                                : (course.region || '성수')}
+                                : lang === 'ja'
+                                  ? (course.region === '홍대' ? 'ホンデ' : course.region === '강북' ? 'カンブク' : course.region === '강남' ? 'カンナム' : course.region === '공연' ? 'コンサート' : course.region === '제주' ? '済州' : course.region === '축제' ? 'フェスティバル' : 'ソンス')
+                                  : (course.region || '성수')}
                           </span>
                         </div>
                         <p className="text-[8px] text-zinc-400 font-medium">Verified Local Guide</p>
@@ -769,9 +775,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : '아무개')}</p>
+                          <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : lang === 'ja' ? '名無し' : '아무개')}</p>
                           <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">
-                            {lang === 'en' ? 'Theme' : lang === 'zh' ? '主题' : '테마'}
+                            {lang === 'en' ? 'Theme' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
                           </span>
                         </div>
                       </div>
@@ -848,7 +854,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                           <h4 className="font-bold text-zinc-900 text-sm truncate tracking-tight">{placeTitle}</h4>
                           {place.category === 'class' && (
                             <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
-                              {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : '클래스'}
+                              {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课' : lang === 'ja' ? 'クラス' : '클래스'}
                             </span>
                           )}
                           {place.is_new && (
@@ -883,7 +889,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="ct" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {concerts.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
-                  {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : '아직 공연 랭킹 데이터가 없습니다.'}
+                  {lang === 'en' ? 'No concert ranking data yet.' : lang === 'zh' ? '暂无演出排行数据。' : lang === 'ja' ? 'まだ公演ランキングデータがありません。' : '아직 공연 랭킹 데이터가 없습니다.'}
                 </p>
               )}
               {(() => {
@@ -898,7 +904,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                       ? (place.category === '연극' ? '话剧' : place.category === '뮤지컬' ? '音乐剧' : place.category === '음악' ? '音乐' : '综合')
                       : (place.category || '종합'),
                   title: (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title,
-                  secondaryText: place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : '서울 공연'),
+                  secondaryText: place.date_range || (lang === 'en' ? 'Seoul Concert' : lang === 'zh' ? '首尔演出' : lang === 'ja' ? 'ソウルの公演' : '서울 공연'),
                   score: place.score,
                   like_count: place.like_count,
                   isNew: place.is_new,
@@ -954,7 +960,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="ft" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {festivals.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
-                  {lang === 'en' ? 'No festival ranking data yet.' : lang === 'zh' ? '暂无节庆排行数据。' : '아직 축제 랭킹 데이터가 없습니다.'}
+                  {lang === 'en' ? 'No festival ranking data yet.' : lang === 'zh' ? '暂无节庆排行数据。' : lang === 'ja' ? 'まだフェスティバルランキングデータがありません。' : '아직 축제 랭킹 데이터가 없습니다.'}
                 </p>
               )}
               {(() => {
@@ -963,9 +969,9 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   id: place.id,
                   image_url: place.image_url,
                   badgeClass: festivalBadgeClass,
-                  badgeLabel: lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : '축제',
+                  badgeLabel: lang === 'en' ? 'FESTIVAL' : lang === 'zh' ? '节庆' : lang === 'ja' ? 'フェスティバル' : '축제',
                   title: (lang === 'en' && place.title_en) ? place.title_en : (lang === 'zh' && place.title_zh) ? place.title_zh : (lang === 'ja' && place.title_ja) ? place.title_ja : place.title,
-                  secondaryText: place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : '전국 축제'),
+                  secondaryText: place.date_range || (lang === 'en' ? 'Seoul Festival' : lang === 'zh' ? '首尔节庆' : lang === 'ja' ? '全国のフェスティバル' : '전국 축제'),
                   score: place.score,
                   like_count: place.like_count,
                   isNew: place.is_new,
@@ -1021,7 +1027,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="sh" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {shopping.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
-                  {lang === 'en' ? 'No shopping ranking data yet.' : lang === 'zh' ? '暂无购物排行数据。' : '아직 쇼핑 랭킹 데이터가 없습니다.'}
+                  {lang === 'en' ? 'No shopping ranking data yet.' : lang === 'zh' ? '暂无购物排行数据。' : lang === 'ja' ? 'まだショッピングランキングデータがありません。' : '아직 쇼핑 랭킹 데이터가 없습니다.'}
                 </p>
               )}
               {(() => {
@@ -1103,7 +1109,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
             <motion.div key="ex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
               {exhibitions.length === 0 && !isLoading && (
                 <p className="text-center text-xs text-zinc-400 py-10">
-                  {lang === 'en' ? 'No exhibition ranking data yet.' : lang === 'zh' ? '暂无展览排行数据。' : '아직 전시 랭킹 데이터가 없습니다.'}
+                  {lang === 'en' ? 'No exhibition ranking data yet.' : lang === 'zh' ? '暂无展览排行数据。' : lang === 'ja' ? 'まだ展示ランキングデータがありません。' : '아직 전시 랭킹 데이터가 없습니다.'}
                 </p>
               )}
               {(() => {
@@ -1187,11 +1193,11 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
           <div className="flex gap-2 pt-2 pb-4">
             <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={handleShareRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
               <Share2 size={14} />
-              {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : '공유하기'}
+              {lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : lang === 'ja' ? '共有' : '공유하기'}
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }} onClick={handleSaveRanking} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-zinc-900 text-white rounded-2xl text-xs font-bold hover:bg-zinc-800 transition-colors">
               <Save size={14} />
-              {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : '마이페이지에 저장'}
+              {lang === 'en' ? 'Save' : lang === 'zh' ? '保存' : lang === 'ja' ? '保存' : '마이페이지에 저장'}
             </motion.button>
           </div>
         )}
@@ -1280,7 +1286,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
                   />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : '아무개'))}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || (lang === 'en' ? 'Anony' : lang === 'zh' ? '匿名' : lang === 'ja' ? '名無し' : '아무개'))}{lang === 'en' ? "'s Theme" : lang === 'zh' ? '的主题' : lang === 'ja' ? 'のテーマ' : '의 테마'}</p>
                   </div>
                 </div>
                 <button onClick={() => setSelectedTheme(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>

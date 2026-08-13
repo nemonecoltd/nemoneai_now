@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import AdUnit from './AdUnit';
 
 export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
   const [themes, setThemes] = useState([]);
@@ -62,14 +64,14 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   const handleDeleteTheme = async (e: React.MouseEvent, themeId: number, authorId: string) => {
     e.stopPropagation();
     if (!user || (user.id !== authorId && user.email !== 'nemonecoltd@gmail.com')) {
-      alert('권한이 없습니다.');
+      alert(tr('권한이 없습니다.', 'You do not have permission.', '没有权限。', '権限がありません。'));
       return;
     }
-    if (!confirm('테마를 삭제하시겠습니까?')) return;
+    if (!confirm(tr('테마를 삭제하시겠습니까?', 'Delete this theme?', '确定要删除该主题吗？', 'このテーマを削除しますか？'))) return;
     try {
       const res = await fetch(`/api-now/themes/${themeId}?user_id=${user.id}`, { method: 'DELETE' });
       if (res.ok) {
-        alert('삭제되었습니다.');
+        alert(tr('삭제되었습니다.', 'Deleted.', '已删除。', '削除しました。'));
         setSelectedTheme(null);
         fetchThemes();
       }
@@ -94,7 +96,12 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return signInWithGoogle();
-    if (!title || !description || places.length === 0) return alert('제목, 설명, 그리고 최소 1개의 플레이스를 등록해주세요.');
+    if (!title || !description || places.length === 0) return alert(tr(
+      '제목, 설명, 그리고 최소 1개의 플레이스를 등록해주세요.',
+      'Please add a title, description, and at least 1 place.',
+      '请填写标题、描述，并至少添加1个地点。',
+      'タイトル、説明、最低1つの場所を登録してください。'
+    ));
     
     setIsLoading(true);
     try {
@@ -111,7 +118,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
         })
       });
       if (res.ok) {
-        alert('테마가 등록되었습니다.');
+        alert(tr('테마가 등록되었습니다.', 'Theme created.', '主题已创建。', 'テーマが登録されました。'));
         setIsCreating(false);
         setTitle('');
         setDescription('');
@@ -127,62 +134,62 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
     return (
       <div className="h-full flex flex-col bg-zinc-50 p-6 overflow-y-auto pb-32">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">새 테마 만들기</h2>
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">{tr('새 테마 만들기', 'Create New Theme', '创建新主题', '新しいテーマを作成')}</h2>
           <button onClick={() => setIsCreating(false)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
         </div>
         <form onSubmit={handleCreateSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">테마 제목</label>
-            <input required type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500" placeholder="예: 비오는 날 가기 좋은 성수 카페" />
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('테마 제목', 'Theme Title', '主题标题', 'テーマタイトル')}</label>
+            <input required type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500" placeholder={tr('예: 비오는 날 가기 좋은 성수 카페', 'e.g. Great Seongsu cafes for rainy days', '例：适合雨天去的圣水洞咖啡厅', '例：雨の日に行きたいソンスのカフェ')} />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">테마 설명</label>
-            <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500 resize-none h-24" placeholder="이 테마에 대한 간단한 설명을 적어주세요." />
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('테마 설명', 'Theme Description', '主题描述', 'テーマの説明')}</label>
+            <textarea required value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-white border border-zinc-200 rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-pace-500 resize-none h-24" placeholder={tr('이 테마에 대한 간단한 설명을 적어주세요.', 'Write a short description of this theme.', '请简单描述一下这个主题。', 'このテーマについて簡単に説明してください。')} />
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">플레이스 리스트</label>
-              <button type="button" onClick={addPlaceToForm} className="text-[10px] bg-pace-50 text-pace-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> 추가</button>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('플레이스 리스트', 'Place List', '地点列表', '場所リスト')}</label>
+              <button type="button" onClick={addPlaceToForm} className="text-[10px] bg-pace-50 text-pace-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> {tr('추가', 'Add', '添加', '追加')}</button>
             </div>
             {places.map((place, idx) => (
               <div key={idx} className="bg-white p-4 rounded-2xl border border-zinc-200 space-y-3 relative">
                 <button type="button" onClick={() => setPlaces(places.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-zinc-400 hover:text-rose-500"><X size={16} /></button>
                 <div className="space-y-1 pr-8">
-                  <label className="text-[10px] font-bold text-zinc-400">플레이스 이름</label>
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('플레이스 이름', 'Place Name', '地点名称', '場所名')}</label>
                   <input required type="text" value={place.title} onChange={e => handlePlaceChange(idx, 'title', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400">주소</label>
-                  <input required type="text" value={place.location} onChange={e => handlePlaceChange(idx, 'location', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="상세 주소를 입력하세요" />
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('주소', 'Address', '地址', '住所')}</label>
+                  <input required type="text" value={place.location} onChange={e => handlePlaceChange(idx, 'location', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder={tr('상세 주소를 입력하세요', 'Enter a detailed address', '请输入详细地址', '詳しい住所を入力してください')} />
                   {place.location && (
-                    <a href={`https://map.naver.com/v5/search/${encodeURIComponent(place.location)}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-pace-500 hover:underline inline-block mt-1">네이버 지도로 확인</a>
+                    <a href={`https://map.naver.com/v5/search/${encodeURIComponent(place.location)}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-pace-500 hover:underline inline-block mt-1">{tr('네이버 지도로 확인', 'Check on Naver Map', '在Naver地图上查看', 'Naverマップで確認')}</a>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400">설명 / 팁</label>
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('설명 / 팁', 'Description / Tips', '描述/提示', '説明・ヒント')}</label>
                   <textarea required value={place.content} onChange={e => handlePlaceChange(idx, 'content', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500 resize-none" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400">운영 일시 (선택)</label>
-                  <input type="text" value={place.date_range} onChange={e => handlePlaceChange(idx, 'date_range', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="예: 2026.04.01 ~ 04.30" />
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('운영 일시 (선택)', 'Operating Hours (optional)', '营业时间（选填）', '営業日時（任意）')}</label>
+                  <input type="text" value={place.date_range} onChange={e => handlePlaceChange(idx, 'date_range', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="e.g. 2026.04.01 ~ 04.30" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400">이미지 URL (선택)</label>
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('이미지 URL (선택)', 'Image URL (optional)', '图片链接（选填）', '画像URL（任意）')}</label>
                   <input type="text" value={place.image_url} onChange={e => handlePlaceChange(idx, 'image_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-zinc-400">영상 URL (선택)</label>
-                  <input type="text" value={place.video_url} onChange={e => handlePlaceChange(idx, 'video_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder="YouTube 또는 Spotify 링크" />
+                  <label className="text-[10px] font-bold text-zinc-400">{tr('영상 URL (선택)', 'Video URL (optional)', '视频链接（选填）', '動画URL（任意）')}</label>
+                  <input type="text" value={place.video_url} onChange={e => handlePlaceChange(idx, 'video_url', e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-pace-500" placeholder={tr('YouTube 또는 Spotify 링크', 'YouTube or Spotify link', 'YouTube或Spotify链接', 'YouTubeまたはSpotifyのリンク')} />
                 </div>
               </div>
             ))}
-            {places.length === 0 && <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-zinc-200 text-zinc-400 text-xs font-bold">등록된 플레이스가 없습니다.</div>}
+            {places.length === 0 && <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-zinc-200 text-zinc-400 text-xs font-bold">{tr('등록된 플레이스가 없습니다.', 'No places added yet.', '暂无已添加的地点。', '登録された場所がありません。')}</div>}
           </div>
           <button disabled={isLoading} type="submit" className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center shadow-xl hover:bg-pace-600 transition-all disabled:opacity-50">
-            {isLoading ? '등록 중...' : '테마 만들기'}
+            {isLoading ? tr('등록 중...', 'Submitting...', '提交中...', '登録中...') : tr('테마 만들기', 'Create Theme', '创建主题', 'テーマを作成')}
           </button>
-          <p className="text-[9px] text-center text-zinc-400">광고, 홍보 그리고 주제와 맞지 않는 플레이스 등은 임의로 삭제될 수 있습니다.</p>
+          <p className="text-[9px] text-center text-zinc-400">{tr('광고, 홍보 그리고 주제와 맞지 않는 플레이스 등은 임의로 삭제될 수 있습니다.', 'Ads, promotions, and off-topic places may be removed without notice.', '广告、推广及与主题不符的地点可能会被自行删除。', '広告・宣伝およびテーマに合わない場所は予告なく削除される場合があります。')}</p>
         </form>
       </div>
     );
@@ -195,13 +202,13 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
           onClick={() => { if (!user) return signInWithGoogle(); setIsCreating(true); }}
           className="w-full mb-8 py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-pace-600 transition-all shadow-lg"
         >
-          <Plus size={18} /> 코스 생성하기
+          <Plus size={18} /> {tr('코스 생성하기', 'Create Course', '创建课程', 'コース作成')}
         </button>
 
         {/* Top 5 랭킹 */}
         {top5.length > 0 && (
           <div className="mb-10">
-            <h2 className="text-lg font-black text-zinc-900 tracking-tight mb-4 flex items-center gap-2"><Heart className="text-rose-500" size={18} /> 인기 테마 TOP 5</h2>
+            <h2 className="text-lg font-black text-zinc-900 tracking-tight mb-4 flex items-center gap-2"><Heart className="text-rose-500" size={18} /> {tr('인기 테마 TOP 5', 'Top 5 Popular Themes', '热门主题TOP5', '人気テーマTOP5')}</h2>
             <div className="space-y-4">
               {top5.map((theme: any, idx: number) => (
                 <Fragment key={theme.id}>
@@ -220,8 +227,8 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || '아무개'}</p>
-                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">테마</span>
+                        <p className="text-[10px] font-bold text-zinc-900 truncate">{theme.user_name || tr('아무개', 'Anonymous', '匿名用户', '名無し')}</p>
+                        <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase border bg-blue-50 text-blue-600 border-blue-100">{tr('테마', 'Theme', '主题', 'テーマ')}</span>
                       </div>
                     </div>
                     <button onClick={(e) => toggleThemeLike(e, theme.id)} className="flex items-center gap-1.5 bg-zinc-50 px-3 py-1.5 rounded-full border border-zinc-100 hover:bg-rose-50 transition-all">
@@ -248,7 +255,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
         {/* 최신 테마 */}
         {latest.length > 0 && (
           <div>
-            <h2 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-4">최신 테마</h2>
+            <h2 className="text-sm font-black text-zinc-400 uppercase tracking-widest mb-4">{tr('최신 테마', 'Latest Themes', '最新主题', '最新テーマ')}</h2>
             <div className="space-y-4">
               {latest.map((theme: any) => (
                 <div key={theme.id} onClick={() => setSelectedTheme(theme)} className="bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm cursor-pointer hover:border-blue-200 transition-all flex items-center gap-4 group">
@@ -263,7 +270,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                   <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-zinc-900 text-sm tracking-tight line-clamp-1 group-hover:text-blue-600 transition-colors">{theme.title}</h4>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-bold text-zinc-400 truncate">{theme.user_name || '아무개'}</span>
+                      <span className="text-[9px] font-bold text-zinc-400 truncate">{theme.user_name || tr('아무개', 'Anonymous', '匿名用户', '名無し')}</span>
                       <span className="text-[9px] font-black text-zinc-300 ml-auto flex items-center gap-1"><Heart size={10} /> {theme.like_count}</span>
                     </div>
                   </div>
@@ -289,7 +296,14 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                   />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{(selectedTheme.user_name || '아무개')}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">
+                      {tr(
+                        `${selectedTheme.user_name || '아무개'}의 테마`,
+                        `${selectedTheme.user_name || 'Anonymous'}'s Theme`,
+                        `${selectedTheme.user_name || '匿名用户'}的主题`,
+                        `${selectedTheme.user_name || '名無し'}のテーマ`
+                      )}
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -297,7 +311,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                     <button 
                       onClick={(e) => handleDeleteTheme(e, selectedTheme.id, selectedTheme.user_id)} 
                       className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-colors"
-                      title="테마 삭제"
+                      title={tr('테마 삭제', 'Delete Theme', '删除主题', 'テーマ削除')}
                     >
                       <Trash2 size={20} />
                     </button>
@@ -358,7 +372,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-start gap-2 text-sm text-pace-600 font-bold bg-pace-50 p-3 rounded-xl">
                     <MapPin size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>{selectedPlace.location || '위치 정보 없음'}</span>
+                    <span>{selectedPlace.location || tr('위치 정보 없음', 'No location info', '暂无位置信息', '位置情報なし')}</span>
                   </div>
                   {selectedPlace.date_range && (
                     <div className="flex items-center gap-2 text-sm text-zinc-600 font-bold bg-zinc-50 p-3 rounded-xl border border-zinc-100">
@@ -377,7 +391,7 @@ export default function ThemeMenu({ lang = 'ko' }: { lang?: string }) {
                 </div>
 
                 <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100">
-                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">상세 설명 및 팁</h4>
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">{tr('상세 설명 및 팁', 'Details & Tips', '详细描述及提示', '詳細説明とヒント')}</h4>
                   <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{selectedPlace.content}</p>
                 </div>
 

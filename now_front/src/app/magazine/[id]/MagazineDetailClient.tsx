@@ -25,15 +25,17 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
       return;
     }
     await navigator.clipboard.writeText(url);
-    alert('링크가 복사되었습니다!');
+    alert(lang === 'en' ? 'Link copied!' : lang === 'zh' ? '链接已复制！' : lang === 'ja' ? 'リンクをコピーしました！' : '링크가 복사되었습니다!');
   };
 
   if (!post) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 max-w-md mx-auto">
-        <p className="text-sm font-bold text-zinc-400">아티클을 찾을 수 없어요.</p>
+        <p className="text-sm font-bold text-zinc-400">
+          {lang === 'en' ? 'Article not found.' : lang === 'zh' ? '找不到该文章。' : lang === 'ja' ? '記事が見つかりません。' : '아티클을 찾을 수 없어요.'}
+        </p>
         <button onClick={handleBack} className="px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-bold">
-          돌아가기
+          {lang === 'en' ? 'Go Back' : lang === 'zh' ? '返回' : lang === 'ja' ? '戻る' : '돌아가기'}
         </button>
       </div>
     );
@@ -50,7 +52,7 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
             <ChevronLeft size={20} strokeWidth={2.5} />
           </button>
           <span className="text-base font-black tracking-tight text-zinc-900">
-            매거진 <span className="text-pace-500">.</span>
+            {lang === 'en' ? 'Magazine' : lang === 'zh' ? '杂志' : lang === 'ja' ? 'マガジン' : '매거진'} <span className="text-pace-500">.</span>
           </span>
         </div>
         <BrandTagline lang={lang} />
@@ -76,12 +78,12 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-bold text-pace-600 hover:text-pace-700"
             >
-              네모네AIM에서 원문 보기 <ExternalLink size={12} />
+              {lang === 'en' ? 'Read original on Nemone AIM' : lang === 'zh' ? '在네모네AIM查看原文' : lang === 'ja' ? 'ネモネAIMで原文を見る' : '네모네AIM에서 원문 보기'} <ExternalLink size={12} />
             </a>
             <button
               onClick={handleShare}
               className="inline-flex items-center justify-center w-7 h-7 rounded-full text-zinc-400 hover:text-pace-600 hover:bg-pace-50 transition-all"
-              aria-label="공유하기"
+              aria-label={lang === 'en' ? 'Share' : lang === 'zh' ? '分享' : lang === 'ja' ? '共有' : '공유하기'}
             >
               <Share2 size={16} />
             </button>
