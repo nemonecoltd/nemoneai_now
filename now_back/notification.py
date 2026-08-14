@@ -86,6 +86,10 @@ def send_four_hourly_report() -> None:
 
         total_places = conn.execute(text("SELECT COUNT(*) FROM seongsu_places")).scalar() or 0
         total_courses = conn.execute(text("SELECT COUNT(*) FROM saved_courses")).scalar() or 0
+        total_feedback = conn.execute(text("SELECT COUNT(*) FROM feedbacks")).scalar() or 0
+        # 조회수(48h)와 다르게 리포트 주기(4시간)에 맞춰서 "직전 리포트 이후 새로 들어온 것"만 집계 —
+        # 48h로 하면 같은 피드백이 여러 리포트에 걸쳐 계속 "새 피드백"으로 잡혀서 신규 여부 파악이 안 됨.
+        new_feedback = conn.execute(text("SELECT COUNT(*) FROM feedbacks WHERE created_at >= NOW() - INTERVAL '4 hours'")).scalar() or 0
 
     total_views = sum(v for v, _ in views_by_region.values())
     total_prev_views = sum(p for _, p in views_by_region.values())
@@ -120,5 +124,6 @@ def send_four_hourly_report() -> None:
         f"전체 DB {total_places:,}곳",
         f"생성된 코스 {total_courses:,}개",
         f"전체 유저 {total_users:,}명",
+        f"새 피드백 {new_feedback:,}건 (전체 {total_feedback:,}건)",
     ]
     send_alert("\n".join(lines))
