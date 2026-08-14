@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ChevronLeft, MessageSquare, Trash2, Pencil, Send, ShieldCheck, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from '@/components/AdUnit';
@@ -17,8 +17,20 @@ function cn(...inputs: ClassValue[]) {
 const ADMIN_EMAIL = 'nemonecoltd@gmail.com';
 
 export default function FeedbackPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+      <FeedbackPageContent />
+    </Suspense>
+  );
+}
+
+function FeedbackPageContent() {
   const { user, session, signInWithGoogle } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lang = searchParams.get('lang') || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
   const [feedbacks, setFeedbacks] = useState([]);
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -37,7 +49,7 @@ export default function FeedbackPage() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
-      router.push('/');
+      router.push(`/?lang=${lang}`);
     }
   };
 
@@ -79,7 +91,7 @@ export default function FeedbackPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('정말로 삭제하시겠습니까?')) return;
+    if (!confirm(tr('정말로 삭제하시겠습니까?', 'Are you sure you want to delete this?', '确定要删除吗?', '本当に削除しますか?'))) return;
     try {
       const res = await fetch(`/api-now/feedbacks/${id}`, {
         method: 'DELETE',
@@ -140,7 +152,7 @@ export default function FeedbackPage() {
           <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">사용자 피드백</h1>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('사용자 피드백', 'User Feedback', '用户反馈', 'ユーザーフィードバック')}</h1>
         </div>
         <BrandTagline />
       </header>
@@ -149,10 +161,15 @@ export default function FeedbackPage() {
         {/* Intro */}
         <div className="space-y-2">
           <h2 className="text-xl font-black text-zinc-900 flex items-center gap-2">
-            <MessageSquare className="text-pace-500 fill-pace-100" size={24} /> 소중한 의견을 들려주세요.
+            <MessageSquare className="text-pace-500 fill-pace-100" size={24} /> {tr('소중한 의견을 들려주세요.', 'Share your thoughts with us.', '请分享您宝贵的意见。', '貴重なご意見をお聞かせください。')}
           </h2>
           <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-            네모네 서비스를 사용하며 느낀 불편함이나 바라는 점을 편하게 남겨주세요. 관리자가 모든 글을 꼼꼼히 읽고 답변해 드립니다!
+            {tr(
+              '네모네 서비스를 사용하며 느낀 불편함이나 바라는 점을 편하게 남겨주세요. 관리자가 모든 글을 꼼꼼히 읽고 답변해 드립니다!',
+              'Feel free to share anything inconvenient or anything you wish for while using NEMONE. Our team reads every message carefully and replies!',
+              '请随意留下您在使用NEMONE服务时感受到的不便或期望。管理员会仔细阅读每一条留言并回复!',
+              'NEMONEサービスをご利用中に感じた不便な点やご要望を気軽にお寄せください。管理者がすべての投稿を丁寧に読み、返信いたします!',
+            )}
           </p>
         </div>
 
@@ -161,12 +178,12 @@ export default function FeedbackPage() {
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            placeholder="여기에 의견을 작성해주세요..."
+            placeholder={tr('여기에 의견을 작성해주세요...', 'Write your feedback here...', '请在此处填写您的意见...', 'ここにご意見をご記入ください...')}
             className="w-full h-24 bg-zinc-50/50 border-none rounded-2xl p-4 text-sm resize-none focus:outline-none focus:bg-white disabled:opacity-50 text-zinc-800 placeholder:text-zinc-400 font-medium"
           />
           <div className="flex justify-end">
             <button type="submit" disabled={!content.trim()} className="px-6 py-2.5 bg-zinc-900 text-white text-[11px] font-bold rounded-xl hover:bg-pace-600 disabled:opacity-30 transition-all flex items-center gap-2 shadow-md">
-              <Send size={14} /> 의견 남기기
+              <Send size={14} /> {tr('의견 남기기', 'Submit', '提交意见', '意見を送る')}
             </button>
           </div>
         </form>
@@ -178,7 +195,7 @@ export default function FeedbackPage() {
           {isLoading ? (
             <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-pace-500" /></div>
           ) : feedbacks.length === 0 ? (
-            <div className="py-20 text-center text-zinc-400 text-sm font-medium italic">첫 번째 피드백을 남겨주세요!</div>
+            <div className="py-20 text-center text-zinc-400 text-sm font-medium italic">{tr('첫 번째 피드백을 남겨주세요!', 'Be the first to leave feedback!', '快来留下第一条反馈吧!', '最初のフィードバックを残しましょう!')}</div>
           ) : (
             feedbacks.map((fb: any) => (
               <div key={fb.id} className="bg-white rounded-[28px] border border-zinc-100 shadow-sm overflow-hidden">
@@ -213,8 +230,8 @@ export default function FeedbackPage() {
                         className="w-full h-24 bg-zinc-50 border border-zinc-200 rounded-2xl p-4 text-sm resize-none focus:outline-none focus:border-pace-400 text-zinc-800"
                       />
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-zinc-600">취소</button>
-                        <button onClick={() => handleEditSave(fb.id)} className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-pace-600">저장</button>
+                        <button onClick={() => setEditingId(null)} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-zinc-600">{tr('취소', 'Cancel', '取消', 'キャンセル')}</button>
+                        <button onClick={() => handleEditSave(fb.id)} className="px-4 py-2 bg-zinc-900 text-white text-xs font-bold rounded-xl hover:bg-pace-600">{tr('저장', 'Save', '保存', '保存')}</button>
                       </div>
                     </div>
                   ) : (
@@ -230,7 +247,7 @@ export default function FeedbackPage() {
                         <ShieldCheck size={16} />
                       </div>
                       <div className="space-y-1.5 flex-1 pt-1.5">
-                        <p className="text-xs font-black text-pace-700 tracking-tight">네모네 관리자</p>
+                        <p className="text-xs font-black text-pace-700 tracking-tight">{tr('네모네 관리자', 'NEMONE Admin', 'NEMONE管理员', 'NEMONE管理者')}</p>
                         <p className="text-sm text-pace-900 whitespace-pre-line leading-relaxed font-medium">{fb.admin_reply}</p>
                       </div>
                     </div>
@@ -244,11 +261,11 @@ export default function FeedbackPage() {
                       type="text"
                       value={replyInputs[fb.id] || ''}
                       onChange={e => setReplyInputs(prev => ({...prev, [fb.id]: e.target.value}))}
-                      placeholder="이 의견에 관리자 답변 달기..."
+                      placeholder={tr('이 의견에 관리자 답변 달기...', 'Reply to this feedback as admin...', '对该反馈进行管理员回复...', 'この意見に管理者として返信...')}
                       className="flex-1 bg-white border border-zinc-200 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-pace-500 shadow-sm"
                     />
                     <button onClick={() => handleReply(fb.id)} className="px-5 py-3 bg-zinc-900 text-white rounded-xl text-xs font-bold shadow-md hover:bg-pace-600 transition-colors">
-                      답변
+                      {tr('답변', 'Reply', '回复', '返信')}
                     </button>
                   </div>
                 )}
@@ -257,7 +274,7 @@ export default function FeedbackPage() {
           )}
         </div>
 
-        <SiteFooter />
+        <SiteFooter lang={lang} />
       </main>
     </div>
   );

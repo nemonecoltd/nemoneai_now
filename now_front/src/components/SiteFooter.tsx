@@ -2,9 +2,10 @@ const TAGLINE: Record<string, string> = {
   ko: '당신의 다음 3시간을 설계합니다',
   en: 'A fulfilling plan for your 3 hours',
   zh: '为您3小时的充实安排',
+  ja: 'あなたの次の3時間をデザインします',
 };
 
-const BRAND: Record<string, string> = { ko: 'NEMONE PACE', en: 'NEMONE PACE', zh: 'NEMONE PACE' };
+const BRAND: Record<string, string> = { ko: 'NEMONE PACE', en: 'NEMONE PACE', zh: 'NEMONE PACE', ja: 'NEMONE PACE' };
 
 export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
   return (
@@ -25,7 +26,7 @@ export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
           { name: 'ABOUT', href: 'https://home.nemoneai.com' },
           { name: 'BLOG', href: 'https://blog.naver.com/nemoneaim' },
           { name: '네모네AIM', href: 'https://nemoneai.com' },
-          { name: 'FEEDBACK', href: '/feedback' },
+          { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
         ].map((item) => (
           <a
             key={item.name}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Camera, Loader2, Save, User, Globe, Trash2, Bell, BellOff } from 'lucide-react';
 import BrandTagline from '@/components/BrandTagline';
 import { createClient } from '@/utils/supabase/client';
@@ -11,8 +11,20 @@ import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
 
 export default function EditProfilePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+      <EditProfileContent />
+    </Suspense>
+  );
+}
+
+function EditProfileContent() {
   const { user, isLoading: authLoading, signOut } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lang = searchParams.get('lang') || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushSubscription();
@@ -33,7 +45,7 @@ export default function EditProfilePage() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
-      router.push('/');
+      router.push(`/?lang=${lang}`);
     }
   };
 
@@ -120,7 +132,12 @@ export default function EditProfilePage() {
 
         if (uploadError) {
           console.error("Storage upload error:", uploadError);
-          throw new Error('이미지 업로드에 실패했습니다. Supabase Storage에 profiles 버킷이 생성되어 있는지 확인해주세요.');
+          throw new Error(tr(
+            '이미지 업로드에 실패했습니다. Supabase Storage에 profiles 버킷이 생성되어 있는지 확인해주세요.',
+            'Image upload failed. Please check that the profiles bucket exists in Supabase Storage.',
+            '图片上传失败。请确认Supabase Storage中已创建profiles存储桶。',
+            '画像のアップロードに失敗しました。Supabase Storageにprofilesバケットが作成されているか確認してください。',
+          ));
         }
 
         const { data: publicUrlData } = supabase.storage.from('profiles').getPublicUrl(fileName);
@@ -139,19 +156,24 @@ export default function EditProfilePage() {
       });
 
       if (updateError) throw new Error(updateError.message);
-      
-      router.push('/my');
+
+      router.push(`/my?lang=${lang}`);
       router.refresh();
-      
+
     } catch (e: any) {
-      setError(e.message || '저장 중 오류가 발생했습니다.');
+      setError(e.message || tr('저장 중 오류가 발생했습니다.', 'An error occurred while saving.', '保存时发生错误。', '保存中にエラーが発生しました。'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm('정말 계정을 탈퇴하시겠습니까?\n작성하신 코스와 저장된 장소 등 모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
+    if (!confirm(tr(
+      '정말 계정을 탈퇴하시겠습니까?\n작성하신 코스와 저장된 장소 등 모든 데이터가 삭제되며 복구할 수 없습니다.',
+      'Are you sure you want to delete your account?\nAll your data, including courses and saved places, will be permanently deleted.',
+      '确定要注销账户吗?\n您创建的路线、收藏的地点等所有数据都将被删除且无法恢复。',
+      '本当にアカウントを退会しますか?\n作成したコースや保存した場所などすべてのデータが削除され、復元できません。',
+    ))) return;
     
     setIsSaving(true);
     try {
@@ -165,9 +187,9 @@ export default function EditProfilePage() {
       }
 
       await signOut();
-      router.push('/');
+      router.push(`/?lang=${lang}`);
     } catch (e: any) {
-      setError(e.message || '탈퇴 처리 중 오류가 발생했습니다.');
+      setError(e.message || tr('탈퇴 처리 중 오류가 발생했습니다.', 'An error occurred while deleting your account.', '注销处理时发生错误。', '退会処理中にエラーが発生しました。'));
       setIsSaving(false);
     }
   };
@@ -183,7 +205,7 @@ export default function EditProfilePage() {
           <button onClick={handleBack} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">프로필 수정</h1>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('프로필 수정', 'Edit Profile', '编辑个人资料', 'プロフィール編集')}</h1>
         </div>
         <BrandTagline />
       </header>
@@ -212,7 +234,7 @@ export default function EditProfilePage() {
               <Camera size={14} />
             </div>
           </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-4 uppercase tracking-widest">사진 변경 (최적화 적용)</p>
+          <p className="text-[10px] font-bold text-zinc-400 mt-4 uppercase tracking-widest">{tr('사진 변경 (최적화 적용)', 'Change Photo (auto-optimized)', '更换照片(自动优化)', '写真を変更(最適化済み)')}</p>
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -226,27 +248,27 @@ export default function EditProfilePage() {
         <div className="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm space-y-4">
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-bold text-zinc-900 focus:outline-none focus:border-pace-500" placeholder="이름을 입력하세요" />
+            <input value={name} onChange={e => setName(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-bold text-zinc-900 focus:outline-none focus:border-pace-500" placeholder={tr('이름을 입력하세요', 'Enter your name', '请输入姓名', 'お名前を入力してください')} />
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Gender</label>
               <select value={gender} onChange={e => setGender(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-medium text-zinc-900 focus:outline-none focus:border-pace-500">
-                <option value="">선택 안함</option>
-                <option value="male">남성</option>
-                <option value="female">여성</option>
-                <option value="other">기타</option>
+                <option value="">{tr('선택 안함', 'Not selected', '不选择', '未選択')}</option>
+                <option value="male">{tr('남성', 'Male', '男', '男性')}</option>
+                <option value="female">{tr('여성', 'Female', '女', '女性')}</option>
+                <option value="other">{tr('기타', 'Other', '其他', 'その他')}</option>
               </select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Age</label>
               <select value={age} onChange={e => setAge(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-medium text-zinc-900 focus:outline-none focus:border-pace-500">
-                <option value="">선택 안함</option>
-                <option value="10s">10대</option>
-                <option value="20s">20대</option>
-                <option value="30s">30대</option>
-                <option value="40s">40대 이상</option>
+                <option value="">{tr('선택 안함', 'Not selected', '不选择', '未選択')}</option>
+                <option value="10s">{tr('10대', 'Teens', '10多岁', '10代')}</option>
+                <option value="20s">{tr('20대', '20s', '20多岁', '20代')}</option>
+                <option value="30s">{tr('30대', '30s', '30多岁', '30代')}</option>
+                <option value="40s">{tr('40대 이상', '40s+', '40岁以上', '40代以上')}</option>
               </select>
             </div>
           </div>
@@ -255,7 +277,7 @@ export default function EditProfilePage() {
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">Nationality</label>
             <div className="relative">
               <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input value={nationality} onChange={e => setNationality(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-10 pr-4 py-3 text-base font-medium text-zinc-900 focus:outline-none focus:border-pace-500" placeholder="예: 한국, USA, Japan..." />
+              <input value={nationality} onChange={e => setNationality(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl pl-10 pr-4 py-3 text-base font-medium text-zinc-900 focus:outline-none focus:border-pace-500" placeholder={tr('예: 한국, USA, Japan...', 'e.g. Korea, USA, Japan...', '例:韩国、USA、Japan...', '例:韓国、USA、Japan...')} />
             </div>
           </div>
         </div>
@@ -265,7 +287,7 @@ export default function EditProfilePage() {
           disabled={isSaving}
           className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all disabled:opacity-50"
         >
-          {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> 변경사항 저장</>}
+          {isSaving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> {tr('변경사항 저장', 'Save Changes', '保存修改', '変更を保存')}</>}
         </button>
 
         {pushSupported && (
@@ -275,15 +297,15 @@ export default function EditProfilePage() {
                 {pushSubscribed ? <Bell size={18} /> : <BellOff size={18} />}
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-sm text-zinc-900">알림 설정</p>
-                <p className="text-xs text-zinc-400 truncate">매주 목요일 핫플랭킹 알림을 받아보세요</p>
+                <p className="font-bold text-sm text-zinc-900">{tr('알림 설정', 'Notifications', '通知设置', '通知設定')}</p>
+                <p className="text-xs text-zinc-400 truncate">{tr('매주 목요일 핫플랭킹 알림을 받아보세요', 'Get the hotplace ranking alert every Thursday', '每周四接收热门排名通知', '毎週木曜日にホットプレイスランキング通知を受け取る')}</p>
               </div>
             </div>
             <Switch
               checked={pushSubscribed}
               onCheckedChange={() => (pushSubscribed ? pushUnsubscribe() : pushSubscribe())}
               disabled={pushLoading}
-              aria-label="알림 토글"
+              aria-label={tr('알림 토글', 'Toggle notifications', '切换通知', '通知切り替え')}
             />
           </Card>
         )}
@@ -293,7 +315,7 @@ export default function EditProfilePage() {
             onClick={handleDeleteAccount}
             className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-rose-100 transition-all"
           >
-            <Trash2 size={20} /> 회원 탈퇴
+            <Trash2 size={20} /> {tr('회원 탈퇴', 'Delete Account', '注销账户', '退会する')}
           </button>
         </div>
 

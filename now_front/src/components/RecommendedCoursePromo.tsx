@@ -104,7 +104,7 @@ export default function RecommendedCoursePromo({ lang = 'ko' }: { lang?: string 
     try {
       let url: string;
       if (pick.type === 'course') {
-        url = `${window.location.origin}/course/${pick.data.id}`;
+        url = `${window.location.origin}/course/${pick.data.id}?lang=${lang}`;
       } else {
         const res = await fetch('/api-now/ranking/share', {
           method: 'POST',
@@ -113,7 +113,7 @@ export default function RecommendedCoursePromo({ lang = 'ko' }: { lang?: string 
         });
         if (!res.ok) throw new Error('공유 링크 생성 실패');
         const { id } = await res.json();
-        url = `${window.location.origin}/ranking/share/${id}`;
+        url = `${window.location.origin}/ranking/share/${id}?lang=${lang}`;
       }
       await navigator.clipboard.writeText(url);
       alert(lang === 'en' ? 'Share link copied!' : lang === 'zh' ? '分享链接已复制！' : lang === 'ja' ? '共有リンクをコピーしました！' : '공유 링크가 복사되었습니다!');

@@ -885,7 +885,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
               { name: 'BLOG', href: 'https://blog.naver.com/nemoneaim' },
               { name: '네모네AIM', href: 'https://nemoneai.com' },
-              { name: 'FEEDBACK', href: '/feedback' },
+              { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
             ].map((item) => (
               <a
                 key={item.name}

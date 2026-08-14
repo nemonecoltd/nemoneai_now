@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  User, MapPin, Route, Heart, ChevronRight, LogOut, Loader2, 
+import {
+  User, MapPin, Route, Heart, ChevronRight, LogOut, Loader2,
   Sparkles, Trash2, ChevronLeft, Map as MapIcon, List as ListIcon, X, Ticket, TrendingUp,
   MessageSquare, Settings, Library, Edit3, Plus, Save, Calendar, Video
 } from 'lucide-react';
 import Link from 'next/link';
 import BrandTagline from '@/components/BrandTagline';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -21,8 +21,20 @@ function cn(...inputs: ClassValue[]) {
 type Tab = 'theme' | 'course' | 'place' | 'ranking';
 
 export default function MyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+      <MyPageContent />
+    </Suspense>
+  );
+}
+
+function MyPageContent() {
   const { user, signOut, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const lang = searchParams.get('lang') || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
   const [activeTab, setActiveTab] = useState<Tab>('place');
   const [likedPlaces, setLikedPlaces] = useState<any[]>([]);
   const [savedCourses, setSavedCourses] = useState([]);
@@ -68,7 +80,7 @@ export default function MyPage() {
   };
 
   const handleDeleteRanking = async (rankingId: number) => {
-    if (!confirm('저장한 랭킹을 삭제하시겠습니까?')) return;
+    if (!confirm(tr('저장한 랭킹을 삭제하시겠습니까?', 'Delete this saved ranking?', '确定删除已保存的排名吗?', '保存したランキングを削除しますか?'))) return;
     try {
       const res = await fetch(`/api-now/ranking/share/${rankingId}?user_id=${user?.id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -101,11 +113,11 @@ export default function MyPage() {
   };
 
   const handleDeleteTheme = async (themeId: number) => {
-    if (!confirm('테마를 정말 삭제하시겠습니까?')) return;
+    if (!confirm(tr('테마를 정말 삭제하시겠습니까?', 'Are you sure you want to delete this theme?', '确定要删除该主题吗?', 'このテーマを削除してもよろしいですか?'))) return;
     try {
       const res = await fetch(`/api-now/themes/${themeId}?user_id=${user?.id}`, { method: 'DELETE' });
       if (res.ok) {
-        alert('삭제되었습니다.');
+        alert(tr('삭제되었습니다.', 'Deleted.', '已删除。', '削除されました。'));
         fetchUserData();
       }
     } catch (e) {
@@ -122,7 +134,7 @@ export default function MyPage() {
   };
   
   const handleUpdateTheme = async () => {
-    if (!editTitle || !editDesc || editPlaces.length === 0) return alert('모든 필드를 입력해주세요.');
+    if (!editTitle || !editDesc || editPlaces.length === 0) return alert(tr('모든 필드를 입력해주세요.', 'Please fill in all fields.', '请填写所有字段。', 'すべての項目を入力してください。'));
     try {
       const res = await fetch(`/api-now/themes/${editingTheme.id}`, {
         method: 'PUT',
@@ -136,16 +148,16 @@ export default function MyPage() {
       });
 
       if (res.ok) {
-        alert('테마가 수정되었습니다.');
+        alert(tr('테마가 수정되었습니다.', 'Theme updated.', '主题已修改。', 'テーマが修正されました。'));
         setEditingTheme(null);
         fetchUserData();
       } else {
         const err = await res.json();
-        alert(`수정 실패: ${err.detail}`);
+        alert(`${tr('수정 실패', 'Update failed', '修改失败', '修正失敗')}: ${err.detail}`);
       }
     } catch (e) {
       console.error(e);
-      alert('서버 통신 중 오류가 발생했습니다.');
+      alert(tr('서버 통신 중 오류가 발생했습니다.', 'A server error occurred.', '服务器通信时发生错误。', 'サーバー通信中にエラーが発生しました。'));
     }
   };
 
@@ -157,10 +169,10 @@ export default function MyPage() {
       <div className="w-20 h-20 bg-pace-50 rounded-3xl flex items-center justify-center text-pace-500 mb-4">
         <User size={40} />
       </div>
-      <h2 className="text-2xl font-bold font-display">로그인이 필요합니다</h2>
-      <p className="text-zinc-500 text-sm">마이페이지를 확인하시려면 로그인해 주세요.</p>
-      <button onClick={() => { const u = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'; window.location.href = `${u}/login?next=${encodeURIComponent(window.location.origin)}`; }} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">로그인하기</button>
-      <button onClick={() => router.push('/')} className="text-zinc-400 text-sm font-bold">홈으로 돌아가기</button>
+      <h2 className="text-2xl font-bold font-display">{tr('로그인이 필요합니다', 'Login required', '需要登录', 'ログインが必要です')}</h2>
+      <p className="text-zinc-500 text-sm">{tr('마이페이지를 확인하시려면 로그인해 주세요.', 'Please log in to view your page.', '请登录以查看我的页面。', 'マイページを確認するにはログインしてください。')}</p>
+      <button onClick={() => { const u = process.env.NEXT_PUBLIC_AUTH_URL || 'http://localhost:3002'; window.location.href = `${u}/login?next=${encodeURIComponent(window.location.origin)}`; }} className="w-full max-w-xs py-4 bg-zinc-900 text-white rounded-2xl font-bold shadow-xl">{tr('로그인하기', 'Log in', '登录', 'ログインする')}</button>
+      <button onClick={() => router.push(`/?lang=${lang}`)} className="text-zinc-400 text-sm font-bold">{tr('홈으로 돌아가기', 'Back to home', '返回首页', 'ホームに戻る')}</button>
     </div>
   );
 
@@ -168,7 +180,7 @@ export default function MyPage() {
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-32 border-x border-zinc-200">
       <header className="fixed top-0 left-0 right-0 max-w-md mx-auto bg-white/80 backdrop-blur-md z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/')} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+          <button onClick={() => router.push(`/?lang=${lang}`)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
             <ChevronLeft size={24} />
           </button>
           <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">MY PAGE</h1>
@@ -200,23 +212,23 @@ export default function MyPage() {
             <h2 className="text-2xl font-black tracking-tight truncate">{user.user_metadata?.full_name || user.email?.split('@')[0]}</h2>
             <p className="text-zinc-400 text-xs font-medium truncate">{user.email}</p>
           </div>
-          <Link href="/my/edit" className="p-3 bg-zinc-100 text-zinc-500 rounded-2xl hover:bg-pace-50 hover:text-pace-500 transition-all shadow-sm">
+          <Link href={`/my/edit?lang=${lang}`} className="p-3 bg-zinc-100 text-zinc-500 rounded-2xl hover:bg-pace-50 hover:text-pace-500 transition-all shadow-sm">
             <Settings size={20} />
           </Link>
         </div>
 
         <div className="flex bg-zinc-100 p-1.5 rounded-2xl">
           <button onClick={() => setActiveTab('theme')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'theme' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            <Library size={16} /> 테마
+            <Library size={16} /> {tr('테마', 'Themes', '主题', 'テーマ')}
           </button>
           <button onClick={() => setActiveTab('course')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'course' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            <Route size={16} /> 코스
+            <Route size={16} /> {tr('코스', 'Courses', '路线', 'コース')}
           </button>
           <button onClick={() => { setActiveTab('place'); setPlacePage(1); }} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'place' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            <Heart size={16} /> 찜
+            <Heart size={16} /> {tr('찜', 'Saved', '收藏', 'お気に入り')}
           </button>
           <button onClick={() => setActiveTab('ranking')} className={cn("flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2", activeTab === 'ranking' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400")}>
-            <TrendingUp size={16} /> 랭킹
+            <TrendingUp size={16} /> {tr('랭킹', 'Rankings', '排名', 'ランキング')}
           </button>
         </div>
       </div>
@@ -260,8 +272,8 @@ export default function MyPage() {
               }) : (
                 <div className="py-20 text-center space-y-4">
                   <Library size={48} className="mx-auto text-zinc-200" />
-                  <p className="text-zinc-400 text-sm font-medium">아직 나만의 테마가 없습니다.</p>
-                  <Link href="/?tab=theme&action=create" className="inline-block px-8 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">테마 만들러 가기</Link>
+                  <p className="text-zinc-400 text-sm font-medium">{tr('아직 나만의 테마가 없습니다.', "You don't have any themes yet.", '还没有属于你的主题。', 'まだ自分のテーマがありません。')}</p>
+                  <Link href={`/?tab=theme&action=create&lang=${lang}`} className="inline-block px-8 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{tr('테마 만들러 가기', 'Create a theme', '去创建主题', 'テーマを作りに行く')}</Link>
                 </div>
               )}
             </motion.div>
@@ -270,20 +282,20 @@ export default function MyPage() {
           {activeTab === 'course' && (
             <motion.div key="course" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {savedCourses.length > 0 ? savedCourses.map((course: any) => (
-                <div key={course.id} onClick={() => router.push(`/course/${course.id}/edit`)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-pace-200 transition-colors">
-                  <h4 className="font-bold text-zinc-900 tracking-tight">{course.title || '제목 없는 코스'}</h4>
+                <div key={course.id} onClick={() => router.push(`/course/${course.id}/edit?lang=${lang}`)} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-3 relative cursor-pointer hover:border-pace-200 transition-colors">
+                  <h4 className="font-bold text-zinc-900 tracking-tight">{course.title || tr('제목 없는 코스', 'Untitled course', '无标题路线', '無題のコース')}</h4>
                   <p className="text-xs text-zinc-500 line-clamp-1">{course.description}</p>
                   <div className="flex items-center gap-2 pt-2 border-t border-zinc-50">
-                    <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase">{course.scope === 'timed' ? '3시간코스' : '자유코스'}</span>
-                    {course.is_public && <span className="text-[10px] font-black text-zinc-400 bg-zinc-100 px-2 py-1 rounded-md uppercase">공개</span>}
+                    <span className="text-[10px] font-black text-pace-600 bg-pace-50 px-2 py-1 rounded-md uppercase">{course.scope === 'timed' ? tr('3시간코스', '3-Hour Course', '3小时路线', '3時間コース') : tr('자유코스', 'Free Course', '自由路线', 'フリーコース')}</span>
+                    {course.is_public && <span className="text-[10px] font-black text-zinc-400 bg-zinc-100 px-2 py-1 rounded-md uppercase">{tr('공개', 'Public', '公开', '公開')}</span>}
                     <span className="text-[10px] font-bold text-zinc-400 ml-auto">{new Date(course.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               )) : (
                 <div className="py-20 text-center space-y-4">
                   <Route size={48} className="mx-auto text-zinc-200" />
-                  <p className="text-zinc-400 text-sm font-medium">아직 저장된 코스가 없습니다.</p>
-                  <button onClick={() => router.push('/course')} className="inline-block px-8 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">코스 만들러 가기</button>
+                  <p className="text-zinc-400 text-sm font-medium">{tr('아직 저장된 코스가 없습니다.', "You don't have any saved courses yet.", '还没有保存的路线。', 'まだ保存されたコースがありません。')}</p>
+                  <button onClick={() => router.push(`/course?lang=${lang}`)} className="inline-block px-8 py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{tr('코스 만들러 가기', 'Create a course', '去创建路线', 'コースを作りに行く')}</button>
                 </div>
               )}
             </motion.div>
@@ -295,7 +307,7 @@ export default function MyPage() {
                 <>
                   {likedPlaces.slice((placePage - 1) * PLACE_PAGE_SIZE, placePage * PLACE_PAGE_SIZE).map((place: any) => (
                     <div key={place.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative group">
-                      <Link href={`/posts/${place.id}`} className="flex-1 min-w-0 flex gap-4 items-center no-underline">
+                      <Link href={`/posts/${place.id}?lang=${lang}`} className="flex-1 min-w-0 flex gap-4 items-center no-underline">
                         <img
                           src={place.image_url || `https://picsum.photos/seed/place-${place.id}/400/300`}
                           className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white flex-shrink-0"
@@ -312,7 +324,7 @@ export default function MyPage() {
                       <button
                         onClick={(e) => { e.preventDefault(); handleUnlikePlace(place.id); }}
                         className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors flex-shrink-0"
-                        aria-label="찜 삭제"
+                        aria-label={tr('찜 삭제', 'Remove from saved', '取消收藏', 'お気に入り解除')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -353,7 +365,7 @@ export default function MyPage() {
               ) : (
                 <div className="py-20 text-center space-y-4">
                   <Heart size={48} className="mx-auto text-zinc-200" />
-                  <p className="text-zinc-400 text-sm font-medium">찜한 장소가 없습니다.</p>
+                  <p className="text-zinc-400 text-sm font-medium">{tr('찜한 장소가 없습니다.', "You don't have any saved places yet.", '还没有收藏的地点。', 'お気に入りの場所がありません。')}</p>
                 </div>
               )}
             </motion.div>
@@ -365,7 +377,7 @@ export default function MyPage() {
                 const items = typeof ranking.items === 'string' ? JSON.parse(ranking.items) : ranking.items;
                 const firstImage = items[0]?.image_url || `https://picsum.photos/seed/ranking-${ranking.id}/400/300`;
                 return (
-                  <Link href={`/ranking/share/${ranking.id}`} key={ranking.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative no-underline group">
+                  <Link href={`/ranking/share/${ranking.id}?lang=${lang}`} key={ranking.id} className="bg-white p-4 rounded-3xl border border-zinc-100 shadow-sm flex gap-4 items-center relative no-underline group">
                     <img
                       src={firstImage}
                       className="w-16 h-16 rounded-2xl object-cover border border-zinc-100 bg-white"
@@ -373,7 +385,7 @@ export default function MyPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-bold text-zinc-900 text-sm truncate group-hover:text-pace-600 transition-colors">{ranking.label}</h4>
-                      <p className="text-[10px] text-zinc-400 truncate mt-1">{new Date(ranking.created_at).toLocaleString()} 기준 · {items.length}개 장소</p>
+                      <p className="text-[10px] text-zinc-400 truncate mt-1">{new Date(ranking.created_at).toLocaleString()} {tr('기준', 'as of', '基准', '基準')} · {tr(`${items.length}개 장소`, `${items.length} places`, `${items.length}个地点`, `${items.length}件の場所`)}</p>
                     </div>
                     <button onClick={(e) => { e.preventDefault(); handleDeleteRanking(ranking.id); }} className="p-2 text-zinc-400 hover:text-rose-500 bg-zinc-50 rounded-lg transition-colors">
                       <Trash2 size={16} />
@@ -383,8 +395,8 @@ export default function MyPage() {
               }) : (
                 <div className="py-20 text-center space-y-4">
                   <TrendingUp size={48} className="mx-auto text-zinc-200" />
-                  <p className="text-zinc-400 text-sm font-medium">저장한 랭킹이 없습니다.</p>
-                  <p className="text-zinc-300 text-xs">핫플 랭킹에서 '저장' 버튼을 눌러보세요.</p>
+                  <p className="text-zinc-400 text-sm font-medium">{tr('저장한 랭킹이 없습니다.', "You don't have any saved rankings.", '还没有保存的排名。', '保存したランキングがありません。')}</p>
+                  <p className="text-zinc-300 text-xs">{tr("핫플 랭킹에서 '저장' 버튼을 눌러보세요.", "Try the 'Save' button on the Hotplace ranking.", '请在热门排名中点击"保存"按钮试试。', 'ホットプレイスランキングで「保存」ボタンを押してみてください。')}</p>
                 </div>
               )}
             </motion.div>
@@ -398,40 +410,40 @@ export default function MyPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-md flex items-end justify-center">
             <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="w-full max-w-md bg-white rounded-t-[40px] p-8 max-h-[90vh] overflow-y-auto no-scrollbar shadow-2xl">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-black text-zinc-900 tracking-tight">테마 수정하기</h3>
+                <h3 className="text-xl font-black text-zinc-900 tracking-tight">{tr('테마 수정하기', 'Edit Theme', '修改主题', 'テーマを編集')}</h3>
                 <button onClick={() => setEditingTheme(null)} className="p-2 bg-zinc-100 rounded-full"><X size={20} /></button>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">제목</label>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('제목', 'Title', '标题', 'タイトル')}</label>
                   <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base font-bold focus:outline-none focus:border-pace-500" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">설명</label>
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('설명', 'Description', '描述', '説明')}</label>
                   <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl px-4 py-3 text-base h-24 resize-none focus:outline-none focus:border-pace-500" />
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">장소 리스트 ({editPlaces.length})</label>
-                    <button onClick={() => setEditPlaces([...editPlaces, { title: '', location: '', content: '', image_url: '', video_url: '', date_range: '' }])} className="text-[10px] bg-pace-50 text-pace-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> 추가</button>
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-2">{tr('장소 리스트', 'Place List', '地点列表', '場所リスト')} ({editPlaces.length})</label>
+                    <button onClick={() => setEditPlaces([...editPlaces, { title: '', location: '', content: '', image_url: '', video_url: '', date_range: '' }])} className="text-[10px] bg-pace-50 text-pace-600 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"><Plus size={12} /> {tr('추가', 'Add', '添加', '追加')}</button>
                   </div>
                   {editPlaces.map((p, idx) => (
                     <div key={idx} className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 space-y-3 relative">
                       <button onClick={() => setEditPlaces(editPlaces.filter((_, i) => i !== idx))} className="absolute top-4 right-4 text-zinc-300 hover:text-rose-500"><X size={16} /></button>
-                      <input placeholder="장소명" value={p.title} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], title: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base font-bold" />
-                      <input placeholder="주소" value={p.location} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], location: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
-                      <textarea placeholder="설명" value={p.content} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], content: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base h-16 resize-none" />
-                      <input placeholder="운영 일시" value={p.date_range || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], date_range: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
-                      <input placeholder="이미지 URL" value={p.image_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], image_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
-                      <input placeholder="영상 URL" value={p.video_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], video_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <input placeholder={tr('장소명', 'Place name', '地点名称', '場所名')} value={p.title} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], title: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base font-bold" />
+                      <input placeholder={tr('주소', 'Address', '地址', '住所')} value={p.location} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], location: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <textarea placeholder={tr('설명', 'Description', '描述', '説明')} value={p.content} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], content: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base h-16 resize-none" />
+                      <input placeholder={tr('운영 일시', 'Operating hours', '营业时间', '営業日時')} value={p.date_range || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], date_range: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <input placeholder={tr('이미지 URL', 'Image URL', '图片URL', '画像URL')} value={p.image_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], image_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
+                      <input placeholder={tr('영상 URL', 'Video URL', '视频URL', '動画URL')} value={p.video_url || ''} onChange={e => { const n = [...editPlaces]; n[idx] = { ...n[idx], video_url: e.target.value }; setEditPlaces(n); }} className="w-full bg-white border border-zinc-200 rounded-xl px-3 py-2 text-base" />
                     </div>
                   ))}
                 </div>
 
                 <button onClick={handleUpdateTheme} className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl hover:bg-pace-600 transition-all">
-                  <Save size={20} /> 수정 내용 저장
+                  <Save size={20} /> {tr('수정 내용 저장', 'Save Changes', '保存修改', '変更を保存')}
                 </button>
               </div>
             </motion.div>
@@ -449,7 +461,7 @@ export default function MyPage() {
                   <img src={selectedTheme.user_image || "https://ui-avatars.com/api/?name=U&background=random"} className="w-10 h-10 rounded-full border border-zinc-100 object-cover bg-zinc-50" alt="" />
                   <div>
                     <h3 className="text-xl font-black text-zinc-900 tracking-tight">{selectedTheme.title}</h3>
-                    <p className="text-xs text-zinc-400 font-bold uppercase">{selectedTheme.user_name}의 테마</p>
+                    <p className="text-xs text-zinc-400 font-bold uppercase">{tr(`${selectedTheme.user_name}의 테마`, `${selectedTheme.user_name}'s Theme`, `${selectedTheme.user_name}的主题`, `${selectedTheme.user_name}のテーマ`)}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -509,7 +521,7 @@ export default function MyPage() {
                 <div className="flex flex-col gap-2">
                   <div className="flex items-start gap-2 text-sm text-pace-600 font-bold bg-pace-50 p-3 rounded-xl">
                     <MapPin size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>{selectedPlace.location || '위치 정보 없음'}</span>
+                    <span>{selectedPlace.location || tr('위치 정보 없음', 'No location info', '暂无位置信息', '位置情報がありません')}</span>
                   </div>
                   {selectedPlace.date_range && (
                     <div className="flex items-center gap-2 text-sm text-zinc-600 font-bold bg-zinc-50 p-3 rounded-xl border border-zinc-100">
@@ -528,7 +540,7 @@ export default function MyPage() {
                 </div>
 
                 <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100">
-                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">상세 설명 및 팁</h4>
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3">{tr('상세 설명 및 팁', 'Details & Tips', '详细说明及提示', '詳細説明とヒント')}</h4>
                   <p className="text-sm text-zinc-700 leading-relaxed whitespace-pre-wrap">{selectedPlace.content}</p>
                 </div>
 

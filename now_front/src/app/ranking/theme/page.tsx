@@ -46,28 +46,37 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function ThemeRankingPage() {
+export default async function ThemeRankingPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const themes = await getThemes();
+  const { lang: rawLang } = await searchParams;
+  const lang = rawLang || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+          <Link href={`/?lang=${lang}`} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
             <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">테마 랭킹</h1>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('테마 랭킹', 'Theme Ranking', '主题排名', 'テーマランキング')}</h1>
         </div>
-        <BrandTagline />
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="px-6 pt-6 space-y-4">
         <p className="text-xs text-zinc-400 leading-relaxed">
-          유저들이 직접 만든 장소 테마 모음을 좋아요 순으로 보여드립니다.
+          {tr(
+            '유저들이 직접 만든 장소 테마 모음을 좋아요 순으로 보여드립니다.',
+            'A collection of place themes created by users, sorted by likes.',
+            '为您展示用户亲自创建的地点主题合集,按点赞数排序。',
+            'ユーザーが直接作成した場所テーマのコレクションを、いいね順にご紹介します。',
+          )}
         </p>
 
         {themes.length === 0 && (
-          <p className="text-center text-zinc-400 text-sm py-20">아직 저장된 테마가 없습니다.</p>
+          <p className="text-center text-zinc-400 text-sm py-20">{tr('아직 저장된 테마가 없습니다.', 'There are no saved themes yet.', '还没有保存的主题。', 'まだ保存されたテーマがありません。')}</p>
         )}
 
         {themes.map((theme, idx) => (
@@ -83,7 +92,7 @@ export default async function ThemeRankingPage() {
             <div>
               <h2 className="font-bold text-zinc-900 text-base tracking-tight">{theme.title}</h2>
               <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{theme.description}</p>
-              <p className="text-[10px] text-zinc-400 mt-1">{theme.user_name || '아무개'} 님이 만든 테마</p>
+              <p className="text-[10px] text-zinc-400 mt-1">{tr(`${theme.user_name || '아무개'} 님이 만든 테마`, `Theme by ${theme.user_name || 'Someone'}`, `由${theme.user_name || '某人'}创建的主题`, `${theme.user_name || '名無し'}さんが作ったテーマ`)}</p>
             </div>
             <ul className="space-y-1.5 pt-1 border-t border-zinc-50">
               {theme.places.map((place, i) => (

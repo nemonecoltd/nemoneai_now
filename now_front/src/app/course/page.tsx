@@ -189,7 +189,7 @@ function CourseHubContent() {
                   '保存されたコースがありません。人気コースやAI生成コースを保存すると編集できます。'
                 )}
               </p>
-              <Link href="/ranking/course" className="inline-block px-5 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-all">
+              <Link href={`/ranking/course?lang=${lang}`} className="inline-block px-5 py-2.5 bg-zinc-100 text-zinc-700 rounded-xl font-bold text-xs hover:bg-zinc-200 transition-all">
                 {tr('코스 랭킹 바로가기', 'Go to Course Ranking', '前往课程排行榜', 'コースランキングへ')}
               </Link>
             </div>

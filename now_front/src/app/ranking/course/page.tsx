@@ -49,28 +49,37 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function CourseRankingPage() {
+export default async function CourseRankingPage({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
   const courses = await getCourses();
+  const { lang: rawLang } = await searchParams;
+  const lang = rawLang || 'ko';
+  const tr = (ko: string, en: string, zh: string, ja: string) =>
+    lang === 'en' ? en : lang === 'zh' ? zh : lang === 'ja' ? ja : ko;
 
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl pb-16 border-x border-zinc-200">
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
         <div className="flex items-center gap-4">
-          <Link href="/" className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
+          <Link href={`/?lang=${lang}`} className="p-2 -ml-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-600">
             <ChevronLeft size={24} />
           </Link>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">AI 코스 랭킹</h1>
+          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('AI 코스 랭킹', 'AI Course Ranking', 'AI路线排名', 'AIコースランキング')}</h1>
         </div>
-        <BrandTagline />
+        <BrandTagline lang={lang} />
       </header>
 
       <main className="px-6 pt-6 space-y-4">
         <p className="text-xs text-zinc-400 leading-relaxed">
-          성수·홍대·강북·제주에서 유저들이 직접 만들고 저장한 3시간 AI 코스를 좋아요 순으로 보여드립니다.
+          {tr(
+            '성수·홍대·강북·제주에서 유저들이 직접 만들고 저장한 3시간 AI 코스를 좋아요 순으로 보여드립니다.',
+            'A ranking of 3-hour AI courses created and saved by users in Seongsu, Hongdae, Gangbuk, and Jeju, sorted by likes.',
+            '为您展示成水、弘大、江北、济州用户亲自创建并保存的3小时AI路线,按点赞数排序。',
+            '聖水・弘大・江北・済州でユーザーが直接作成し保存した3時間AIコースを、いいね順にご紹介します。',
+          )}
         </p>
 
         {courses.length === 0 && (
-          <p className="text-center text-zinc-400 text-sm py-20">아직 저장된 코스가 없습니다.</p>
+          <p className="text-center text-zinc-400 text-sm py-20">{tr('아직 저장된 코스가 없습니다.', "There are no saved courses yet.", '还没有保存的路线。', 'まだ保存されたコースがありません。')}</p>
         )}
 
         {courses.map((course, idx) => (
@@ -87,7 +96,7 @@ export default async function CourseRankingPage() {
             <div>
               <h2 className="font-bold text-zinc-900 text-base tracking-tight">{course.title}</h2>
               <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{course.description}</p>
-              <p className="text-[10px] text-zinc-400 mt-1">{course.user_name} 님이 만든 코스</p>
+              <p className="text-[10px] text-zinc-400 mt-1">{tr(`${course.user_name} 님이 만든 코스`, `Course by ${course.user_name}`, `由${course.user_name}创建的路线`, `${course.user_name}さんが作ったコース`)}</p>
             </div>
             <ul className="space-y-1.5 pt-1 border-t border-zinc-50">
               {course.steps.map((step, i) => (
@@ -97,7 +106,7 @@ export default async function CourseRankingPage() {
                     {step.place_name}
                   </span>
                   {step.place_id && (
-                    <Link href={`/posts/${step.place_id}`} className="text-pace-600 flex items-center flex-shrink-0">
+                    <Link href={`/posts/${step.place_id}?lang=${lang}`} className="text-pace-600 flex items-center flex-shrink-0">
                       <ChevronRight size={14} />
                     </Link>
                   )}

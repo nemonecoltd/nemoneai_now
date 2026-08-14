@@ -570,7 +570,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
         image_url: p.image_url, region: p.region, category: p.category, date_range: p.date_range, score: p.score,
       }));
       const { id } = await createRankingShare({ tab: activeTab, region: activeTab === 'place' ? placeRegion : null, label: currentRankingLabel, items });
-      const url = `${window.location.origin}/ranking/share/${id}`;
+      const url = `${window.location.origin}/ranking/share/${id}?lang=${lang}`;
       await navigator.clipboard.writeText(url);
       alert('공유 링크가 복사되었습니다!');
     } catch (e) {
@@ -606,7 +606,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
         .map((p: any) => ({ id: p.id ?? p.place_id, title: p.title, image_url: p.image_url, region: p.region, date_range: p.date_range }))
         .filter((p: any) => p.id != null);
       const { id } = await createRankingShare({ tab: 'theme', label: theme.title, items });
-      const url = `${window.location.origin}/ranking/share/${id}`;
+      const url = `${window.location.origin}/ranking/share/${id}?lang=${lang}`;
       await navigator.clipboard.writeText(url);
       alert('공유 링크가 복사되었습니다!');
     } catch (e) {
