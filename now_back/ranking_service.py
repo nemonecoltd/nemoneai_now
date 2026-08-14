@@ -170,12 +170,13 @@ def refresh_place_popularity(is_cron: bool = False):
         by_region: dict = {}
         for r in _PLACE_RANKING_REGIONS:
             r_result = list(_popularity_rows(conn, overall_interval_days, min_score=_MIN_RANKING_SCORE, only_region=r))
-            # 부산/제주는 예외 — 종합과 같은 기간을 강제하면 활동량이 워낙 적어서 통째로 비어버림
-            # (2026-08-10 실측: 종합이 48시간 기준일 때 제주 0건, 30일로 넓히면 5건). 성수/홍대/강남/
-            # 강북은 종합 상위권과 풀을 많이 공유해서 기간이 갈리면 같은 장소 점수가 화면마다 달라
-            # 보이는 문제가 있었지만(2026-08-07), 부산/제주는 종합 상위권과 거의 안 겹쳐서 그 리스크가
-            # 낮다고 보고 이 두 지역만 자체적으로 30일까지 확장을 허용.
-            if r in ('부산', '제주') and len(r_result) < 25:
+            # 모든 지역에 30일 확장 허용(2026-08-15) — 예전엔 부산/제주만 허용했었음(종합과 같은 기간을
+            # 강제하면 활동량이 적어 통째로 비어버려서: 2026-08-10 실측 제주 0건@48h → 5건@30일).
+            # 성수/홍대/강남/강북은 종합 상위권과 풀을 많이 공유해 기간이 갈리면 같은 장소 점수가
+            # 화면마다 달라 보이는 문제가 있었지만(2026-08-07), 사용자가 "종합 외엔 25위까지 안 나온다"고
+            # 확인 요청해 그 화면 일관성보다 25위 채우는 걸 우선하기로 함 — 지역 탭 자체가 이미
+            # only_region으로 종합과 분리된 화면이라 감안 가능한 트레이드오프로 판단.
+            if len(r_result) < 25:
                 r_result = list(_popularity_rows(conn, 30, min_score=_MIN_RANKING_SCORE, only_region=r))
             region_cache = [dict(row._mapping) for row in r_result]
 
