@@ -4,6 +4,7 @@ import "./globals.css";
 import Provider from "./Provider";
 import Script from "next/script";
 import NaverAnalytics from "@/components/NaverAnalytics";
+import GaPageViewTracker from "@/components/GaPageViewTracker";
 import { cn } from "@/lib/utils";
 
 
@@ -95,7 +96,10 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-7R6YCXT6RK');
+            // send_page_view: false — 탭 전환/언어 토글/필터처럼 pathname은 그대로고 쿼리스트링만
+            // 바뀌는 것까지 GA4가 자동으로 "새 페이지"로 잡아 조회수가 부풀려지던 문제(2026-08-15) —
+            // 자동 발사는 끄고 GaPageViewTracker가 pathname 변경 시에만 수동으로 page_view를 쏜다.
+            gtag('config', 'G-7R6YCXT6RK', { send_page_view: false });
           `}
         </Script>
         {/* Google AdSense */}
@@ -113,6 +117,8 @@ export default function RootLayout({
 
         {/* Naver Analytics */}
         <NaverAnalytics />
+        {/* GA4 page_view — 자동 발사 대신 pathname 변경 시에만 수동 발사(위 send_page_view: false 참고) */}
+        <GaPageViewTracker />
       </body>
     </html>
   );
