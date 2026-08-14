@@ -78,6 +78,11 @@ export default function RootLayout({
   return (
     <html lang="ko" className={cn(inter.variable, spaceGrotesk.variable, "font-sans")}>
       <head>
+        {/* 자체 언어 전환(KO/EN/ZH/JA) 기능이 있는데, 번역 안 된 필드가 일부 섞여 있으면 크롬이
+            자기 판단으로 "한국어 페이지로 변경되었습니다" 자동번역을 걸어버려 우리 언어 전환과
+            충돌함(2026-08-15 사용자 리포트로 발견) — 브라우저 자동번역 제안 자체를 차단.
+            SEO에는 영향 없음(hreflang과는 별개, 크롬의 사용자용 번역 UI만 막는 것). */}
+        <meta name="google" content="notranslate" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/brand/pace-icon-solid.svg" type="image/svg+xml" />
         <link rel="icon" href="/brand/pace-icon-32.png" type="image/png" sizes="32x32" />
