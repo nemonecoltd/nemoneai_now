@@ -266,6 +266,21 @@ async def run_gangnam():
     return ("강남", *counts)
 
 
+async def run_jamsil():
+    # 잠실(송파구, 롯데월드몰/롯데백화점 일대) — '강남 팝업스토어' 검색만으로는 잠실 전용 팝업이
+    # 상당수 누락됨(사용자가 네이버맵에서 직접 '잠실 팝업스토어' 검색해 비교 확인, 2026-08-14).
+    # 더현대서울과 같은 이유로 별도 검색어 추가, region은 기존처럼 '강남' 버킷에 포함.
+    print("\n🚀 [잠실] 수집 시작")
+    try:
+        result = await scrape_naver_map_popups("잠실 팝업스토어")
+        counts = upsert_naver_items(result, "강남") if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [잠실] 실패: {e}")
+        return "잠실", 0, 0, 1
+    print("✅ [잠실] 완료")
+    return ("잠실", *counts)
+
+
 async def run_busan():
     # 부산은 '팝업'만 수행 (클래스/쇼핑/전시 없음). 종합 팝업 랭킹·자동 블로그갱신은 region 기준으로 자동 포함됨.
     print("\n🚀 [부산] 수집 시작")
@@ -342,6 +357,7 @@ async def run_all():
         await run_gangbuk(),
         await run_deohyundai(),
         await run_gangnam(),
+        await run_jamsil(),
         await run_busan(),
         await run_jeju(),
         await run_jeju_class(),
