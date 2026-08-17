@@ -39,18 +39,22 @@ def _ensure_table(conn):
     """))
 
 
-def fetch_citydata(area_nm: str) -> Optional[dict]:
+def fetch_citydata(area_nm: str, retries: int = 2) -> Optional[dict]:
     url = f"http://openapi.seoul.go.kr:8088/{SEOUL_API_KEY}/json/citydata/1/5/{area_nm}"
-    try:
-        res = requests.get(url, timeout=15)
-        data = res.json()
-    except Exception as e:
-        print(f"  ❌ [{area_nm}] 요청 실패: {e}")
-        return None
-    if "CITYDATA" not in data:
-        print(f"  ❌ [{area_nm}] 응답 오류: {data.get('RESULT.CODE')} {data.get('RESULT.MESSAGE')}")
-        return None
-    return data["CITYDATA"]
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            res = requests.get(url, timeout=15)
+            data = res.json()
+        except Exception as e:
+            last_err = e
+            continue
+        if "CITYDATA" not in data:
+            print(f"  ❌ [{area_nm}] 응답 오류: {data.get('RESULT.CODE')} {data.get('RESULT.MESSAGE')}")
+            return None
+        return data["CITYDATA"]
+    print(f"  ❌ [{area_nm}] 요청 실패({retries + 1}회 시도): {last_err}")
+    return None
 
 
 def _age_gender_summary(live: dict) -> dict:
