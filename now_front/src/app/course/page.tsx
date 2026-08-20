@@ -14,7 +14,7 @@ import StoreBanner from '@/components/StoreBanner';
 import SiteFooter from '@/components/SiteFooter';
 import AdUnit from '@/components/AdUnit';
 
-const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 type Region = typeof PLACE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 
@@ -211,7 +211,7 @@ function CourseHubContent() {
 
               <div className="space-y-3 mb-6">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{tr('지역', 'Region', '地区', 'エリア')}</label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-6 gap-1.5">
                   {PLACE_REGIONS.map((r) => (
                     <button
                       key={r}

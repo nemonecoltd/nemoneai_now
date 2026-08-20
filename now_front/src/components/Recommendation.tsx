@@ -182,7 +182,7 @@ const regionSlideVariants = {
   exit: (dir: 1 | -1) => ({ x: dir > 0 ? -40 : 40, opacity: 0 }),
 };
 type PlaceRankingRegion = typeof PLACE_RANKING_REGIONS[number];
-const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '제주'] as const;
+const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
@@ -1410,7 +1410,7 @@ export default function Recommendation({ places: initialPlaces = [], lang = 'ko'
 
               <div className="space-y-3 mb-6">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">지역</label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-6 gap-1.5">
                   {AI_COURSE_REGIONS.map((r) => (
                     <button
                       key={r}

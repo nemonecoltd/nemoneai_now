@@ -6,7 +6,9 @@ AI 소개 자동 생성 후 DB upsert
 import asyncio
 import os
 import random
+import re
 from datetime import date, timedelta
+from difflib import SequenceMatcher
 from typing import Optional
 from sqlalchemy import text
 from dotenv import load_dotenv
@@ -38,6 +40,11 @@ def ai_generate_intro(title: str, location: str, category: Optional[str] = None)
     except Exception as e:
         print(f"    ⚠️ AI 생성 실패: {e}")
         return ""
+
+
+def _normalize_title(title: str) -> str:
+    """느낌표/공백 등 문장부호 차이로 같은 팝업이 다른 문자열로 갈리는 걸 흡수."""
+    return re.sub(r"[^\w가-힣]", "", title)
 
 
 def _existing_translation(naver_place_id: str) -> tuple[str, str, str, str, str, str]:
@@ -156,6 +163,19 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                     text("SELECT id FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
                     {"naver_place_id": naver_place_id, "title": title}
                 ).scalar()
+
+                if not existing_id and date_range:
+                    # naver_place_id도 다르고 title도 완전히 다른 문자열이지만(다른 블로그 글을 따로 수집한 경우),
+                    # 같은 지역+같은 운영기간에 제목이 사실상 같은 팝업이면 중복 등록을 막기 위해 유사도로 한 번 더 확인
+                    candidates = conn.execute(
+                        text("SELECT id, title FROM seongsu_places WHERE region = :region AND date_range = :date_range"),
+                        {"region": region, "date_range": date_range}
+                    ).fetchall()
+                    norm_title = _normalize_title(title)
+                    for cand_id, cand_title in candidates:
+                        if SequenceMatcher(None, norm_title, _normalize_title(cand_title)).ratio() > 0.6:
+                            existing_id = cand_id
+                            break
 
                 if existing_id:
                     conn.execute(text("""
