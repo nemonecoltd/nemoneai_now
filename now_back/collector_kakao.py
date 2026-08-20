@@ -1,14 +1,16 @@
 """카카오맵 키워드 검색 기반 수집 — 정기 스케줄 없이 필요할 때(텔레그램 /kakao 명령 등)로 실행.
 
-collector_favorite.py와 달리 AI 소개문 생성·번역을 하지 않음 — 카카오가 이미 제공하는 정보
+collector_favorite.py와 달리 AI "소개문 생성"은 안 함 — 카카오가 이미 제공하는 정보
 (주소·전화·평점·카테고리)를 그대로 content로 구성한다. 큐레이터 개인 메모 같은 제3자 저작물이
-아니라 업체가 등록한 정형 정보라 그대로 써도 저작권 이슈가 없음.
+아니라 업체가 등록한 정형 정보라 그대로 써도 저작권 이슈가 없음. 다만 다국어 노출을 위해
+번역(ai_translate)은 collector_naver.py와 동일하게 수행한다(2026-08-15, 부산 편집샵 건으로
+번역 요청받아 추가 — 그 전까지는 title_en/zh/ja에도 한글 원문이 그대로 들어가 있었음).
 
 '서울 독립서점'처럼 넓은 지역을 검색하면 결과가 여러 구에 흩어지는데, now는 아직 서울 전체가
 아니라 성수/홍대/강북/강남 4개 권역만 다루므로 구(區) 단위로 기존 region 라벨에 자동 매핑한다.
 성동구/마포구/강남권(강남·서초·송파) 외의 모든 구는 '강북'으로 편입(용산/더현대서울과 같은
 편의상 '기타 서울' 버킷). region을 명시하면 자동 매핑 없이 전부 그 region으로 고정
-(제주처럼 구 매핑표에 없는 지역 키워드일 때 반드시 명시해야 함).
+(제주·부산처럼 구 매핑표에 없는 지역 키워드일 때 반드시 명시해야 함).
 """
 from collections import Counter
 from typing import Optional
@@ -16,7 +18,7 @@ from typing import Optional
 from sqlalchemy import text
 
 from database import engine
-from gemini_service import get_embedding
+from gemini_service import ai_translate, get_embedding
 from image_storage import rehost_image
 from scraper_kakao import scrape_kakao_keyword
 from theme_helper import create_theme
@@ -55,6 +57,19 @@ def _build_content(item: dict) -> str:
     return "\n".join(lines)
 
 
+def _existing_translation(kakao_place_id: str) -> tuple[str, str, str, str, str, str]:
+    """DB에 이미 저장된 title_en/content_en/title_zh/content_zh/title_ja/content_ja 반환. 없으면 빈 문자열 튜플."""
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(
+                text("SELECT title_en, content_en, title_zh, content_zh, title_ja, content_ja FROM seongsu_places WHERE naver_place_id = :id"),
+                {"id": kakao_place_id}
+            ).fetchone()
+            return (row.title_en or "", row.content_en or "", row.title_zh or "", row.content_zh or "", row.title_ja or "", row.content_ja or "") if row else ("", "", "", "", "", "")
+    except Exception:
+        return "", "", "", "", "", ""
+
+
 def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optional[str]) -> dict:
     """region이 주어지면 전부 그 region으로 고정, 없으면 구 단위로 DISTRICT_REGION_MAP에서 자동 결정
     (매핑 없는 구는 '강북')."""
@@ -70,9 +85,22 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
             embedding = get_embedding(content)
             image_url = rehost_image(item.get("image_url")) or ""
 
+            # 이미 번역돼 있으면 재요청 안 함(비용 절감) — 갱신(재수집) 때마다 매번 새로 번역할 필요 없음
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = _existing_translation(kakao_place_id)
+            if not (title_en and title_zh and title_ja):
+                title_en, content_en, title_zh, content_zh, title_ja, content_ja = ai_translate(title, content)
+                if title_en:
+                    print(f"    🌐 번역(EN/ZH/JA): {title_en[:40]}...")
+
             params = {
                 "title": title,
+                "title_en": title_en or title,
+                "title_zh": title_zh or title,
+                "title_ja": title_ja or title,
                 "content": content,
+                "content_en": content_en,
+                "content_zh": content_zh,
+                "content_ja": content_ja,
                 "location": item.get("location", ""),
                 "latitude": item.get("latitude"),
                 "longitude": item.get("longitude"),
@@ -94,7 +122,9 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
                 if existing_id:
                     conn.execute(text("""
                         UPDATE seongsu_places SET
-                            title = :title, content = :content, location = :location,
+                            title = :title, title_en = :title_en, title_zh = :title_zh, title_ja = :title_ja,
+                            content = :content, content_en = :content_en, content_zh = :content_zh, content_ja = :content_ja,
+                            location = :location,
                             latitude = COALESCE(:latitude, latitude), longitude = COALESCE(:longitude, longitude),
                             naver_place_id = :naver_place_id, image_url = COALESCE(:image_url, image_url),
                             link_url = COALESCE(:link_url, link_url),
@@ -105,10 +135,12 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
                 else:
                     conn.execute(text("""
                         INSERT INTO seongsu_places
-                        (title, title_en, title_zh, title_ja, content, location, latitude, longitude,
+                        (title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja,
+                         location, latitude, longitude,
                          naver_place_id, image_url, link_url, embedding, region, category, end_date)
                         VALUES
-                        (:title, :title, :title, :title, :content, :location, :latitude, :longitude,
+                        (:title, :title_en, :title_zh, :title_ja, :content, :content_en, :content_zh, :content_ja,
+                         :location, :latitude, :longitude,
                          :naver_place_id, :image_url, :link_url, :embedding, :region, :category, NULL)
                     """), params)
                     new_count += 1

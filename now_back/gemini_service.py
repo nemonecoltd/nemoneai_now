@@ -129,6 +129,30 @@ def ai_translate_ja(title: str, content: str) -> tuple[str, str]:
         print(f"    ⚠️ 일본어 번역 실패: {e}")
         return "", ""
 
+def ai_translate_zh(title: str, content: str) -> tuple[str, str]:
+    """한국어 title/content를 중국어(간체)로만 번역 — en/ja는 공식 번역이 이미 있는 소스(비짓부산 등)에서
+    가져오고 중국어만 없을 때 이것만 호출해 불필요한 en/ja 재번역 비용을 방지."""
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=(
+                f"다음 한국어 관광지/매장 정보를 자연스러운 중국어(간체)로 번역해줘.\n"
+                f"제목: {title}\n내용: {content}\n\n"
+                f"조건: 아래 JSON 형식으로만 출력 (설명이나 코드블록 없이 순수 JSON만).\n"
+                f'{{"title_zh": "中文标题", "content_zh": "中文内容"}}'
+            ),
+        )
+        raw = (response.text or "").strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        data = json.loads(raw)
+        return (
+            (data.get("title_zh", "") or "").strip(),
+            (data.get("content_zh", "") or "").strip(),
+        )
+    except Exception as e:
+        print(f"    ⚠️ 중국어 번역 실패: {e}")
+        return "", ""
+
 def get_embedding(text: str):
     """텍스트 벡터화 (최신 다국어 모델 사용). 일시적 서버 과부하(503 등) 대비 짧은 재시도 포함."""
     import time
