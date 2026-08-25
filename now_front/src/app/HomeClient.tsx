@@ -286,6 +286,10 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-zinc-50 max-w-md mx-auto relative overflow-hidden shadow-2xl border-x border-zinc-200">
+      {/* 시각적으로는 로고+태그라인으로 충분하지만, 페이지 전체에 h1이 하나도 없어(SEO 점검 중
+          2026-08-25 발견) 크롤러에 페이지 주제를 알려줄 시맨틱 h1이 없었음. 디자인은 그대로 두고
+          root layout의 title과 동일한 문구로 숨김 h1만 추가 */}
+      <h1 className="sr-only">NEMONE PACE | 성수·홍대·강남·부산·제주 팝업·전시·공연·축제 추천</h1>
       {/* Header */}
       <header className="px-6 pt-4 pb-1 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100">
         <div className="flex items-center justify-between mb-2">
