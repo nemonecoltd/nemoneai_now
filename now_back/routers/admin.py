@@ -129,7 +129,7 @@ async def admin_weekly_ranking():
 @router.get("/admin/ranking/weekly7d")
 async def admin_weekly_ranking_7d():
     """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산.
-    "이번주 핫플 팝업" 서울권 기사용이라 제주는 제외(화면 표시용 TOP25는 제주 포함 그대로 유지)."""
+    "이번주 핫플 팝업" 서울권 기사용이라 제주·부산은 제외(화면 표시용 TOP25는 지역 구분 없이 그대로 유지)."""
     with engine.connect() as conn:
         result = list(ranking._popularity_rows(conn, 7, exclude_jeju=True))
         if len(result) < 25:

@@ -35,7 +35,8 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     only_category='전시'는 category='전시'(비짓서울) + category='행사'(비짓제주)를 함께 묶어서 집계함.
     min_score: 이 점수 미만인 항목은 아예 제외(신규 카테고리라 조회수가 거의 없을 때 0점짜리로 25위를 억지로 채우지 않기 위함).
     exclude_jeju: 화면 표시용 TOP25/인기 캐시에는 제주 팝업도 포함하되, 주간 CSV(이번주 핫플 팝업 기사용)에서만
-    제주를 빼고 싶을 때 사용 — 서울권 팝업 기사에 제주가 섞이면 편집상 어색하다는 요청.
+    제주·부산을 빼고 싶을 때 사용 — 서울권 팝업 기사에 다른 지역이 섞이면 편집상 어색하다는 요청
+    (2026-08-27: 제주만 빼던 걸 부산도 빼도록 확장).
     only_region: 플레이스 랭킹 지역 서브탭용 — _PLACE_RANKING_REGIONS 중 하나만 집계(호출 전 화이트리스트 검증 필수, SQL에 직접 삽입됨)."""
     if only_performance:
         region_clause = "AND p.region = '공연' AND p.naver_place_id LIKE 'kopis_%'"
@@ -50,7 +51,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
     else:
         region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
         if exclude_jeju:
-            region_clause += " AND p.region != '제주'"
+            region_clause += " AND p.region != '제주' AND p.region != '부산'"
         if only_region:
             region_clause += f" AND p.region = '{only_region}'"
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
