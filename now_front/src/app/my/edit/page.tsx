@@ -217,6 +217,30 @@ function EditProfileContent() {
           </div>
         )}
 
+        {/* 공용 계정 프로필(이름/사진/성별/나이/국적)은 인증 센터로 이관 —
+            여러 서비스가 같은 값을 쓰는데 PACE에만 편집 화면이 있으면 서비스마다 중복 구현이 필요해짐.
+            아래 폼은 당분간 유지하되(기존 사용자 혼란 방지), 상단에 정식 경로를 안내한다. */}
+        <a
+          href={`${process.env.NEXT_PUBLIC_AUTH_URL || 'https://auth.nemoneai.com'}/profile?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/my' : '')}&lang=${lang}`}
+          className="flex items-center gap-3 bg-pace-50 border border-pace-100 rounded-2xl px-5 py-4 hover:border-pace-300 transition-colors"
+        >
+          <User size={18} className="text-pace-500 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-zinc-900">
+              {tr('네모네 계정 설정', 'NEMONE Account Settings', 'NEMONE账户设置', 'NEMONEアカウント設定')}
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              {tr(
+                '이름·사진은 모든 네모네 서비스에서 함께 쓰입니다',
+                'Your name and photo are shared across all NEMONE services',
+                '您的姓名和照片在所有NEMONE服务中通用',
+                '名前と写真はすべてのNEMONEサービスで共有されます',
+              )}
+            </p>
+          </div>
+          <ChevronLeft size={16} className="rotate-180 text-zinc-300 flex-shrink-0" />
+        </a>
+
         {/* Profile Image */}
         <div className="flex flex-col items-center">
           <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, MapPin, Route, Heart, ChevronRight, LogOut, Loader2,
   Sparkles, Trash2, ChevronLeft, Map as MapIcon, List as ListIcon, X, Ticket, TrendingUp,
-  MessageSquare, Settings, Library, Edit3, Plus, Save, Calendar, Video
+  MessageSquare, Settings, Library, Edit3, Plus, Save, Calendar, Video, ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
 import BrandTagline from '@/components/BrandTagline';
@@ -19,6 +19,38 @@ function cn(...inputs: ClassValue[]) {
 }
 
 type Tab = 'theme' | 'course' | 'place' | 'ranking';
+
+// 네모네 계정 하나로 모든 서비스를 쓰는데 서로 이동할 동선이 없어서 마이페이지 하단에 추가.
+// PACE(now)는 이 페이지 자신이므로 목록에서 제외.
+const NEMONE_SERVICES = [
+  {
+    name: '네모네AIM',
+    href: 'https://nemoneai.com',
+    icon: '📰',
+    ko: '당신 시간의 알찬 소비',
+    en: 'Editorial magazine',
+    zh: '编辑杂志',
+    ja: 'エディトリアルマガジン',
+  },
+  {
+    name: 'NEMONE PLANTS',
+    href: 'https://plants.nemoneai.com',
+    icon: '🪴',
+    ko: '식물도감 & 케어 가이드',
+    en: 'Plant encyclopedia & care guide',
+    zh: '植物图鉴与养护指南',
+    ja: '植物図鑑＆ケアガイド',
+  },
+  {
+    name: 'NEMONE MSM',
+    href: 'https://msm.nemoneai.com',
+    icon: '📈',
+    ko: '국내 주식 AI 분석',
+    en: 'Korean stock AI analysis',
+    zh: '韩国股票AI分析',
+    ja: '韓国株式AI分析',
+  },
+] as const;
 
 export default function MyPage() {
   return (
@@ -495,6 +527,31 @@ function MyPageContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+        {/* 네모네 다른 서비스 — 계정은 하나인데 서비스끼리 이동 동선이 없어서 추가(2026-08-28) */}
+        <section className="mt-10 pt-8 border-t border-zinc-200">
+          <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4 px-1">
+            {tr('네모네의 다른 서비스', 'More from NEMONE', 'NEMONE的其他服务', 'NEMONEの他のサービス')}
+          </h3>
+          <div className="space-y-2">
+            {NEMONE_SERVICES.map((s) => (
+              <a
+                key={s.href}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-4 bg-white border border-zinc-100 rounded-2xl px-5 py-4 hover:border-pace-200 transition-colors shadow-sm"
+              >
+                <span className="text-xl flex-shrink-0">{s.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-zinc-900 truncate">{s.name}</p>
+                  <p className="text-[11px] text-zinc-400 truncate">{tr(s.ko, s.en, s.zh, s.ja)}</p>
+                </div>
+                <ExternalLink size={14} className="text-zinc-300 flex-shrink-0" />
+              </a>
+            ))}
+          </div>
+        </section>
 
       {/* Place Detail Nested Modal */}
       <AnimatePresence>
