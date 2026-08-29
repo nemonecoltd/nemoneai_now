@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import AdUnit from './AdUnit';
+import CoupangBanner from './CoupangBanner';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -248,7 +249,9 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
               </div>
             </div>
           </motion.div>
-          {(idx === 0 || (idx > 0 && idx % 7 === 0)) && <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />}
+          {category === 'popup'
+            ? idx === 2 && <CoupangBanner />
+            : (idx === 0 || (idx > 0 && idx % 7 === 0)) && <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />}
           </React.Fragment>
         ))}
         {!isSearching && displayPlaces.length === 0 && (
