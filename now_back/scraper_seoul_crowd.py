@@ -21,8 +21,9 @@ SEOUL_API_KEY = os.getenv("SEOUL_API_KEY")
 
 # 서울시 API가 순간적으로(한 폴링 주기 전체, 5개 지점 다) 응답을 안 주는 경우가 잦아서
 # (우리 쪽 문제가 아니라 저쪽 서버가 그때만 그런 것 — 몇 분 뒤 재확인하면 정상 응답함),
-# 실패할 때마다 알림을 보내면 10분마다 알림이 온다. 연속 2회(20분) 이상 전부 실패할 때만
-# 알리고, 그 사이 한 번이라도 성공하면 조용히 카운터만 리셋한다(2026-08-30).
+# 실패할 때마다 알림을 보내면 10분마다 알림이 온다. 연속 6회(60분) 이상 전부 실패할 때만
+# 알리고, 그 사이 한 번이라도 성공하면 조용히 카운터만 리셋한다(2026-08-30, 2회/20분에서
+# 60분으로 완화).
 _consecutive_full_failures = 0
 
 
@@ -171,16 +172,16 @@ def poll_crowd():
     total = len(CROWD_AREA_MAP)
     if fail_count == total:
         _consecutive_full_failures += 1
-        # 1회는 흔한 일시적 응답 지연이라 조용히 넘기고 2회 연속(20분)부터 알림. 진짜 장애가
-        # 길어지면 10분마다 계속 알림이 오는 것도 스팸이라, 2회차 이후로는 1시간(6회)에 한 번만.
+        # 1~5회는 흔한 일시적 응답 지연이라 조용히 넘기고 6회 연속(60분)부터 알림. 진짜
+        # 장애가 더 길어져도 10분마다 알림이 오면 스팸이라, 그 뒤로도 1시간(6회)에 한 번만.
         n = _consecutive_full_failures
-        if n == 2 or (n > 2 and n % 6 == 2):
+        if n >= 6 and n % 6 == 0:
             send_alert(f"서울시 혼잡도 폴링 {n}회 연속 전체 실패 (약 {n * 10}분째 지속)")
     elif fail_count:
         # 일부 지점만 실패는 지금까지도 알림 없이 넘겨왔던 수준이라 그대로 둠(로그로만 확인)
         pass
     else:
-        if _consecutive_full_failures >= 2:
+        if _consecutive_full_failures >= 6:
             send_alert(f"서울시 혼잡도 폴링 정상 복구됨 ({_consecutive_full_failures}회 연속 실패 후)")
         _consecutive_full_failures = 0
 
