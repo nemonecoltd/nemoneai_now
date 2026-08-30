@@ -75,7 +75,11 @@ app.include_router(crowd.router)
 app.include_router(push.router)
 
 ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
-poll_crowd()  # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보
+# 서울시 API가 로컬(집/사무실) IP를 막아둔 상태라(서버 IP는 정상 응답) 로컬에서 호출하면
+# 항상 5/5 실패 + 텔레그램 알림이 10분마다 반복됨. 아래 poll_crowd 스케줄러 등록과 동일하게
+# 로컬(TELEGRAM_BOT_ENABLED=true)에서는 건너뜀(2026-08-30).
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    poll_crowd()  # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
@@ -131,7 +135,11 @@ if os.getenv("AUTO_ENRICH_POPUPS") == "true":
 # 10분 간격: 서울시 자체 생활인구 데이터가 내부적으로 약 5분 주기로 갱신되므로 그보다 촘촘히 돌려도
 # 새 값을 못 받고, 6개 지점×6회/시간 = 시간당 36건 호출로 부하도 미미함. delta(직전 대비)는 더 이상
 # "1시간 전"이 아니라 "직전 폴링(10분 전) 대비"라 프론트 라벨도 그에 맞게 "직전대비"로 표기.
-scheduler.add_job(poll_crowd, IntervalTrigger(minutes=10), id="poll_crowd")
+# 위 이전 작업 때 이 등록 자체를 로컬에서 빼는 걸 빠뜨려서, 서울시 API가 막아둔 로컬 IP로
+# 계속 폴링 → 10분마다 5/5 실패 텔레그램 알림이 반복되고 있었음 — 다른 로컬 전용 작업들과
+# 동일하게 게이트 추가(2026-08-30).
+if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
+    scheduler.add_job(poll_crowd, IntervalTrigger(minutes=10), id="poll_crowd")
 
 # 텔레그램으로 플레이스 ID 보내면 블로그갱신 트리거 — 로컬 전용(Playwright 없는 프로덕션에선 절대 켜면 안 됨,
 # getUpdates 폴링도 두 곳에서 동시에 하면 충돌함). 로컬 .env에만 TELEGRAM_BOT_ENABLED=true를 넣어서 게이트.
