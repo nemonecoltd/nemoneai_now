@@ -8,6 +8,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 import uvicorn
 import logging
 import os
+import threading
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -79,7 +80,11 @@ ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같
 # 항상 5/5 실패 + 텔레그램 알림이 10분마다 반복됨. 아래 poll_crowd 스케줄러 등록과 동일하게
 # 로컬(TELEGRAM_BOT_ENABLED=true)에서는 건너뜀(2026-08-30).
 if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
-    poll_crowd()  # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보
+    # 재시작 직후에도 스케줄러 첫 틱(최대 10분)까지 기다리지 않고 바로 최신값 확보.
+    # 단 백그라운드 스레드로 — 동기로 호출하면 서울시 API가 응답을 안 줄 때
+    # (5지점 × 3회 재시도 × 15초 = 최대 225초) 그동안 uvicorn이 포트를 열지 못해
+    # 서비스 전체가 502가 된다(2026-08-30 재시작 때 실제로 약 4분간 발생).
+    threading.Thread(target=poll_crowd, daemon=True).start()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(cleanup_expired_data, 'cron', hour=0, minute=0)
