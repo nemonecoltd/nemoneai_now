@@ -137,14 +137,10 @@ if os.getenv("AUTO_ENRICH_POPUPS") == "true":
     scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
 
 # 서울시 실시간 도시데이터(혼잡도) — 로컬 launchd(맥 꺼지면 중단)에서 서버 cron으로 이전(2026-08-09).
-# 10분 간격: 서울시 자체 생활인구 데이터가 내부적으로 약 5분 주기로 갱신되므로 그보다 촘촘히 돌려도
-# 새 값을 못 받고, 6개 지점×6회/시간 = 시간당 36건 호출로 부하도 미미함. delta(직전 대비)는 더 이상
-# "1시간 전"이 아니라 "직전 폴링(10분 전) 대비"라 프론트 라벨도 그에 맞게 "직전대비"로 표기.
-# 위 이전 작업 때 이 등록 자체를 로컬에서 빼는 걸 빠뜨려서, 서울시 API가 막아둔 로컬 IP로
-# 계속 폴링 → 10분마다 5/5 실패 텔레그램 알림이 반복되고 있었음 — 다른 로컬 전용 작업들과
-# 동일하게 게이트 추가(2026-08-30).
+# 30분 간격(2026-08-31, 10분→30분 완화 — 그 정도로 자주 갖고올 필요가 없다는 판단).
+# delta(직전 대비)는 "직전 폴링(30분 전) 대비"라 프론트 라벨은 그대로 "직전대비"로 표기.
 if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
-    scheduler.add_job(poll_crowd, IntervalTrigger(minutes=10), id="poll_crowd")
+    scheduler.add_job(poll_crowd, IntervalTrigger(minutes=30), id="poll_crowd")
 
 # 텔레그램으로 플레이스 ID 보내면 블로그갱신 트리거 — 로컬 전용(Playwright 없는 프로덕션에선 절대 켜면 안 됨,
 # getUpdates 폴링도 두 곳에서 동시에 하면 충돌함). 로컬 .env에만 TELEGRAM_BOT_ENABLED=true를 넣어서 게이트.

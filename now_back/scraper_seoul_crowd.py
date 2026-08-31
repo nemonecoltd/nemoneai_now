@@ -172,16 +172,16 @@ def poll_crowd():
     total = len(CROWD_AREA_MAP)
     if fail_count == total:
         _consecutive_full_failures += 1
-        # 1~5회는 흔한 일시적 응답 지연이라 조용히 넘기고 6회 연속(60분)부터 알림. 진짜
-        # 장애가 더 길어져도 10분마다 알림이 오면 스팸이라, 그 뒤로도 1시간(6회)에 한 번만.
+        # 폴링 주기가 30분으로 늘어나(2026-08-31) 2회 연속 실패면 이미 60분째라 스팸 걱정 없이
+        # 다시 2회부터 알림. 이후로도 2회(60분)에 한 번씩만 반복 알림.
         n = _consecutive_full_failures
-        if n >= 6 and n % 6 == 0:
-            send_alert(f"서울시 혼잡도 폴링 {n}회 연속 전체 실패 (약 {n * 10}분째 지속)")
+        if n >= 2 and n % 2 == 0:
+            send_alert(f"서울시 혼잡도 폴링 {n}회 연속 전체 실패 (약 {n * 30}분째 지속)")
     elif fail_count:
         # 일부 지점만 실패는 지금까지도 알림 없이 넘겨왔던 수준이라 그대로 둠(로그로만 확인)
         pass
     else:
-        if _consecutive_full_failures >= 6:
+        if _consecutive_full_failures >= 2:
             send_alert(f"서울시 혼잡도 폴링 정상 복구됨 ({_consecutive_full_failures}회 연속 실패 후)")
         _consecutive_full_failures = 0
 
