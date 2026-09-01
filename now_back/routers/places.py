@@ -18,7 +18,7 @@ from schemas import PlaceUpdate
 router = APIRouter()
 
 @router.get("/places")
-async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0, sort: Optional[str] = None):
+async def list_places(region: Optional[str] = None, category: Optional[str] = None, limit: Optional[int] = None, offset: int = 0, sort: Optional[str] = None, mood: Optional[str] = None):
     # limit 미지정 시 기존 동작(전체 반환) 유지 — sitemap.ts/posts 상세 페이지가 region 없이 전체를 가져와 사용함
     where_clause = "WHERE p.region = :region AND (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)" if region else "WHERE (p.end_date IS NULL OR p.end_date >= CURRENT_DATE)"
     # 공연은 KOPIS 데이터만 목록에 노출 (구 소스는 SEO 색인 보존을 위해 DB엔 남기되 리스트에서만 제외, 만료는 기존 45일 유예 로직에 위임)
@@ -43,8 +43,15 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         where_clause += " AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
     elif category in ("연극", "뮤지컬", "음악", "종합"):
         where_clause += f" AND p.category = '{category}'"
+    # 무드 태그 필터 — 값은 고정 세트(mood_tags.MOOD_TAGS)에 있는 것만 허용해서 임의 문자열이
+    # 쿼리에 들어가지 않게 한다. GIN 인덱스(idx_seongsu_places_mood_tags)를 타도록 @> 사용.
+    if mood:
+        from mood_tags import MOOD_TAGS
+        if mood not in MOOD_TAGS:
+            raise HTTPException(status_code=400, detail="알 수 없는 무드 태그")
+        where_clause += " AND p.mood_tags @> ARRAY[:mood]::text[]"
     limit_clause = "LIMIT :limit OFFSET :offset" if limit is not None else ""
-    base_cols = "p.id, p.title, p.title_en, p.title_zh, p.title_ja, p.content, p.content_en, p.content_zh, p.content_ja, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id"
+    base_cols = "p.id, p.title, p.title_en, p.title_zh, p.title_ja, p.content, p.content_en, p.content_zh, p.content_ja, p.image_url, p.video_url, p.location, p.date_range, p.end_date, p.latitude, p.longitude, p.region, p.category, p.pinned_at, p.naver_place_id, p.mood_tags"
     # sort 옵션: 'latest'(신규 수집순), 'popular'(최근 30일 조회+좋아요 인기순), 'closing'(마감임박순), 기본은 랜덤
     # 예전엔 GREATEST(updated_at, created_at)를 썼는데, 블로그갱신(어드민 수동 편집 + 신규 팝업 자동갱신 스케줄러)이
     # updated_at을 계속 찍다 보니 몇 달 전 수집된 팝업이 오늘 갱신됐다는 이유만으로 "최신순" 상위에 튀어오르는
@@ -76,6 +83,8 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
             params["limit"] = min(limit, 500)
         if region:
             params["region"] = region
+        if mood:
+            params["mood"] = mood
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
@@ -94,7 +103,7 @@ async def list_place_categories(region: str):
 
 @router.get("/places/{place_id}")
 async def get_place(place_id: int):
-    query = text("SELECT id, title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at FROM seongsu_places WHERE id = :id")
+    query = text("SELECT id, title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja, image_url, video_url, location, date_range, end_date, latitude, longitude, region, category, naver_place_id, blog_reviews, link_url, link_title, created_at, mood_tags FROM seongsu_places WHERE id = :id")
     with engine.connect() as conn:
         result = conn.execute(query, {"id": place_id})
         row = result.fetchone()
@@ -107,14 +116,18 @@ async def get_place(place_id: int):
         place["hot_rank_updated_at"] = ranking.get_last_refreshed() if hot_rank else None
         return place
 
-_BOT_UA_RE = re.compile(r"bot|spider|crawl|yeti|slurp|facebookexternalhit", re.IGNORECASE)
+_BOT_UA_RE = re.compile(r"bot|spider|crawl|yeti|slurp|facebookexternalhit|google", re.IGNORECASE)
 
 @router.post("/places/{place_id}/view")
 async def record_place_view(place_id: int, request: Request):
     """장소 조회수 기록 — 상세 페이지 진입 시 호출.
     Googlebot이 상세페이지를 JS까지 렌더링하며 크롤링할 때 이 엔드포인트를 그대로 호출해
     조회수/인기 랭킹 점수가 실제 사람 트래픽 없이 부풀려지던 문제(2026-08-11, nginx 로그 기준
-    /view 호출의 상당수가 Googlebot UA) — User-Agent로 알려진 크롤러를 걸러 집계에서 제외."""
+    /view 호출의 상당수가 Googlebot UA) — User-Agent로 알려진 크롤러를 걸러 집계에서 제외.
+    'google' 자체도 패턴에 포함(2026-08-23) — GoogleOther 등 이름에 'bot'이 없는 구글 크롤러가
+    필터를 통과해 부산 카카오맵 항목들 조회수가 튀는 원인이었음(nginx 로그로 확인). 실제 브라우저
+    UA엔 'Google' 문자열이 없어 오탐 없음 — 이 필터는 조회수 집계만 스킵할 뿐 페이지 접근/크롤링
+    자체는 막지 않음(GET 요청은 그대로 200 반환, SEO 색인에 영향 없음)."""
     ua = request.headers.get("user-agent", "")
     if _BOT_UA_RE.search(ua):
         return {"ok": True, "counted": False}

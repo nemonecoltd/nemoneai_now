@@ -67,10 +67,10 @@ async def _enrich_place_core(place_id: int) -> dict:
     import asyncio
     import re as _re
 
-    # 1. DB에서 place 정보 조회
+    # 1. DB에서 place 정보 조회 (image_url은 무드 태그 판단용 멀티모달 입력에 사용)
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT title, location, naver_place_id FROM seongsu_places WHERE id = :id"),
+            text("SELECT title, location, naver_place_id, image_url FROM seongsu_places WHERE id = :id"),
             {"id": place_id}
         ).fetchone()
     if not row:
@@ -79,6 +79,7 @@ async def _enrich_place_core(place_id: int) -> dict:
     title = row[0] or ""
     location = row[1] or ""
     naver_place_id = row[2] or ""
+    image_url = row[3] or ""
     if not naver_place_id:
         raise ValueError("naver_place_id 없음 — pcmap 조회 불가")
 
@@ -153,9 +154,16 @@ async def _enrich_place_core(place_id: int) -> dict:
         blog_reviews = []
         road_text = ""
 
-    # 3. Gemini로 고품질 소개 생성
+    # 3. Gemini로 고품질 소개 + 무드 태그 생성
+    #    무드 태그를 별도 호출로 빼지 않고 여기 얹는 이유: 블로그 후기·주소 텍스트와 대표 이미지라는
+    #    "실제 관찰 근거"를 들고 있는 호출이 이것뿐이다. 번역(ai_translate)은 content만 받는 별도
+    #    백그라운드 호출이라 근거가 없고, 1차 수집은 장소명·위치만 있어 이름으로 추측하게 된다.
     try:
         from google import genai as _genai
+        from google.genai import types as _genai_types
+
+        from mood_tags import prompt_block as _mood_prompt_block, validate_tags as _validate_mood_tags
+
         client = _genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
         blog_block = ""
@@ -172,11 +180,39 @@ async def _enrich_place_core(place_id: int) -> dict:
             f"{road_block}\n\n"
             f"조건: 방문자 입장에서, 이모지 없이, 마크다운 기호 없이, 선택지/옵션 없이 소개 문구만 출력. "
             f"블로그 후기 제목이 있다면 그 분위기와 특징을 반드시 녹여낼 것."
+            f"{_mood_prompt_block()}\n\n"
+            f'다음 JSON 형식으로만 응답: {{"content": "소개 글", "mood_tags": ["태그1", "태그2"]}}'
         )
 
-        resp = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
-        generated = (resp.text or "").strip()[:600]
+        # 대표 이미지를 멀티모달 입력으로 — 블로그 "제목"만으로는 분위기 판단 근거가 얇아서
+        # 이미지가 실질적인 근거가 된다. 실패(만료 URL·차단·타임아웃)해도 텍스트만으로 진행.
+        contents: list = [prompt]
+        image_used = False
+        if image_url:
+            try:
+                import requests as _requests
+                img_resp = _requests.get(
+                    image_url, timeout=8,
+                    headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"},
+                )
+                img_resp.raise_for_status()
+                mime = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
+                if mime.startswith("image/") and len(img_resp.content) < 8 * 1024 * 1024:
+                    contents.insert(0, _genai_types.Part.from_bytes(data=img_resp.content, mime_type=mime))
+                    image_used = True
+            except Exception as img_err:
+                logger.warning("[mood] 대표 이미지 로드 실패 (place_id=%s): %s", place_id, img_err)
+
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=_genai_types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        raw = (resp.text or "").strip().replace("```json", "").replace("```", "").strip()
+        parsed = json.loads(raw)
+        generated = (parsed.get("content") or "").strip()[:600]
         generated = _limit_sentences(generated, 6)
+        mood_tags = _validate_mood_tags(parsed.get("mood_tags"))
     except Exception as e:
         raise RuntimeError(f"Gemini 생성 실패: {e}")
 
@@ -191,10 +227,15 @@ async def _enrich_place_core(place_id: int) -> dict:
     # 스크래핑이 실행됐다는 사실 자체를 항상 빈 배열로라도 기록해 "처리 완료"를 구분할 수 있게 함.
     with engine.connect() as conn:
         conn.execute(
-            text("UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, updated_at = NOW() WHERE id = :id"),
+            text(
+                "UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, "
+                "mood_tags = :mood_tags, updated_at = NOW() WHERE id = :id"
+            ),
             {
                 "content": generated,
                 "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False),
+                # 빈 배열도 그대로 저장 — NULL(생성 전)과 구분해야 백필이 같은 곳을 무한 재시도하지 않음
+                "mood_tags": mood_tags,
                 "id": place_id,
             }
         )
@@ -210,6 +251,8 @@ async def _enrich_place_core(place_id: int) -> dict:
         "content": generated,
         "blog_reviews": blog_reviews,
         "has_road": bool(road_text),
+        "mood_tags": mood_tags,
+        "mood_tags_image_based": image_used,
     }
 
 
