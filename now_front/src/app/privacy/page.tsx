@@ -2,8 +2,20 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata = {
-  title: '개인정보처리방침 | NEMONE PACE',
-  description: 'NEMONE PACE 서비스 개인정보처리방침',
+  // title.absolute — 루트 레이아웃의 "%s | NEMONE PACE" 템플릿을 우회.
+  // openGraph/twitter도 마찬가지로 루트의 PACE 전용 태그라인을 그대로
+  // 물려받길래 같이 덮어씀 — 이 페이지는 매치·플랜츠 등 다른 서비스도
+  // 함께 링크하는 공용 문서라 특정 서비스 브랜딩이 안 묻어나야 한다.
+  title: { absolute: '개인정보처리방침 | 네모네' },
+  description: '네모네(NEMONE) 서비스 개인정보처리방침',
+  openGraph: {
+    title: '개인정보처리방침 | 네모네',
+    description: '네모네(NEMONE) 서비스 개인정보처리방침',
+  },
+  twitter: {
+    title: '개인정보처리방침 | 네모네',
+    description: '네모네(NEMONE) 서비스 개인정보처리방침',
+  },
 };
 
 export default async function PrivacyPolicy({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
@@ -63,10 +75,10 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <li>
               <strong>{tr('서비스 제공', 'Service Provision', '提供服务', 'サービス提供')}</strong>
               {tr(
-                ': 위치 기반 여행 가이드 콘텐츠 제공, 다국어 서비스 최적화, 맞춤형 콘텐츠 추천 등을 목적으로 개인정보를 처리합니다.',
-                ': Personal information is processed for purposes such as providing location-based travel guide content, optimizing multilingual services, and recommending personalized content.',
-                ':为提供基于位置的旅行指南内容、优化多语言服务、推荐个性化内容等目的处理个人信息。',
-                ':位置情報に基づく旅行ガイドコンテンツの提供、多言語サービスの最適化、カスタマイズされたコンテンツの推薦等を目的として個人情報を処理します。',
+                ': 콘텐츠·정보·AI 분석 등 각 서비스가 제공하는 기능의 이용, 위치 기반 정보 제공(해당 서비스에 한함), 다국어 서비스 최적화, 맞춤형 콘텐츠 추천 등을 목적으로 개인정보를 처리합니다.',
+                ': Personal information is processed for purposes such as using the features provided by each service (content, information, AI analysis, etc.), providing location-based information (where applicable to the relevant service), optimizing multilingual services, and recommending personalized content.',
+                ':为使用各服务提供的内容、信息、AI分析等功能、提供基于位置的信息(仅限相关服务)、优化多语言服务、推荐个性化内容等目的处理个人信息。',
+                ':コンテンツ・情報・AI分析等各サービスが提供する機能の利用、位置情報に基づく情報提供(該当サービスに限る)、多言語サービスの最適化、カスタマイズされたコンテンツの推薦等を目的として個人情報を処理します。',
               )}
             </li>
             <li>
@@ -99,10 +111,10 @@ export default async function PrivacyPolicy({ searchParams }: { searchParams: Pr
             <li>
               <strong>{tr('선택항목', 'Optional Items', '选填项目', '任意項目')}</strong>
               {tr(
-                ': 연령대, 성별, 국적, 현재 위치 정보(위치 기반 가이드 제공 시)',
-                ': Age group, gender, nationality, current location information (when providing location-based guides)',
-                ':年龄段、性别、国籍、当前位置信息(提供基于位置的指南时)',
-                ':年齢層、性別、国籍、現在位置情報(位置情報に基づくガイド提供時)',
+                ': 연령대, 성별, 국적, 현재 위치 정보(위치 기반 서비스 제공 시), 이용자가 등록한 콘텐츠(사진 등)',
+                ': Age group, gender, nationality, current location information (when providing location-based services), user-submitted content (such as photos)',
+                ':年龄段、性别、国籍、当前位置信息(提供基于位置的服务时)、用户上传的内容(如照片等)',
+                ':年齢層、性別、国籍、現在位置情報(位置情報に基づくサービス提供時)、利用者が登録したコンテンツ(写真等)',
               )}
             </li>
           </ol>
