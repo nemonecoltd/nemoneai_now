@@ -39,7 +39,7 @@ async def ask_question(question: Question, region: str = "성수", lang: str = "
 
         # 제주는 2026-07-21부터 KOPIS/jeju.go.kr 수집 중단 — 기존 kopis_/jeju_ 접두 레거시 데이터가 섞여
         # 엉뚱한 답변에 쓰이지 않도록 제외 (공연 지역 자체는 KOPIS가 정상 소스라 제외하지 않음)
-        kopis_exclude = "AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'" if region == "제주" else ""
+        kopis_exclude = "AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'" if region == "제주" else ""
         search_query = text(f"""
             SELECT id, {title_field} AS title, {content_field} AS content, location
             FROM seongsu_places
@@ -154,7 +154,7 @@ async def generate_timed_course(region: str, companion: str, lang: str = "ko") -
                    COALESCE(category, 'popup') AS cat
             FROM seongsu_places
             WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-              AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
+              AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'
         )
         SELECT id, title, content, location, date_range FROM ranked
         ORDER BY rn ASC, cat ASC

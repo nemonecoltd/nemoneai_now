@@ -49,7 +49,7 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
         cat_in = ", ".join(f"'{c}'" for c in categories)
         region_clause = f"AND p.category IN ({cat_in})"
     else:
-        region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+        region_clause = "AND p.region != '공연' AND p.region != '축제' AND COALESCE(p.category, 'popup') = 'popup' AND COALESCE(p.naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'culture_%'"
         if exclude_jeju:
             region_clause += " AND p.region != '제주' AND p.region != '부산'"
         if only_region:
@@ -348,9 +348,9 @@ def refresh_closing_soon():
             FROM seongsu_places
             WHERE created_at >= NOW() - INTERVAL '7 days'
               AND COALESCE(category, 'popup') = 'popup'
-              AND naver_place_id NOT LIKE 'kopis_%'
-              AND naver_place_id NOT LIKE 'jeju_%'
-              AND naver_place_id NOT LIKE 'culture_%'
+              AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%'
+              AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%'
+              AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'
               AND region IN ('성수', '홍대', '강북', '강남', '부산', '제주')
             ORDER BY RANDOM()
             LIMIT 12

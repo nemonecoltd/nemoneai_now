@@ -27,7 +27,7 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     # 제주는 2026-07-21부터 KOPIS/jeju.go.kr 수집 중단(비짓제주 API로 대체) — 기존 kopis_/jeju_ 접두
     # 레거시 데이터는 SEO 색인 보존을 위해 DB엔 남기되 새 팝업/클래스/행사/쇼핑 목록에는 섞이지 않도록 제외
     elif region == "제주":
-        where_clause += " AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+        where_clause += " AND COALESCE(p.naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'culture_%'"
     # category: 'class'=원데이클래스/체험, 'popup'=팝업스토어(기존 데이터는 category가 NULL이라 COALESCE로 보정),
     # 'shopping'/'전시'=Visit Seoul 데이터(성수/홍대/강북/강남 하위), '행사'=비짓제주 축제/행사(제주 하위)
     # 공연(서울)은 장르 서브탭: 연극/뮤지컬/음악(대중음악)/종합(그 외 클래식·국악·무용·서커스마술·복합)
@@ -40,7 +40,7 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     elif category == "행사":
         where_clause += " AND p.category = '행사'"
     elif category == "popup":
-        where_clause += " AND COALESCE(p.category, 'popup') = 'popup' AND p.naver_place_id NOT LIKE 'kopis_%' AND p.naver_place_id NOT LIKE 'jeju_%' AND p.naver_place_id NOT LIKE 'culture_%'"
+        where_clause += " AND COALESCE(p.category, 'popup') = 'popup' AND COALESCE(p.naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(p.naver_place_id, '') NOT LIKE 'culture_%'"
     elif category in ("연극", "뮤지컬", "음악", "종합"):
         where_clause += f" AND p.category = '{category}'"
     # 무드 태그 필터 — 값은 고정 세트(mood_tags.MOOD_TAGS)에 있는 것만 허용해서 임의 문자열이
@@ -95,7 +95,7 @@ async def list_place_categories(region: str):
         SELECT DISTINCT COALESCE(category, 'popup') AS category
         FROM seongsu_places
         WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-          AND naver_place_id NOT LIKE 'kopis_%' AND naver_place_id NOT LIKE 'jeju_%' AND naver_place_id NOT LIKE 'culture_%'
+          AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'
     """)
     with engine.connect() as conn:
         result = conn.execute(query, {"region": region})
