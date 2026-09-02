@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Share2 } from 'lucide-react';
 import AdUnit from './AdUnit';
 
 // 백엔드 mood_tags.py의 MOOD_TAGS와 같은 값 — 값이 갈리면 필터가 400을 맞으므로
@@ -32,10 +32,10 @@ interface Place {
 }
 
 const dict = {
-  ko: { empty: '아직 이 분위기로 분류된 팝업이 없어요.', loading: '불러오는 중...' },
-  en: { empty: 'No pop-ups in this mood yet.', loading: 'Loading...' },
-  zh: { empty: '暂无此氛围的快闪店。', loading: '加载中...' },
-  ja: { empty: 'この雰囲気のポップアップはまだありません。', loading: '読み込み中...' },
+  ko: { empty: '아직 이 분위기로 분류된 팝업이 없어요.', loading: '불러오는 중...', share: '이 무드 공유하기', linkCopied: '링크가 복사됐어요' },
+  en: { empty: 'No pop-ups in this mood yet.', loading: 'Loading...', share: 'Share this mood', linkCopied: 'Link copied' },
+  zh: { empty: '暂无此氛围的快闪店。', loading: '加载中...', share: '分享此氛围', linkCopied: '链接已复制' },
+  ja: { empty: 'この雰囲気のポップアップはまだありません。', loading: '読み込み中...', share: 'このムードを共有', linkCopied: 'リンクをコピーしました' },
 };
 
 export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: string; initialMood?: string }) {
@@ -69,6 +69,19 @@ export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: strin
     : (lang === 'zh' && p.title_zh) ? p.title_zh
     : (lang === 'ja' && p.title_ja) ? p.title_ja
     : p.title;
+
+  // 지금 선택된 무드로 바로 진입되는 링크를 공유 — PlaceDetailClient의 handleShare와 동일 패턴
+  const handleShare = async () => {
+    const url = `https://now.nemoneai.com/?mood=${encodeURIComponent(mood)}&lang=${lang}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: mood, url }); } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        alert(t.linkCopied);
+      } catch {}
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -141,6 +154,17 @@ export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: strin
             </React.Fragment>
           ))}
         </div>
+      )}
+
+      {!isLoading && places.length > 0 && (
+        <button
+          type="button"
+          onClick={handleShare}
+          className="mx-auto flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-zinc-200 text-xs font-bold text-zinc-500 hover:border-pace-400 hover:text-pace-600 transition-colors active:scale-95"
+        >
+          <Share2 size={13} />
+          {t.share}
+        </button>
       )}
     </div>
   );

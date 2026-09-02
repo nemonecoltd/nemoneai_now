@@ -197,7 +197,10 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
     // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
     const m = params.get('mood');
+    const s = params.get('sub');
     if (m) { setActiveTab('magazine'); setMagazineSub('mood'); setMagazineMood(m); }
+    // 태그 없이 "무드 탭"만 여는 범용 링크 — 첫 번째 태그가 기본 선택됨(2026-09-02)
+    else if (t === 'magazine' && s === 'mood') { setMagazineSub('mood'); }
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (PLACE_REGIONS만)
