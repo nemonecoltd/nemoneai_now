@@ -183,17 +183,23 @@ async def update_place(place_id: int, place: PlaceUpdate):
         from datetime import date as _date
         update_data = place.dict(exclude_unset=True)
         old_image = None
-        if update_data.get("image_url"):
-            with engine.connect() as _c:
-                old_image = _c.execute(
-                    text("SELECT image_url FROM seongsu_places WHERE id = :id"), {"id": place_id}
-                ).scalar()
-            update_data["image_url"] = rehost_image(update_data["image_url"])
-            # 교체 전 옛 내부 이미지 삭제 — 안 그러면 Supabase Storage에 고아 객체가 쌓임.
-            # 새 값이 유효한 내부 이미지일 때만(재호스팅 실패로 외부 URL이면 기존 보존).
-            new_image = update_data["image_url"]
-            if is_internal_url(new_image) and is_internal_url(old_image) and new_image != old_image:
-                delete_image(old_image)
+        if "image_url" in update_data:
+            if update_data["image_url"]:
+                with engine.connect() as _c:
+                    old_image = _c.execute(
+                        text("SELECT image_url FROM seongsu_places WHERE id = :id"), {"id": place_id}
+                    ).scalar()
+                update_data["image_url"] = rehost_image(update_data["image_url"])
+                # 교체 전 옛 내부 이미지 삭제 — 안 그러면 Supabase Storage에 고아 객체가 쌓임.
+                # 새 값이 유효한 내부 이미지일 때만(재호스팅 실패로 외부 URL이면 기존 보존).
+                new_image = update_data["image_url"]
+                if is_internal_url(new_image) and is_internal_url(old_image) and new_image != old_image:
+                    delete_image(old_image)
+            else:
+                # 어드민 수정 폼이 place 전체 상태를 통째로 PUT으로 보내는 구조라, 이미지가 올라간
+                # 직후 폼을 새로고침하지 않고 다른 필드(고정 등)만 저장해도 stale한 빈 값이 같이
+                # 실려 기존 이미지를 지워버리는 사고가 있었음 — 빈 값은 "변경 없음"으로 취급.
+                update_data.pop("image_url")
         if "content" in update_data:
             embedding = await asyncio.to_thread(get_embedding, update_data["content"])
             update_data["embedding"] = f"[{','.join(map(str, embedding))}]"
