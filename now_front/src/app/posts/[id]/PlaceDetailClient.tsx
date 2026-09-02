@@ -54,6 +54,18 @@ const REGION_PILL_ACTIVE: Record<string, string> = {
   '공연': 'bg-emerald-500 text-white border-emerald-500',
   '축제': 'bg-amber-500 text-white border-amber-500',
 };
+// /ranking/place/[slug] 지역 허브 페이지(lib/regionPopularHub.tsx)와 슬러그를 맞춤 —
+// 값이 갈리면 여기서 만든 링크가 404로 빠진다.
+const REGION_HUB_SLUG: Record<string, string> = {
+  '성수': 'seongsu', '홍대': 'hongdae', '강북': 'gangbuk', '강남': 'gangnam', '부산': 'busan', '제주': 'jeju',
+};
+const LANG_PATH_PREFIX: Record<string, string> = { ko: '', en: '/en', zh: '/zh', ja: '/ja' };
+const REGION_HUB_LABEL: Record<string, (region: string) => string> = {
+  ko: (r) => `${r} 실시간 인기 팝업 더보기 →`,
+  en: (r) => `See more trending pop-ups in ${REGION_LABEL[r]?.en ?? r} →`,
+  zh: (r) => `查看更多${REGION_LABEL[r]?.zh ?? r}热门快闪店 →`,
+  ja: (r) => `${REGION_LABEL[r]?.ja ?? r}の人気ポップアップをもっと見る →`,
+};
 const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
 const CATEGORY_LABEL: Record<string, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
@@ -884,6 +896,19 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               <Video size={20} /> {t.watchVideo}
             </button>
           </div>
+        )}
+
+        {/* 지역 랭킹 허브로의 내부링크 — /ranking/place/[slug] 클러스터가 사이트맵에만 있고
+            실제 방문 페이지(홈/상세)에서 링크가 하나도 없어 구글이 색인을 안 잡던 문제를
+            여기서 고침(2026-09-02). posts/[id]는 실제로 색인되는 페이지라 여기서 링크를
+            걸어야 랭킹 허브 페이지들도 크롤/색인 신호를 받는다. */}
+        {REGION_HUB_SLUG[place.region || ''] && (
+          <Link
+            href={`${LANG_PATH_PREFIX[lang] || ''}/ranking/place/${REGION_HUB_SLUG[place.region || '']}`}
+            className="block text-center text-[12px] font-bold text-pace-600 hover:text-pace-700 py-2"
+          >
+            {REGION_HUB_LABEL[lang]?.(place.region || '') ?? REGION_HUB_LABEL.ko(place.region || '')}
+          </Link>
         )}
 
         <footer className="mt-6 mb-10 pt-6 border-t border-zinc-100 space-y-4">
