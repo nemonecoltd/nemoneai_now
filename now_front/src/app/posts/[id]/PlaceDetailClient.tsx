@@ -536,6 +536,23 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </a>
         )}
 
+        {/* 무드 태그 — 2차 enrich에서 블로그 후기 + 대표 이미지를 근거로 생성(2026-09-02).
+            공지 배너 바로 아래(배너 없으면 그 자리)에 얹고, 누르면 매거진의 '무드' 탭이
+            해당 분위기로 열린다. 생성 전(null)이거나 근거 부족(빈 배열)이면 렌더 안 함. */}
+        {place.mood_tags && place.mood_tags.length > 0 && (
+          <div className={cn("absolute left-4 right-4 flex flex-wrap gap-1.5", banner ? "top-14" : "top-3")}>
+            {place.mood_tags.map((tag) => (
+              <Link
+                key={tag}
+                href={`/?mood=${encodeURIComponent(tag)}&lang=${lang}`}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 shadow-lg no-underline active:scale-95 transition-transform"
+              >
+                {tag}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="absolute bottom-10 left-8 right-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-2">
@@ -600,23 +617,6 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
 
       {/* Content */}
       <div className="px-8 py-10 pb-28 space-y-10 -mt-6 bg-zinc-50 rounded-t-[40px] relative z-10 shadow-2xl">
-        {/* 무드 태그 — 2차 enrich에서 블로그 후기+대표 이미지를 근거로 생성(2026-09-02).
-            누르면 같은 무드의 다른 장소 목록으로 이동. 아직 생성 전(null)이거나 근거
-            부족으로 빈 배열이면 줄 자체를 렌더링하지 않는다. */}
-        {place.mood_tags && place.mood_tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 -mb-4">
-            {place.mood_tags.map((tag) => (
-              <Link
-                key={tag}
-                href={`/mood/${encodeURIComponent(tag)}?lang=${lang}`}
-                className="text-[11px] font-bold px-3 py-1.5 rounded-full bg-pace-50 text-pace-700 border border-pace-100 hover:bg-pace-100 transition-colors no-underline"
-              >
-                {tag}
-              </Link>
-            ))}
-          </div>
-        )}
-
         <div className="flex gap-4">
           <div className="flex-1 bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm">
             <div className="w-10 h-10 bg-pace-50 rounded-xl flex items-center justify-center text-pace-600 mb-3">

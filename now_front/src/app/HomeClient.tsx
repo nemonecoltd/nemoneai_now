@@ -163,6 +163,8 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
   const [courseSub, setCourseSub] = useState<CourseSub>('theme');
+  const [magazineSub, setMagazineSub] = useState<'article' | 'mood'>('article');
+  const [magazineMood, setMagazineMood] = useState<string | undefined>(undefined);
   const [courseModalTrigger, setCourseModalTrigger] = useState(0);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
@@ -193,6 +195,9 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
     if (l === 'en' || l === 'zh' || l === 'ja' || l === 'ko') setLang(l);
     if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
+    // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
+    const m = params.get('mood');
+    if (m) { setActiveTab('magazine'); setMagazineSub('mood'); setMagazineMood(m); }
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (PLACE_REGIONS만)
@@ -503,7 +508,7 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
 
           {activeTab === 'magazine' && (
             <motion.div key="magazine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <MagazineList lang={lang} />
+              <MagazineList lang={lang} initialSub={magazineSub} initialMood={magazineMood} />
             </motion.div>
           )}
 

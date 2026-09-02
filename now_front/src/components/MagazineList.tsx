@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Clock, ChevronRight, Newspaper } from 'lucide-react';
 import React from 'react';
 import AdUnit from './AdUnit';
+import MoodBrowser from './MoodBrowser';
 
 interface MagazinePost {
   id: number;
@@ -17,17 +18,20 @@ interface MagazinePost {
 }
 
 const dict = {
-  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.', loading: '불러오는 중...' },
-  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.', loading: 'Loading...' },
-  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。', loading: '加载中...' },
-  ja: { title: 'マガジン', desc: 'ネモネAIMに掲載されたNEMONE PACE関連記事', empty: 'まだ記事がありません。', loading: '読み込み中...' },
+  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.', loading: '불러오는 중...', mood: '무드' },
+  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.', loading: 'Loading...', mood: 'Mood' },
+  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。', loading: '加载中...', mood: '氛围' },
+  ja: { title: 'マガジン', desc: 'ネモネAIMに掲載されたNEMONE PACE関連記事', empty: 'まだ記事がありません。', loading: '読み込み中...', mood: 'ムード' },
 };
 
 const DATE_LOCALE: Record<string, string> = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP' };
 
-export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
+export default function MagazineList({ lang = 'ko', initialSub, initialMood }: { lang?: string; initialSub?: 'article' | 'mood'; initialMood?: string }) {
   const [posts, setPosts] = useState<MagazinePost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // 매거진(아티클) / 무드(분위기별 장소) 두 갈래 — 상세페이지 무드 칩에서 들어오면
+  // 바로 무드 탭이 열리도록 initialSub/initialMood를 받는다(2026-09-02).
+  const [sub, setSub] = useState<'article' | 'mood'>(initialSub === 'mood' ? 'mood' : 'article');
   const t = dict[lang as keyof typeof dict] || dict.ko;
 
   useEffect(() => {
@@ -44,6 +48,26 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
 
   return (
     <div className="p-6 space-y-6 pb-24">
+      {/* 매거진 | 무드 — 같은 메뉴 안에서 아티클과 분위기별 장소를 나눠 본다 */}
+      <div className="flex items-center gap-1 bg-zinc-100 rounded-full p-1 w-fit">
+        {([['article', t.title], ['mood', t.mood]] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSub(key)}
+            className={`px-4 py-1.5 rounded-full text-xs font-black transition-colors ${
+              sub === key ? 'bg-white text-pace-700 shadow-sm' : 'text-zinc-400 hover:text-zinc-600'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {sub === 'mood' ? (
+        <MoodBrowser lang={lang} initialMood={initialMood} />
+      ) : (
+      <>
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Newspaper size={18} className="text-pace-600" />
@@ -112,6 +136,8 @@ export default function MagazineList({ lang = 'ko' }: { lang?: string }) {
             </React.Fragment>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );
