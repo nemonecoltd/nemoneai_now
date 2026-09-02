@@ -68,14 +68,6 @@ export default function MagazineList({ lang = 'ko', initialSub, initialMood }: {
         <MoodBrowser lang={lang} initialMood={initialMood} />
       ) : (
       <>
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Newspaper size={18} className="text-pace-600" />
-          <h2 className="text-lg font-black text-zinc-800">{t.title}</h2>
-        </div>
-        <p className="text-xs text-zinc-400 font-bold">{t.desc}</p>
-      </div>
-
       {isLoading ? (
         <div className="py-16 text-center text-zinc-300 text-xs font-bold">{t.loading}</div>
       ) : posts.length === 0 ? (

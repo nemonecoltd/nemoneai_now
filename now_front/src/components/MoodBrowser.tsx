@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
+import AdUnit from './AdUnit';
 
 // 백엔드 mood_tags.py의 MOOD_TAGS와 같은 값 — 값이 갈리면 필터가 400을 맞으므로
 // 태그 세트를 넓힐 땐 양쪽을 같이 수정해야 한다.
@@ -31,10 +32,10 @@ interface Place {
 }
 
 const dict = {
-  ko: { desc: '분위기로 찾는 지금의 팝업', empty: '아직 이 분위기로 분류된 팝업이 없어요.', loading: '불러오는 중...', count: (n: number) => `${n}곳` },
-  en: { desc: 'Find pop-ups by mood', empty: 'No pop-ups in this mood yet.', loading: 'Loading...', count: (n: number) => `${n} places` },
-  zh: { desc: '按氛围寻找快闪店', empty: '暂无此氛围的快闪店。', loading: '加载中...', count: (n: number) => `${n}处` },
-  ja: { desc: '雰囲気で探すポップアップ', empty: 'この雰囲気のポップアップはまだありません。', loading: '読み込み中...', count: (n: number) => `${n}件` },
+  ko: { empty: '아직 이 분위기로 분류된 팝업이 없어요.', loading: '불러오는 중...' },
+  en: { empty: 'No pop-ups in this mood yet.', loading: 'Loading...' },
+  zh: { empty: '暂无此氛围的快闪店。', loading: '加载中...' },
+  ja: { empty: 'この雰囲気のポップアップはまだありません。', loading: '読み込み中...' },
 };
 
 export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: string; initialMood?: string }) {
@@ -71,18 +72,8 @@ export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: strin
 
   return (
     <div className="space-y-5">
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles size={18} className="text-pace-600" />
-          <h2 className="text-lg font-black text-zinc-800">{mood}</h2>
-          {!isLoading && (
-            <span className="text-xs font-bold text-zinc-400">{t.count(places.length)}</span>
-          )}
-        </div>
-        <p className="text-xs text-zinc-400 font-bold">{t.desc}</p>
-      </div>
-
-      {/* 무드 선택 칩 — 개수가 많아 모바일에서 가로 스크롤 */}
+      {/* 무드 선택 칩 — 개수가 많아 모바일에서 가로 스크롤. 태그만 깔끔하게, 위에 제목/설명
+          텍스트는 두지 않는다(2026-09-02). */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-6 px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {MOOD_TAGS.map((m) => (
           <button
@@ -107,7 +98,8 @@ export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: strin
       ) : (
         <div className="grid grid-cols-2 gap-3">
           {places.map((p, idx) => (
-            <Link key={p.id} href={`/posts/${p.id}?lang=${lang}`}>
+            <React.Fragment key={p.id}>
+            <Link href={`/posts/${p.id}?lang=${lang}`}>
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -141,6 +133,12 @@ export default function MoodBrowser({ lang = 'ko', initialMood }: { lang?: strin
                 </div>
               </motion.div>
             </Link>
+            {idx === 3 && (
+              <div className="col-span-2">
+                <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />
+              </div>
+            )}
+            </React.Fragment>
           ))}
         </div>
       )}
