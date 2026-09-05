@@ -37,8 +37,10 @@ async function getPopularPlaces(): Promise<PopularPlace[]> {
 export async function generateMetadata(): Promise<Metadata> {
   const places = await getPopularPlaces();
   const top = places.slice(0, 5).map(p => p.title).join(', ');
-  const title = '실시간 인기 핫플 TOP 25';
-  const description = `성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 인기 핫플. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  // "핫플"은 자체 용어라 실제 검색량이 있는 "서울 팝업스토어"로 유입이 안 되던 문제
+  // (2026-09-05) — 검색어를 정면으로 쓰는 제목으로 교체
+  const title = '서울 팝업스토어 실시간 인기 순위 TOP 25';
+  const description = `지금 서울에서 가장 인기있는 팝업스토어 실시간 순위. 성수·홍대·강북·강남과 부산·제주 팝업, 전시·공연·축제까지 한눈에. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -73,7 +75,7 @@ export default async function PlaceRankingPage() {
             <Link href="/ja/ranking/place" className="hover:text-zinc-700">日本語</Link>
           </div>
         </div>
-        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">실시간 인기 핫플</h1>
+        <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">서울 팝업스토어 실시간 인기 순위</h1>
         <BrandTagline />
       </header>
 

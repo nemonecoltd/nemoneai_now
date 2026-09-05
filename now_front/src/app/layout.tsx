@@ -14,11 +14,13 @@ const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], weight: ["500", "700"],
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://now.nemoneai.com'),
+  // "핫플" 위주로만 최적화돼 실제 검색량이 있는 "서울 팝업스토어"로는 유입이 안 되던
+  // 문제(2026-09-05) — 홈 타이틀 앞머리에 그 검색어를 그대로 넣음
   title: {
-    default: "NEMONE PACE | 성수·홍대·강남·부산·제주 팝업·전시·공연·축제 추천",
+    default: "서울 팝업스토어 추천 | NEMONE PACE — 성수·홍대·강남·부산·제주 팝업·전시·공연·축제",
     template: "%s | NEMONE PACE"
   },
-  description: "지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다",
+  description: "지금 이 시간 서울 팝업스토어(성수·홍대·강북·강남)와 부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다",
   // alternates(canonical/languages)를 root layout에 두면 모든 하위 페이지에 기본값으로 cascade돼서
   // /privacy·/feedback·/signup 등이 전부 canonical=홈으로 나가 "홈의 중복본"으로 취급되던 버그가
   // 있었음(2026-08-10). canonical/hreflang은 각 페이지(page.tsx)에서 자기참조로 명시하도록 이동 —

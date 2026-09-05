@@ -94,11 +94,11 @@ const dict = {
     desc: '당신의 다음 3시간을 설계합니다',
     totalRec: '통합 실시간 랭킹',
     regionGuide: '실시간 {region} 가이드',
-    navRec: '핫플',
+    navRec: '랭킹',
     navMap: '지도',
     navList: '장소',
     navCourse: '코스',
-    navMagazine: '매거진',
+    navMagazine: '핫플',
     courseSubAi: '3시간코스',
     courseSubTheme: '자유코스',
     my: '마이',
@@ -109,11 +109,11 @@ const dict = {
     desc: 'A fulfilling plan for your 3 hours',
     totalRec: 'Live Integrated Ranking',
     regionGuide: 'Live {region} Guide',
-    navRec: 'Hot',
+    navRec: 'Ranking',
     navMap: 'Map',
     navList: 'Spot',
     navCourse: 'Course',
-    navMagazine: 'Magazine',
+    navMagazine: 'Hot',
     courseSubAi: '3-Hour Course',
     courseSubTheme: 'Free Course',
     my: 'My',
@@ -124,11 +124,11 @@ const dict = {
     desc: '为您3小时的充实安排',
     totalRec: '综合实时排行',
     regionGuide: '{region} 实时指南',
-    navRec: '热门',
+    navRec: '排行',
     navMap: '地图',
     navList: '地点',
     navCourse: '路线',
-    navMagazine: '杂志',
+    navMagazine: '热门',
     courseSubAi: '3小时路线',
     courseSubTheme: '自由路线',
     my: '我的',
@@ -139,11 +139,11 @@ const dict = {
     desc: 'あなたの3時間を充実させる',
     totalRec: 'リアルタイム統合ランキング',
     regionGuide: 'リアルタイム{region}ガイド',
-    navRec: '人気',
+    navRec: 'ランキング',
     navMap: '地図',
     navList: 'スポット',
     navCourse: 'コース',
-    navMagazine: 'マガジン',
+    navMagazine: '人気',
     courseSubAi: '3時間コース',
     courseSubTheme: 'フリーコース',
     my: 'マイ',
@@ -163,8 +163,9 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
   const [concertGenre, setConcertGenre] = useState<'연극' | '뮤지컬' | '음악' | '종합'>('연극');
   const [placeSort, setPlaceSort] = useState<PlaceSort | null>(null);
   const [courseSub, setCourseSub] = useState<CourseSub>('theme');
-  const [magazineSub, setMagazineSub] = useState<'article' | 'mood'>('article');
+  const [magazineSub, setMagazineSub] = useState<'article' | 'mood' | 'category'>('article');
   const [magazineMood, setMagazineMood] = useState<string | undefined>(undefined);
+  const [magazineCategory, setMagazineCategory] = useState<string | undefined>(undefined);
   const [courseModalTrigger, setCourseModalTrigger] = useState(0);
   const scrollToTop = () => { mainRef.current?.scrollTo({ top: 0 }); };
   const setRegion = (r: Region) => { setRegionState(r); setPlaceCategory('popup'); scrollToTop(); };
@@ -198,9 +199,13 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
     // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
     const m = params.get('mood');
     const s = params.get('sub');
+    // 상세페이지 카테고리 칩 → 매거진 탭의 '카테고리' 서브탭을 해당 카테고리로 열어줌(2026-09-04)
+    const ct = params.get('category_tag');
     if (m) { setActiveTab('magazine'); setMagazineSub('mood'); setMagazineMood(m); }
-    // 태그 없이 "무드 탭"만 여는 범용 링크 — 첫 번째 태그가 기본 선택됨(2026-09-02)
+    else if (ct) { setActiveTab('magazine'); setMagazineSub('category'); setMagazineCategory(ct); }
+    // 태그 없이 "무드/카테고리 탭"만 여는 범용 링크 — 첫 번째 태그가 기본 선택됨(2026-09-02, 09-04)
     else if (t === 'magazine' && s === 'mood') { setMagazineSub('mood'); }
+    else if (t === 'magazine' && s === 'category') { setMagazineSub('category'); }
   }, []);
   const [places, setPlaces] = useState([]); // 지역별 데이터 (리스트 첫 페이지)
   const [mapPlaces, setMapPlaces] = useState([]); // 지도용 전체 데이터 (PLACE_REGIONS만)
@@ -297,7 +302,7 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
       {/* 시각적으로는 로고+태그라인으로 충분하지만, 페이지 전체에 h1이 하나도 없어(SEO 점검 중
           2026-08-25 발견) 크롤러에 페이지 주제를 알려줄 시맨틱 h1이 없었음. 디자인은 그대로 두고
           root layout의 title과 동일한 문구로 숨김 h1만 추가 */}
-      <h1 className="sr-only">NEMONE PACE | 성수·홍대·강남·부산·제주 팝업·전시·공연·축제 추천</h1>
+      <h1 className="sr-only">서울 팝업스토어 추천 | NEMONE PACE — 성수·홍대·강남·부산·제주 팝업·전시·공연·축제</h1>
       {/* Header */}
       <header className="px-6 pt-4 pb-1 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100">
         <div className="flex items-center justify-between mb-2">
@@ -511,7 +516,7 @@ function Home({ initialAllPlaces }: { initialAllPlaces: any[] }) {
 
           {activeTab === 'magazine' && (
             <motion.div key="magazine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <MagazineList lang={lang} initialSub={magazineSub} initialMood={magazineMood} />
+              <MagazineList lang={lang} initialSub={magazineSub} initialMood={magazineMood} initialCategory={magazineCategory} />
             </motion.div>
           )}
 

@@ -49,12 +49,17 @@ const COPY: Record<Lang, {
   metaTitle: (region: string) => string;
 }> = {
   ko: {
-    heading: (r) => `${r} 팝업 실시간 인기`,
+    heading: (r) => `${r} 팝업스토어 실시간 인기`,
     desc: (r, a) => `최근 48시간 조회수·좋아요 기준, ${r}(${a}) 팝업스토어 실시간 TOP 25입니다.`,
     metaDesc: (r, a, top) => `지금 ${r}(${a})에서 가장 인기있는 팝업스토어 실시간 순위. ${top || `지금 ${r}에서 가장 핫한 팝업을 확인해보세요.`}`,
     fallback: (r) => `지금 ${r}에서 가장 핫한 팝업을 확인해보세요.`,
     empty: '데이터를 준비 중입니다.',
-    metaTitle: (r) => `${r} 팝업 실시간 인기 순위 TOP 25`,
+    // "성수 팝업"만 쓰면 상위 검색어인 "서울 팝업스토어"에 안 걸려서, 서울권 지역은
+    // 제목에 "서울"을 함께 넣는다(2026-09-05). region 라벨만 받으므로 여기서 판별.
+    metaTitle: (r) =>
+      ['성수', '홍대', '강북', '강남'].includes(r)
+        ? `서울 ${r} 팝업스토어 실시간 인기 순위 TOP 25`
+        : `${r} 팝업스토어 실시간 인기 순위 TOP 25`,
   },
   en: {
     heading: (r) => `${r} Pop-up Trending Now`,
