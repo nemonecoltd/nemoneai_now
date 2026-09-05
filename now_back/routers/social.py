@@ -145,7 +145,13 @@ async def save_theme(theme: ThemeSave):
 
 @router.get("/themes")
 async def get_all_themes():
-    """테마 랭킹 (자체 보관된 유저 정보 사용)"""
+    """테마 랭킹 (자체 보관된 유저 정보 사용).
+
+    places(jsonb)는 테마 생성 시점의 스냅샷이라 image_url이 그대로 박혀있는데,
+    나중에 장소가 재수집되며 이미지 파일명이 바뀌면(정상적인 재수집이어도) 스냅샷은
+    안 바뀌어 깨진 이미지로 남는 문제가 있었음(2026-09-05, "추천! 인기코스" 위젯에서
+    실제 리포트됨). place_id/id로 seongsu_places 현재 image_url을 한 번에 조회해
+    응답 시점에 항상 최신 값으로 덮어써 근본적으로 재발하지 않게 함."""
     query = text("""
         SELECT t.*, COUNT(tl.id) as computed_like_count
         FROM themes t
@@ -161,6 +167,25 @@ async def get_all_themes():
             theme_dict = dict(row._mapping)
             theme_dict['like_count'] = theme_dict.pop('computed_like_count')
             themes.append(theme_dict)
+
+        place_ids = {
+            pid
+            for t in themes
+            for item in (t.get('places') or [])
+            if (pid := item.get('place_id') or item.get('id'))
+        }
+        if place_ids:
+            fresh = conn.execute(
+                text("SELECT id, image_url FROM seongsu_places WHERE id = ANY(:ids)"),
+                {"ids": list(place_ids)},
+            )
+            fresh_images = {row.id: row.image_url for row in fresh if row.image_url}
+            for t in themes:
+                for item in (t.get('places') or []):
+                    pid = item.get('place_id') or item.get('id')
+                    if pid in fresh_images:
+                        item['image_url'] = fresh_images[pid]
+
         return themes
 
 @router.get("/users/{user_id}/themes")
