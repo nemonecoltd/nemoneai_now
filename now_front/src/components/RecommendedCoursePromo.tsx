@@ -179,7 +179,13 @@ export default function RecommendedCoursePromo({ lang = 'ko' }: { lang?: string 
                 className="flex items-center gap-3 bg-zinc-50 rounded-2xl p-3 hover:bg-pace-50 transition-colors"
               >
                 {place.image_url && (
-                  <img src={place.image_url} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" alt="" referrerPolicy="no-referrer" />
+                  <img
+                    src={place.image_url}
+                    className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-zinc-900 truncate">{place.title}</p>
