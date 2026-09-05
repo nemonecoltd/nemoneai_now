@@ -1,13 +1,23 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ExternalLink, Share2 } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Share2, Users } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { InArticleAd } from '@/components/AdUnit';
 import BrandTagline from '@/components/BrandTagline';
+import BottomNav from '@/components/BottomNav';
+import Logo from '@/components/Logo';
+import { useAuth } from '@/context/AuthContext';
 import type { MagazinePost } from './page';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export default function MagazineDetailClient({ post, lang = 'ko' }: { post: MagazinePost | null; lang?: string }) {
   const router = useRouter();
+  const { user, signInWithGoogle } = useAuth();
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) router.back();
     else router.push('/');
@@ -41,19 +51,55 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
     );
   }
 
+  const setLang = (l: string) => router.push(`/magazine/${post.id}?lang=${l}`);
+
   return (
     <div className="min-h-screen bg-zinc-50 max-w-md mx-auto relative shadow-2xl">
+      {/* 사이트 전체 헤더(로고+GNB) — 다른 상세페이지(PlaceDetailClient)와 동일 패턴,
+          지역 탭만 여기선 의미가 없어 생략(2026-09-05, 매거진 리더에 원래 없던 걸 추가) */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-100 px-5 pt-3 pb-1">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleBack}
-            className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
-          >
-            <ChevronLeft size={20} strokeWidth={2.5} />
-          </button>
-          <span className="text-base font-black tracking-tight text-zinc-900">
-            {lang === 'en' ? 'Magazine' : lang === 'zh' ? '杂志' : lang === 'ja' ? 'マガジン' : '매거진'} <span className="text-pace-500">.</span>
-          </span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={handleBack}
+              className="w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all"
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
+            <Logo />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-zinc-100 p-0.5 rounded-lg border border-zinc-200 shadow-inner">
+              {(['ko', 'en', 'zh', 'ja'] as const).map((l) => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={cn(
+                    "px-2.5 py-1 text-[11px] font-black rounded-md transition-all whitespace-nowrap",
+                    lang === l ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400"
+                  )}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {user ? (
+              <a href={`/my?lang=${lang}`} className="flex items-center bg-zinc-100 p-0.5 rounded-full border border-zinc-200 hover:bg-white transition-all">
+                <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-white shadow-sm bg-zinc-200">
+                  <img
+                    src={user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.user_metadata?.full_name || user.email || 'U')}&background=random`}
+                    className="w-full h-full object-cover"
+                    alt="profile"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+              </a>
+            ) : (
+              <button onClick={() => signInWithGoogle()} className="p-1.5 rounded-full bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition-colors">
+                <Users size={16} />
+              </button>
+            )}
+          </div>
         </div>
         <BrandTagline lang={lang} />
       </header>
@@ -90,6 +136,8 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
           </div>
         </div>
       </main>
+
+      <BottomNav lang={lang} />
     </div>
   );
 }
