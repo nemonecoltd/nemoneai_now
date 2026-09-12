@@ -79,12 +79,13 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
     elif sort == "new":
         # 'latest'(created_at DESC)는 스크래핑이 지역을 순차 처리해 각 지역이 삽입 시점의 NOW()를
         # 그대로 찍다 보니, 마지막에 처리된 지역(예: 부산)이 최신 슬롯을 독점하는 문제가 있었다
-        # (2026-09-10 "신규 팝업 리스트에 부산만 나온다" 리포트). 48시간 이내로 모수를 좁히고
-        # RANDOM()으로 섞어 지역이 고르게 섞이게 한다 — ranking_service.py가 "최근 48시간" 기준을
-        # 이미 쓰고 있는 것과 동일한 창.
+        # (2026-09-10 "신규 팝업 리스트에 부산만 나온다" 리포트). RANDOM()으로 섞어 지역이 고르게
+        # 섞이게 한다 — 창은 48시간이 아니라 5일로 잡는다(2026-09-12, 48시간 창은 수집 주기에
+        # 따라 후보가 1건뿐인 날이 생겨 "신규 팝업"이 사실상 랜덤이 아니라 고정으로 보이는
+        # 문제가 있었음 — 실측: 48시간 1건 vs 5일 80건).
         query = text(
             f"SELECT {base_cols} "
-            f"FROM seongsu_places p {where_clause} AND p.created_at >= NOW() - INTERVAL '48 hours' "
+            f"FROM seongsu_places p {where_clause} AND p.created_at >= NOW() - INTERVAL '5 days' "
             f"ORDER BY p.pinned_at DESC NULLS LAST, RANDOM() {limit_clause}"
         )
     else:

@@ -50,7 +50,9 @@ export default function PopupCard({ lang = 'ko', onSeeAll }: { lang?: string; on
   // 원래 NEW/마감임박 토글이 있었는데, 목업엔 탭 없이 최신순 리스트 하나 + 아이템별 D-day
   // 뱃지로 통합돼 있어(2026-09-08 피드백 — "포털 위젯" 느낌의 원인 중 하나) 토글을 없앴다.
   // sort=latest(created_at DESC)는 스크래핑이 지역을 순차 처리해 마지막 지역(부산)이 최신
-  // 슬롯을 독점하는 문제가 있어(2026-09-10), sort=new(48시간 이내 랜덤)로 교체했다.
+  // 슬롯을 독점하는 문제가 있어(2026-09-10), sort=new(랜덤)로 교체했다. 처음엔 48시간
+  // 이내로 모수를 좁혔는데 수집 주기에 따라 후보가 1건뿐인 날이 생겨 "신규 5개"가 사실상
+  // 고정 1개로 보이는 문제가 있었음(2026-09-12) — 백엔드에서 5일로 넓혀 해결.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -91,7 +93,7 @@ export default function PopupCard({ lang = 'ko', onSeeAll }: { lang?: string; on
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
                     {p.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={p.image_url} alt={titleOf(p)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
