@@ -276,15 +276,33 @@ async def _enrich_place_core(place_id: int) -> dict:
 _auto_enrich_success_count = 0
 _auto_enrich_fail_count = 0
 
+_ENRICH_MAX_ATTEMPTS = 3  # 이 횟수 넘게 실패한 항목은 큐에서 영구 제외(아래 이유 참고)
+
+
+def _bump_enrich_fail_count(place_id: int) -> int:
+    """실패 카운트 +1 저장 후 갱신된 값 반환. 컬럼 없으면 여기서 생성(마이그레이션 겸용)."""
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_fail_count INTEGER DEFAULT 0"))
+        row = conn.execute(
+            text("UPDATE seongsu_places SET enrich_fail_count = COALESCE(enrich_fail_count, 0) + 1 WHERE id = :id RETURNING enrich_fail_count"),
+            {"id": place_id},
+        ).fetchone()
+        conn.commit()
+    return row[0] if row else 0
+
+
 def _auto_enrich_new_popups() -> None:
     import asyncio as _asyncio
     global _auto_enrich_success_count, _auto_enrich_fail_count
     BATCH_LIMIT = 1  # 10분마다 1건 — 안전하게 천천히
     ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
     with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_fail_count INTEGER DEFAULT 0"))
+        conn.commit()
         rows = conn.execute(text("""
             SELECT id FROM seongsu_places
             WHERE blog_reviews IS NULL
+              AND COALESCE(enrich_fail_count, 0) < :max_attempts
               AND COALESCE(category, 'popup') = 'popup'
               AND region NOT IN ('공연', '축제')
               AND naver_place_id NOT LIKE 'kopis_%'
@@ -295,7 +313,7 @@ def _auto_enrich_new_popups() -> None:
               AND created_at >= NOW() - INTERVAL '7 days'
             ORDER BY created_at ASC
             LIMIT :limit
-        """), {"limit": BATCH_LIMIT}).fetchall()
+        """), {"limit": BATCH_LIMIT, "max_attempts": _ENRICH_MAX_ATTEMPTS}).fetchall()
 
     if not rows:
         # 처리할 게 없어짐 = 이번 배치 종료. 뭔가 했었으면(카운터>0) 요약 알림 후 리셋, 이미 0이면(계속 idle) 조용히 넘어감
@@ -314,8 +332,14 @@ def _auto_enrich_new_popups() -> None:
             logger.info("[auto_enrich] 완료 (place_id=%s)", row.id)
             _auto_enrich_success_count += 1
         except _asyncio.TimeoutError:
-            logger.error("[auto_enrich] 타임아웃(%ss 초과) — 건너뜀 (place_id=%s)", ITEM_TIMEOUT_SEC, row.id)
+            # 특정 1건이 계속 실패하면 FIFO 큐(ORDER BY created_at ASC)의 맨 앞을 영원히 못
+            # 벗어나 뒤에 있는 나머지 전부가 밀리는 사고가 실제로 있었다(2026-09-15~16,
+            # place_id=11210이 145회 연속 실패 — 24시간 넘게 큐 전체가 멈춤). 실패 횟수를
+            # DB에 남겨 _ENRICH_MAX_ATTEMPTS 넘으면 위 쿼리에서 자동 제외되게 한다.
+            attempts = _bump_enrich_fail_count(row.id)
+            logger.error("[auto_enrich] 타임아웃(%ss 초과, %d/%d회) — (place_id=%s)", ITEM_TIMEOUT_SEC, attempts, _ENRICH_MAX_ATTEMPTS, row.id)
             _auto_enrich_fail_count += 1
         except Exception as e:
-            logger.error("[auto_enrich] 실패 (place_id=%s): %s", row.id, e)
+            attempts = _bump_enrich_fail_count(row.id)
+            logger.error("[auto_enrich] 실패(%d/%d회) (place_id=%s): %s", attempts, _ENRICH_MAX_ATTEMPTS, row.id, e)
             _auto_enrich_fail_count += 1
