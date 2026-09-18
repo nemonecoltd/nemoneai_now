@@ -21,23 +21,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 2. 동적 상세 페이지 URL 생성 (개별 스팟 및 테마 장소)
   // 상세페이지는 ?lang= 쿼리로 4개 언어를 서빙하는데, 링크·메타데이터만으론 크롤러가
   // 언어판을 잘 발견하지 못함 — 대규모 사이트에선 sitemap의 hreflang(alternates.languages)이
-  // 언어판 발견의 정석이라, 각 posts URL에 4개 언어 + x-default를 실어준다.
-  // 번역이 없는 로우도 서버가 한국어로 폴백하므로 URL 자체는 유효.
-  const placeUrls = places.map((place) => ({
-    url: `${baseUrl}/posts/${place.id}`,
-    lastModified: new Date(place.created_at || new Date()),
-    changeFrequency: 'weekly' as const,
-    priority: 0.7,
-    alternates: {
-      languages: {
-        ko: `${baseUrl}/posts/${place.id}`,
-        en: `${baseUrl}/posts/${place.id}?lang=en`,
-        zh: `${baseUrl}/posts/${place.id}?lang=zh`,
-        ja: `${baseUrl}/posts/${place.id}?lang=ja`,
-        'x-default': `${baseUrl}/posts/${place.id}`,
-      },
-    },
-  }))
+  // 언어판 발견의 정석이라, 각 posts URL에 실제 번역이 있는 언어 + x-default를 실어준다.
+  // 번역이 없는 로우(title_en/content_en 등이 빈 값)는 서버가 한국어로 폴백해 ko 페이지와
+  // byte-identical한 중복이 되므로, 여기서 sitemap에 그 lang=xx URL을 흘리면 Google이
+  // 그 URL을 대량으로 발견·크롤해 중복 클러스터의 대표로 잘못 뽑는 사고로 이어짐
+  // (2026-09-18 — "nemone pace" 브랜드검색에 lang=en/ja 변형만 노출되던 원인).
+  // page.tsx의 generateMetadata도 동일 기준(translated en/zh/ja)으로 canonical/noindex를 분기함.
+  const placeUrls = places.map((place) => {
+    const languages: Record<string, string> = {
+      ko: `${baseUrl}/posts/${place.id}`,
+      'x-default': `${baseUrl}/posts/${place.id}`,
+    }
+    if (place.title_en && place.content_en) languages.en = `${baseUrl}/posts/${place.id}?lang=en`
+    if (place.title_zh && place.content_zh) languages.zh = `${baseUrl}/posts/${place.id}?lang=zh`
+    if (place.title_ja && place.content_ja) languages.ja = `${baseUrl}/posts/${place.id}?lang=ja`
+    return {
+      url: `${baseUrl}/posts/${place.id}`,
+      lastModified: new Date(place.created_at || new Date()),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+      alternates: { languages },
+    }
+  })
 
   // 3. 고정 페이지 URL 생성 (홈 화면 + 랭킹 페이지)
   // /ranking/place만 title_en/title_zh/title_ja 데이터가 있어 en/zh/ja 버전 존재 — course/theme는 유저생성 콘텐츠라 번역본 없음

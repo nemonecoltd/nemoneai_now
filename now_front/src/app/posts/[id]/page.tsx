@@ -126,21 +126,37 @@ export async function generateMetadata({
     : place.content;
   const description = cleanDescription(rawContent || '');
 
-  // 모든 언어판에 동일한(reciprocal) hreflang 세트를 실어, 어느 언어로 크롤되든
-  // 나머지 언어판을 서로 가리키게 함. x-default는 한국어 기본 URL.
-  const languages = {
-    'ko': postUrl(id, 'ko'),
-    'en': postUrl(id, 'en'),
-    'zh': postUrl(id, 'zh'),
-    'ja': postUrl(id, 'ja'),
+  // 실제 번역 로우가 있는 언어만 "진짜 언어판"으로 취급한다. 번역이 비어 있어 한국어로
+  // 폴백된 lang=xx 페이지는 ko 페이지와 byte-identical한 중복 콘텐츠인데, 예전엔 이런
+  // 페이지도 자기참조 canonical + index,follow를 걸어 Google이 ko/en/zh/ja 4개를
+  // 별개의 정본으로 인식 → 중복 클러스터에서 엉뚱하게 lang=ja/en 쪽을 대표로 뽑아버리는
+  // 사고가 실제로 확인됨(2026-09-18, "nemone pace" 브랜드검색에 en/ja 변형만 노출).
+  const translated = {
+    en: Boolean(place.title_en && place.content_en),
+    zh: Boolean(place.title_zh && place.content_zh),
+    ja: Boolean(place.title_ja && place.content_ja),
+  };
+  const hasRealTranslation = lang === 'ko' || translated[lang];
+
+  // hreflang에는 실제로 번역이 존재하는 언어판만 올린다 — 없는 언어를 올리면 그 alternate가
+  // noindex라서 Google이 hreflang 자체를 무시/혼란스러워함.
+  const languages: Record<string, string> = {
+    ko: postUrl(id, 'ko'),
     'x-default': postUrl(id, 'ko'),
   };
-  const canonical = postUrl(id, lang); // 언어별 자기참조 canonical
+  if (translated.en) languages.en = postUrl(id, 'en');
+  if (translated.zh) languages.zh = postUrl(id, 'zh');
+  if (translated.ja) languages.ja = postUrl(id, 'ja');
+
+  // 번역이 실재할 때만 자기참조 canonical(=그 언어판이 정본). 번역이 없어 한국어로
+  // 폴백된 경우엔 canonical을 ko 기본 URL로 돌리고 noindex를 걸어 중복으로 색인되지 않게 함.
+  const canonical = hasRealTranslation ? postUrl(id, lang) : postUrl(id, 'ko');
 
   return {
     title,
     description,
     alternates: { canonical, languages },
+    ...(hasRealTranslation ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       title,
       description,
