@@ -76,6 +76,12 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어", allowed
         # PlaceListBusinessesItem: 네이버가 '팝업스토어' 업종이 아닌 일반 업체로 분류한 경우
         #   (원데이클래스/공방 체험 등 상시 운영 콘텐츠가 여기 해당 — 운영기간 필드 자체가 없음)
         # 한 쿼리 결과엔 둘 중 하나만 존재함(확인됨) — 섞여서 오염될 우려 없음
+        #
+        # 2026-09-19 네이버 스키마 변경 발견: PopupstoreSearchBusinessItem 타입 자체가 사라지고
+        # 전부 PlaceListBusinessesItem로 통합됐다. 운영기간은 없어진 게 아니라 item 최상위에서
+        # item["popupstoreInfo"]["operationStartDateTime"/"operationEndDateTime"]로 한 단계
+        # 안쪽으로 이동함 — 최상위에서만 읽던 기존 코드가 이걸 못 찾아 9/15 이후 수집분 전체가
+        # "운영기간 없음(today+30일 폴백)"으로 잘못 저장되는 사고로 이어짐(id=11212 등 7건 확인).
         if not (key.startswith("PopupstoreSearchBusinessItem:") or key.startswith("PlaceListBusinessesItem:")) or not isinstance(item, dict):
             continue
         name = (item.get("name") or "").strip()
@@ -85,6 +91,7 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어", allowed
         if allowed_districts and not any(d in common_address for d in allowed_districts):
             continue
         place_id = str(item.get("id") or f"nmap_{hash(name) % 100000}")
+        popup_info = item.get("popupstoreInfo") or {}
         results.append({
             "naver_place_id": place_id,
             "title": name,
@@ -96,8 +103,8 @@ async def scrape_naver_map_popups(query: str = "성수 팝업스토어", allowed
             "content_en": "",
             "video_url": "",
             "image_url": item.get("imageUrl") or "",
-            "start_date": _parse_naver_date(item.get("operationStartDateTime")),
-            "end_date": _parse_naver_date(item.get("operationEndDateTime")),
+            "start_date": _parse_naver_date(popup_info.get("operationStartDateTime") or item.get("operationStartDateTime")),
+            "end_date": _parse_naver_date(popup_info.get("operationEndDateTime") or item.get("operationEndDateTime")),
         })
 
     matched = sum(1 for r in results if r["end_date"])
