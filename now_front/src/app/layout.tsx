@@ -58,12 +58,44 @@ export const viewport: Viewport = {
   themeColor: '#35577A',
 };
 
+// 브랜드명("nemone pace") 검색에 사이트가 전혀 안 잡히던 문제 대응(2026-09-19).
+// 색인·robots·title·h1은 전부 정상인데도 네이버 검색 결과에 PACE가 후보로조차 오르지
+// 못하고 "팝업" 연관 콘텐츠만 나오는 상태였음 — 검색엔진이 이 문자열을 하나의 실체
+// (entity)로 묶을 근거가 코드에 아예 없었던 게 원인 중 하나. WebSite 스키마만 있고
+// Organization 선언도, 외부 공식 자산과의 sameAs 연결도 없었다(plants엔 이미 있었음).
+// 아래는 표준 entity 선언 방식: @id로 두 노드를 묶고, 한글 표기 변형을 alternateName으로
+// 명시하고, 우리 소유가 확실한 외부 공식 자산(구글 플레이 앱 등재)을 sameAs로 연결한다.
+const ORG_ID = 'https://now.nemoneai.com/#organization';
+
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': ORG_ID,
+  name: 'NEMONE PACE',
+  // 검색 사용자가 실제로 입력할 수 있는 표기 변형만 — 없는 별칭을 지어내지 않는다
+  alternateName: ['네모네 페이스', '네모네페이스', 'nemone pace'],
+  url: 'https://now.nemoneai.com',
+  logo: 'https://now.nemoneai.com/brand/pace-icon-512.png',
+  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+  // 우리가 실제로 소유·운영하는 공식 자산만 연결(검증됨) — 브랜드 실체의 외부 근거가 된다
+  sameAs: ['https://play.google.com/store/apps/details?id=com.nemoneai.now'],
+  parentOrganization: {
+    '@type': 'Organization',
+    name: '네모네',
+    url: 'https://nemoneai.com',
+  },
+};
+
 const websiteJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
+  '@id': 'https://now.nemoneai.com/#website',
   name: 'NEMONE PACE',
+  alternateName: ['네모네 페이스', '네모네페이스'],
   url: 'https://now.nemoneai.com',
+  inLanguage: 'ko',
   description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+  publisher: { '@id': ORG_ID },
   potentialAction: {
     '@type': 'SearchAction',
     target: {
@@ -92,6 +124,7 @@ export default function RootLayout({
         <link rel="icon" href="/brand/pace-icon-32.png" type="image/png" sizes="32x32" />
         <link rel="icon" href="/brand/pace-icon-16.png" type="image/png" sizes="16x16" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
         {/* Google Analytics */}
         <Script
