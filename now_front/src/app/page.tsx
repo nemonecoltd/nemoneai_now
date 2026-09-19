@@ -88,6 +88,13 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const { mood, tab, sub, region, category, category_tag, lang: langParam } = await searchParams;
   const lang = pickLang(langParam);
 
+  // tab=rec는 홈과 완전히 동일한 추천 피드 콘텐츠라 title/description을 억지로 다르게
+  // 붙이면 오히려 부정확한 신호라 2026-09-05에 의도적으로 그대로 뒀었는데, 네이버가 "동일
+  // description 문서"로 계속 재지적함(2026-09-20). 콘텐츠를 억지로 다르게 꾸미는 대신
+  // noindex로 진단 대상 자체에서 빼는 쪽으로 결정 — 홈과 내용이 같아 색인 가치도 낮다.
+  if (tab === 'rec') {
+    return { alternates: { canonical: BASE_URL }, robots: { index: false, follow: true } };
+  }
   if (mood) {
     return {
       title: `NEMONE PACE | ${mood} 분위기 팝업 모음`,
