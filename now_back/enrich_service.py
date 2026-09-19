@@ -14,6 +14,12 @@ from gemini_service import ai_translate
 
 logger = logging.getLogger(__name__)
 
+# 블로그 0건("아직 오픈 전"일 가능성) 재시도 정책 — 스크래핑/타임아웃 실패용 _ENRICH_MAX_ATTEMPTS와는
+# 별개 카운터. 0건은 에러가 아니라 정상 응답이라 "실패"로 잡히지 않는데, 그대로 두면 즉시 완료 처리돼
+# 오픈 후 블로그가 실제로 올라와도 다시 확인하지 않는 문제가 있었다(2026-09-19).
+_ENRICH_EMPTY_MAX_RETRIES = 3       # 0건 응답이 이 횟수에 도달하면 그 뒤로는 포기(영구 재시도 방지)
+_ENRICH_EMPTY_RETRY_INTERVAL_DAYS = 2  # 0건일 때 다음 재시도까지 대기 일수
+
 def _revalidate_place(place_id: int):
     """공개 도메인으로 호출 — 127.0.0.1:3002는 프로덕션 서버 안에서만 유효한 주소라 로컬 백엔드(텔레그램 봇 등)에서
     호출하면 로컬 3002번(아무것도 없음)으로 가서 조용히 실패했음. 공개 URL로 바꾸면 로컬/프로덕션 어디서 트리거해도 동작함."""
@@ -84,9 +90,19 @@ async def _enrich_place_core(place_id: int) -> dict:
         raise ValueError("naver_place_id 없음 — pcmap 조회 불가")
 
     # 2. pcmap 방문자 리뷰 탭 — 블로그 카드 스크래핑
+    # playwright 미설치(프로덕션 등)는 "블로그 0건 발견"과 절대 같은 취급을 하면 안 됨 — 아래
+    # 넓은 except가 이걸 스크래핑 결과 0건과 똑같이 삼켜서, 실제로는 스크래핑이 시도조차 안 됐는데
+    # 기존에 있던 blog_reviews를 빈 배열로 덮어써버리는 사고가 실제로 있었다(2026-09-19, id=11248 —
+    # 프로덕션 도메인으로 enrich를 호출했더니 ModuleNotFoundError를 "0건"으로 착각해 기존 3건을 삭제).
+    # 여기서 즉시 구분해 인프라 오류로 중단시킨다(아래 3/4단계 진행 자체를 막아 기존 데이터 보존).
     try:
         from playwright.async_api import async_playwright
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            f"playwright 미설치 — 이 서버에서는 블로그갱신 불가(로컬 어드민에서 실행할 것): {e}"
+        )
 
+    try:
         blog_reviews: list[dict] = []
         road_text = ""
 
@@ -235,16 +251,39 @@ async def _enrich_place_core(place_id: int) -> dict:
     # blog_reviews가 빈 배열([])일 때 "if blog_reviews else None"이 False로 평가돼 NULL로 저장되던 버그 —
     # 실제로 리뷰가 0건인 장소가 영원히 "미처리(NULL)"로 보여서 자동갱신 스케줄러가 같은 곳을 무한 재시도했음.
     # 스크래핑이 실행됐다는 사실 자체를 항상 빈 배열로라도 기록해 "처리 완료"를 구분할 수 있게 함.
+    #
+    # 다만 0건은 "블로그가 영원히 없다"가 아니라 "아직 오픈 전이라 없다"인 경우가 많다(2026-09-19,
+    # id=11248 사례 — 오픈 직후엔 블로그가 없다가 며칠 뒤 올라옴). 그런데 위 수정으로 0건도 즉시
+    # "완료"로 확정돼버려서 자동 스케줄러가 다시는 재시도하지 않는 문제가 있었음. enrich_empty_count/
+    # enrich_next_retry_at로 0건 결과에 한해 며칠 간격으로 몇 차례 더 재시도하고, 그래도 없으면 포기함.
     with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_empty_count INTEGER DEFAULT 0"
+        ))
+        conn.execute(text(
+            "ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_next_retry_at TIMESTAMPTZ"
+        ))
         conn.execute(
-            text(
-                "UPDATE seongsu_places SET content = :content, blog_reviews = :blog_reviews, "
-                "mood_tags = :mood_tags, category_tag = :category_tag, updated_at = NOW() WHERE id = :id"
-            ),
+            text(f"""
+                UPDATE seongsu_places SET
+                    content = :content,
+                    blog_reviews = :blog_reviews,
+                    mood_tags = :mood_tags,
+                    category_tag = :category_tag,
+                    updated_at = NOW(),
+                    enrich_empty_count = CASE WHEN :found_any THEN 0 ELSE COALESCE(enrich_empty_count, 0) + 1 END,
+                    enrich_next_retry_at = CASE
+                        WHEN :found_any THEN NULL
+                        WHEN COALESCE(enrich_empty_count, 0) + 1 >= {_ENRICH_EMPTY_MAX_RETRIES} THEN NULL
+                        ELSE NOW() + INTERVAL '{_ENRICH_EMPTY_RETRY_INTERVAL_DAYS} days'
+                    END
+                WHERE id = :id
+            """),
             {
                 "content": generated,
                 "blog_reviews": json.dumps(blog_reviews, ensure_ascii=False),
                 # 빈 배열도 그대로 저장 — NULL(생성 전)과 구분해야 백필이 같은 곳을 무한 재시도하지 않음
+                "found_any": bool(blog_reviews),
                 "mood_tags": mood_tags,
                 "category_tag": category_tag,
                 "id": place_id,
@@ -298,10 +337,15 @@ def _auto_enrich_new_popups() -> None:
     ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_fail_count INTEGER DEFAULT 0"))
+        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_empty_count INTEGER DEFAULT 0"))
+        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_next_retry_at TIMESTAMPTZ"))
         conn.commit()
         rows = conn.execute(text("""
             SELECT id FROM seongsu_places
-            WHERE blog_reviews IS NULL
+            WHERE (
+                blog_reviews IS NULL
+                OR (enrich_next_retry_at IS NOT NULL AND enrich_next_retry_at <= NOW())
+              )
               AND COALESCE(enrich_fail_count, 0) < :max_attempts
               AND COALESCE(category, 'popup') = 'popup'
               AND region NOT IN ('공연', '축제')
