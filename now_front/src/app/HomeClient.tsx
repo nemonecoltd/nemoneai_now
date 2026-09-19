@@ -43,7 +43,10 @@ type Region = '성수' | '홍대' | '강북' | '강남' | '부산' | '공연' | 
 type Lang = 'ko' | 'en' | 'zh' | 'ja';
 // 우선순위 고정 목록 — 실제 서브탭 노출 여부는 /places/categories로 지역별 DISTINCT 조회해 결정
 // '전시'=성수/홍대/강북/강남(Visit Seoul), '행사'=제주(비짓제주) 전용 — 지역별 DISTINCT라 서로 섞이지 않음
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사', '엔터'] as const;
+// '엔터'는 여기(지역 안 콘텐츠 유형)가 아니라 category_tag(핫플>카테고리, 지역 무관 장르
+// 분류)로 들어가야 맞다 — 한 번 여기 넣었다가 장소>강북 하위에 별도 탭이 생기는 오류가
+// 있었음(2026-09-11 발견, category_tags.py 쪽으로 이동)
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
 type PlaceCategory = typeof CATEGORY_ORDER[number];
 const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
@@ -51,7 +54,6 @@ const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string
   shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
   '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
   '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
-  '엔터': { en: 'Entertainment', zh: '娱乐', ja: 'エンタメ', ko: '엔터' },
 };
 
 // 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
@@ -240,7 +242,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
       setRecPlaceRegion(r as PlaceRankingRegion);
     }
     if (l === 'en' || l === 'zh' || l === 'ja' || l === 'ko') setLang(l);
-    if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사' || c === '엔터') setPlaceCategory(c);
+    if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
     // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
     const m = params.get('mood');
@@ -377,8 +379,9 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
     )}>
       {/* 시각적으로는 로고+태그라인으로 충분하지만, 페이지 전체에 h1이 하나도 없어(SEO 점검 중
           2026-08-25 발견) 크롤러에 페이지 주제를 알려줄 시맨틱 h1이 없었음. 디자인은 그대로 두고
-          root layout의 title과 동일한 문구로 숨김 h1만 추가 */}
-      <h1 className="sr-only">서울·부산·제주 팝업스토어 실시간 랭킹 | 지금 뜨는 핫플레이스 | NEMONE PACE</h1>
+          root layout의 title과 동일한 문구로 숨김 h1만 추가(브랜드 앞머리 순서는 2026-09-20
+          title 변경에 맞춰 동기화) */}
+      <h1 className="sr-only">NEMONE PACE | 서울·부산·제주 팝업스토어 실시간 랭킹 | 지금 뜨는 핫플레이스</h1>
       {/* Header */}
       <header ref={headerRef} className="px-6 pt-4 pb-1 bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-zinc-100">
         <div className="flex items-center justify-between mb-2">

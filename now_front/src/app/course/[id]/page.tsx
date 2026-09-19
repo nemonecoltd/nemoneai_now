@@ -101,7 +101,10 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
     };
   }
 
-  const title = `${course.title} | NEMONE PACE ${tr(lang, '코스', 'Course', '课程', 'コース')}`;
+  // root layout의 title.template("NEMONE PACE | %s")이 브랜드를 붙이므로 여기서는 안 붙인다
+  // (전에는 여기서도 수동으로 "| NEMONE PACE"를 붙여 템플릿과 겹친 이중 접미사 버그가 있었음 —
+  // 2026-09-20 template 방향 전환하면서 같이 발견·수정).
+  const title = `${course.title} ${tr(lang, '코스', 'Course', '课程', 'コース')}`;
   const scopeLabel = course.scope === 'timed' ? tr(lang, '3시간', '3-Hour', '3小时', '3時間') : '';
   const description = cleanDescription(course.description) || tr(
     lang,
