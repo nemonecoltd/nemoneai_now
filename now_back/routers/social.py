@@ -87,11 +87,15 @@ async def get_all_courses():
     """[랭킹] 공개 코스 조회 (자체 보관된 유저 정보 사용).
     기존엔 title이 '[퍼감]'으로 시작하는지로 공개 여부를 판별하는 임시방편이었는데,
     is_public 컬럼이 생겨서 이제 그걸로 명시적으로 판별."""
+    # source='ig_auto'(인스타 자동생성용 코스, ig_studio가 saved_courses에 직접 저장)는
+    # 링크(/course/{id})로는 열려야 하지만 이 랭킹엔 안 뜨게 제외 — 유저가 만든 것처럼
+    # 섞여 보이면 안 된다는 결정(2026-09-20).
     query = text("""
         SELECT c.*, COUNT(cl.id) as like_count
         FROM saved_courses c
         LEFT JOIN course_likes cl ON c.id = cl.course_id
         WHERE c.is_public = true
+          AND c.source != 'ig_auto'
           AND c.created_at >= NOW() - INTERVAL '45 days'
         GROUP BY c.id
         ORDER BY like_count DESC, c.created_at DESC
