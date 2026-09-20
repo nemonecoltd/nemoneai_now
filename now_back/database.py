@@ -26,6 +26,7 @@ def cleanup_expired_data():
     DB row 삭제 전 Supabase Storage에 재호스팅된 이미지도 같이 삭제해 용량이 계속 쌓이지 않게 함.
     """
     from image_storage import delete_image
+    from indexnow_service import ping_indexnow
 
     with engine.connect() as conn:
         expired = conn.execute(
@@ -35,6 +36,14 @@ def cleanup_expired_data():
             text("DELETE FROM seongsu_places WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE - INTERVAL '45 days'")
         )
         conn.commit()
+
+    # 2026-09-20 — 외부 SEO 진단이 "죽은 링크가 생겨도 IndexNow에 알리지 않는다"고 지적한 부분.
+    # 지금까지 IndexNow는 collector_base.upsert_items()에서 "새 URL"에만 핑을 보냈고, 여기서
+    # 45일 유예 후 실제로 사라지는 URL은 아무도 알리지 않아 검색엔진이 자연 재크롤로 죽은 링크를
+    # 발견할 때까지 방치됐음. IndexNow 프로토콜은 "이 URL을 다시 봐달라"는 핑이라 삭제 통보에도
+    # 그대로 쓸 수 있다(신규든 삭제든 같은 엔드포인트) — 재크롤 시 404를 받으면 색인에서 더 빨리 빠짐.
+    if expired:
+        ping_indexnow([f"https://now.nemoneai.com/posts/{row.id}" for row in expired])
 
     # 고아 이미지(2026-09-03, 5,967개/405MB 발견) 원인 추적용 — 건별 결과를 집계해 남긴다.
     tally = {"deleted": 0, "failed": 0, "skipped": 0, "no_image": 0}

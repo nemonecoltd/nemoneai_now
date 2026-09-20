@@ -1,5 +1,7 @@
 """장소 CRUD·조회 — 목록/카테고리/상세/조회수/생성/수정/삭제/이미지 업로드/블로그갱신 트리거."""
 import asyncio
+import hashlib
+import os
 import re
 import threading
 from typing import Optional
@@ -12,6 +14,7 @@ from deps import ADMIN_EMAIL, _verify_supabase_user
 from enrich_service import _enrich_place_core, _revalidate_place, _translate_and_save
 from gemini_service import get_embedding
 from image_storage import delete_image, rehost_image, upload_bytes, is_internal_url
+from indexnow_service import ping_indexnow
 import ranking_service as ranking
 from schemas import PlaceUpdate
 
@@ -141,6 +144,14 @@ async def get_place(place_id: int):
         return place
 
 _BOT_UA_RE = re.compile(r"bot|spider|crawl|yeti|slurp|facebookexternalhit|google", re.IGNORECASE)
+_VIEW_DEDUP_SALT = os.getenv("ADMIN_SECRET_KEY", "now-view-dedup")
+_VIEW_DEDUP_WINDOW_HOURS = 24  # 같은 IP가 같은 장소를 하루 안에 몇 번을 봐도 최초 1회만 카운트
+
+
+def _hash_ip(ip: str) -> str:
+    """원본 IP를 그대로 저장하지 않고 솔트 붙여 해시 — 중복 판정에만 쓰고 개인 식별엔 안 씀."""
+    return hashlib.sha256(f"{_VIEW_DEDUP_SALT}:{ip}".encode()).hexdigest()
+
 
 @router.post("/places/{place_id}/view")
 async def record_place_view(place_id: int, request: Request):
@@ -151,12 +162,32 @@ async def record_place_view(place_id: int, request: Request):
     'google' 자체도 패턴에 포함(2026-08-23) — GoogleOther 등 이름에 'bot'이 없는 구글 크롤러가
     필터를 통과해 부산 카카오맵 항목들 조회수가 튀는 원인이었음(nginx 로그로 확인). 실제 브라우저
     UA엔 'Google' 문자열이 없어 오탐 없음 — 이 필터는 조회수 집계만 스킵할 뿐 페이지 접근/크롤링
-    자체는 막지 않음(GET 요청은 그대로 200 반환, SEO 색인에 영향 없음)."""
+    자체는 막지 않음(GET 요청은 그대로 200 반환, SEO 색인에 영향 없음).
+
+    IP당 24시간 1회 제한(2026-09-14 추가) — 봇 UA 필터만으로는 "사람 UA를 쓰는 반복 호출
+    스크립트"를 못 막아, 소규모 상업 팝업이 스스로 조회수를 반복 호출해 인기 랭킹을 조작하는
+    사례가 의심돼(강북 지역 조회수 급증 + 조회수 자체는 적은데도 1위 등극) 추가."""
     ua = request.headers.get("user-agent", "")
     if _BOT_UA_RE.search(ua):
         return {"ok": True, "counted": False}
+    client_ip = request.headers.get("x-real-ip") or (request.client.host if request.client else "unknown")
+    ip_hash = _hash_ip(client_ip)
     with engine.connect() as conn:
-        conn.execute(text("INSERT INTO place_views (place_id) VALUES (:place_id)"), {"place_id": place_id})
+        dup = conn.execute(
+            text("""
+                SELECT 1 FROM place_views
+                WHERE place_id = :place_id AND viewer_ip_hash = :ip_hash
+                  AND viewed_at >= NOW() - (:window_hours || ' hours')::interval
+                LIMIT 1
+            """),
+            {"place_id": place_id, "ip_hash": ip_hash, "window_hours": _VIEW_DEDUP_WINDOW_HOURS},
+        ).fetchone()
+        if dup:
+            return {"ok": True, "counted": False}
+        conn.execute(
+            text("INSERT INTO place_views (place_id, viewer_ip_hash) VALUES (:place_id, :ip_hash)"),
+            {"place_id": place_id, "ip_hash": ip_hash},
+        )
         conn.commit()
     return {"ok": True, "counted": True}
 
@@ -312,4 +343,7 @@ async def delete_place(place_id: int, viewer: dict = Depends(_verify_supabase_us
         conn.commit()
     if row and row[0]:
         delete_image(row[0])
+    # 45일 자동만료 삭제(database.cleanup_expired_data)와 동일한 이유로, 관리자 수동삭제도
+    # 죽은 링크가 됐음을 IndexNow에 알려 재크롤/de-index를 앞당긴다(2026-09-20).
+    ping_indexnow([f"https://now.nemoneai.com/posts/{place_id}"])
     return {"status": "success"}
