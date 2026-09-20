@@ -24,13 +24,15 @@ STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024  # Supabase Free 플랜 Storage 한도 
 _STORAGE_PREFIX = f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/"
 
 
-def _auth_headers(content_type: Optional[str] = None) -> dict:
+def _auth_headers(content_type: Optional[str] = None, cache_control: Optional[str] = None) -> dict:
     headers = {
         "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
         "apikey": SUPABASE_SERVICE_ROLE_KEY,
     }
     if content_type:
         headers["Content-Type"] = content_type
+    if cache_control:
+        headers["cache-control"] = cache_control
     return headers
 
 
@@ -43,7 +45,17 @@ def _compress_to_webp(raw_bytes: bytes) -> bytes:
     from PIL import Image  # 압축/업로드 경로에서만 필요 — 삭제만 하는 호출자는 PIL 없이도 동작해야 함
 
     img = Image.open(io.BytesIO(raw_bytes))
-    img = img.convert("RGB")
+    # 애니메이션 GIF/WEBP는 첫 프레임만 정적 이미지로 쓴다(움직이는 썸네일 자체는 별도 기능).
+    # 투명(RGBA/팔레트+alpha) 소스를 바로 .convert("RGB")하면 알파 채널만 버려지고 그 아래 RGB
+    # 값(흔히 0,0,0)이 그대로 남아 투명이었던 부분이 새까맣게 나온다 — 흰 배경에 합성한 뒤
+    # RGB로 변환해야 함(이전에 네이버 움직이는 팝업 썸네일이 새까맣게 나왔던 원인, 2026-09-11 재발견).
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        img = img.convert("RGBA")
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        background.paste(img, mask=img.split()[-1])
+        img = background
+    else:
+        img = img.convert("RGB")
     if max(img.size) > MAX_DIMENSION:
         ratio = MAX_DIMENSION / max(img.size)
         img = img.resize((int(img.width * ratio), int(img.height * ratio)))
@@ -59,9 +71,17 @@ def upload_bytes(raw_bytes: bytes, name_hint: str = "upload") -> str:
     """
     webp_bytes = _compress_to_webp(raw_bytes)
     path = f"{int(time.time() * 1000)}-{abs(hash(name_hint)) % 100000}.webp"
+    # Supabase Storage 업로드 시 cache-control을 안 지정하면 객체가 Cache-Control: no-cache로
+    # 서빙돼(2026-09-20, curl로 실측 확인) 브라우저·CDN 둘 다 캐싱을 안 하고 방문할 때마다
+    # 매번 다시 받아간다 — Free 플랜 Cached Egress 5GB를 지난 청구주기에 초과한 원인으로 추정.
+    # 파일명이 타임스탬프+해시라 같은 경로가 재사용되지 않으므로(재수집 시에도 새 파일로 올라감,
+    # collector_base.py 참고) 1년으로 안전하게 캐싱해도 된다. 헤더 형식은 "max-age=<초>"
+    # 정확히 이 포맷이어야 함 — @supabase/storage-js 소스(uploadOrUpdate)에서
+    # `cache-control: max-age=${cacheControl}`로 보내는 걸 확인. 처음에
+    # "public, max-age=..., immutable"로 시도했다가 무시됨(실측 확인 후 정정).
     upload_resp = requests.post(
         f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{path}",
-        headers=_auth_headers("image/webp"),
+        headers=_auth_headers("image/webp", cache_control="max-age=31536000"),
         data=webp_bytes,
         timeout=15,
     )
