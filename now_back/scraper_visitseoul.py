@@ -369,7 +369,7 @@ def upsert_visitseoul_items(items: list[dict], permanent: bool = True) -> tuple[
 
                 # 재수집 때마다 rehost_image()가 매번 새 파일명으로 새로 업로드해 옛 이미지가
                 # 고아로 쌓이던 문제(2026-09) — 이미 이미지가 있는 기존 장소는 재rehost하지 않는다.
-                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item["image_url"]) or "")
+                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item["image_url"], category=item["category"]) or "")
 
                 if existing_id:
                     conn.execute(text("""

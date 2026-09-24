@@ -186,7 +186,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 if existing_id and existing_row[1]:
                     params["image_url"] = existing_row[1]
                 else:
-                    params["image_url"] = rehost_image(item.get("image_url")) or ""
+                    params["image_url"] = rehost_image(item.get("image_url"), category=(category or "popup")) or ""
 
                 if existing_id:
                     conn.execute(text("""

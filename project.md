@@ -1148,3 +1148,23 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 #### 11. 4시간마다 분야별 조회수 텔레그램 리포트 신설
 - `notification.py`에 `send_four_hourly_report()` 추가 — 8개 분야 조회수+직전 48시간 대비 변화율, 전체 DB/코스/유저수를 정리해 발송. 랭킹 갱신과 동일한 KST 0/4/8/12/16/20시 6개 슬롯에 cron 등록(`main.py`), "새벽 4시만 빼달라"는 요청은 등록 자체가 아니라 함수 내부에서 `now_kst.hour == 4`면 조용히 return하는 방식으로 처리
 - **배포 후 발견한 잠재 버그**: 이 cron이 로컬 개발 서버(`main.py`가 동일 코드라 로컬도 동일하게 6개 슬롯 등록)에도 그대로 등록돼, 텔레그램 봇용으로 로컬 서버를 켜두는 시간대와 겹치면 서버·로컬 양쪽에서 중복 발송될 뻔함 — `TELEGRAM_BOT_ENABLED=true`(로컬 전용 게이트) 있을 때는 이 cron을 아예 등록하지 않도록 조건 추가, 로컬 프로세스 재시작해 실제로 등록 안 되는 것까지 확인
+
+### 2026-09-25 — Supabase Cached Egress 폭등(9/23 120MB → 9/24 600MB) 원인 규명 및 전 이미지 GCS 이전
+
+#### 1. 원인
+- 9/23에 GCS로 옮긴 건 팝업 778장뿐 — 공연/음악/연극/뮤지컬·쇼핑·클래스·행사·전시 **4,644장은 Supabase에 그대로**였고, 수집기도 팝업 외엔 계속 Supabase로 업로드
+- 비팝업 상세페이지 1개가 Supabase 이미지를 **16장**(본 이미지+추천/연관 카드, 장당 평균 ~55~70KB) 로드. 팝업 상세는 2~4장, 홈은 0장
+- 9/24 05:40~05:50 UTC(14:40 KST) **AWS 대역 IP ~100개가 브라우저 UA·리퍼러 없이 상세페이지를 분당 최대 247건** 긁음(평소 리퍼러 없는 상세 요청은 분당 최대 25건). 비봇 UA의 비팝업 상세 요청이 22일 154 → 23일 128 → 24일 **1,755**건
+- Supabase public 엔드포인트는 `cache-control: no-cache`로 서빙하지만 Cloudflare 엣지는 캐시(`cf-cache-status: HIT`)하므로, 새 클라이언트가 받아갈 때마다 원본 크기 그대로 Cached Egress로 과금됨
+- Googlebot `/posts` 크롤도 22일 219 → 23일 5,380건으로 늘었지만, Google 렌더러는 페이지 이미지(히어로 jpg 등)를 거의 요청하지 않는 걸 nginx 로그로 확인 — 주원인 아님
+- 사람 조회(`place_views`)는 23일 253 → 24일 169로 오히려 감소
+
+#### 2. 조치
+- `image_storage.py`: 카테고리 무관 **전부 GCS 업로드**(`upload_bytes`가 공통 진입점), Supabase는 GCS 실패 시 폴백으로만. 서버에선 ADC로 `gcs_storage` 직접 호출(자기 자신 HTTP 호출 시 워커 교착 방지), 로컬은 터널 경유 + 로컬에서 먼저 webp 압축(`precompressed=1` → 서버 재압축 안 함)
+- **로컬 터널 버그 발견·수정**: 기존 터널 주소 `127.0.0.1:8081`이 로컬 텔레그램 봇 uvicorn 포트와 같아 요청이 로컬 봇으로 가서 502 → 항상 Supabase 폴백되고 있었음(9/23 이후 신규 팝업 22장이 Supabase로 간 원인). 터널도 수동으로만 열게 돼 있었음 → launchd `com.nemoneai.now.gcs-tunnel`(로컬 18081 → 서버 8081, KeepAlive)로 상시화, 기본 URL을 `127.0.0.1:18081`로 변경
+- `routers/internal.py`의 `str | None`이 로컬 Python 3.9에서 TypeError로 main.py import 실패 → `Optional[str]`로 수정(로컬 봇은 9/23 이전부터 떠 있던 프로세스라 재기동 전까지 드러나지 않았음)
+- `migrate_images_to_gcs.py`(서버에서 실행): Supabase `/object/authenticated/` 경로(CDN `BYPASS` → Cached Egress 미과금)로 원본을 받아 재압축 없이 GCS `now-popup/`에 업로드, `image_url`이 옛 값일 때만 UPDATE. Supabase 원본은 롤백용으로 삭제 안 함, 결과 매핑 CSV는 서버 `now_back/migrate_images_to_gcs_*.csv`
+- nginx `now.nemoneai.com`에 `/posts/` 속도 제한 추가(`/etc/nginx/conf.d/now_ratelimit.conf`): IP당 30r/m(burst 30) + 리퍼러 없는 비봇 요청 합산 60r/m(burst 60), 검색엔진 크롤러(Googlebot/GoogleOther/bingbot/Yeti/Daum/Applebot/OAI-SearchBot 등) 제외, 초과 시 429. 적용 후 연속 70회 요청에서 34회 200 / 36회 429, Googlebot UA는 200 확인
+
+#### 참고
+- `sites-enabled/`에 `now_matmatch.bak.1786000667`이 같이 로드돼 `conflicting server name` 경고가 나는 상태(기존부터). 원본이 알파벳순으로 먼저 로드돼 동작엔 문제없지만 백업 파일은 `sites-enabled` 밖으로 옮기는 게 맞음

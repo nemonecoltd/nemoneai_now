@@ -20,7 +20,7 @@ import notification
 import ga4_service
 from enrich_service import _auto_enrich_new_popups, _enrich_place_core
 from scraper_seoul_crowd import poll_crowd
-from routers import admin, ai, courses, crowd, magazine, places, push, rankings, social
+from routers import admin, ai, courses, crowd, internal, magazine, places, push, rankings, social
 
 app = FastAPI(title="오늘 성수 (Now Seongsu) API")
 
@@ -74,6 +74,7 @@ app.include_router(places.router)
 app.include_router(admin.router)
 app.include_router(crowd.router)
 app.include_router(push.router)
+app.include_router(internal.router)
 
 ranking.refresh_place_popularity()  # 내부에서 refresh_closing_soon()도 같이 호출됨
 # 서울시 API가 로컬(집/사무실) IP를 막아둔 상태라(서버 IP는 정상 응답) 로컬에서 호출하면
