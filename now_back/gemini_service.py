@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+# 번역처럼 형식이 정해진 단순 작업은 추론이 필요 없는데, thinking을 켜두면 눈에 안 보이는
+# "생각" 토큰이 출력 요금으로 과금된다(enrich_service 실측: 출력 토큰의 74%가 thinking).
+# 2026-09-21/23 Gemini 비용이 9/14 대비 5배로 튄 것도 수집기의 소개/번역 호출이 늘어난 탓이라
+# 번역 호출에는 thinking을 끈다(품질 손실 없이 비용만 절감).
+_NO_THINKING = types.GenerateContentConfig(thinking_config=types.ThinkingConfig(thinking_budget=0))
+
 def generate_answer(user_query: str, context: str, region: str = "성수", lang: str = "ko"):
     """일반 채팅용 답변 생성"""
     lang_name = {"en": "영어", "zh": "중국어(간체)"}.get(lang, "한국어")
@@ -82,6 +88,7 @@ def ai_translate(title: str, content: str) -> tuple[str, str, str, str, str, str
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
+            config=_NO_THINKING,
             contents=(
                 f"다음 한국어 팝업스토어 정보를 자연스러운 영어, 중국어(간체), 일본어로 각각 번역해줘.\n"
                 f"제목: {title}\n내용: {content}\n\n"
@@ -111,6 +118,7 @@ def ai_translate_ja(title: str, content: str) -> tuple[str, str]:
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
+            config=_NO_THINKING,
             contents=(
                 f"다음 한국어 팝업스토어 정보를 자연스러운 일본어로 번역해줘.\n"
                 f"제목: {title}\n내용: {content}\n\n"
@@ -135,6 +143,7 @@ def ai_translate_zh(title: str, content: str) -> tuple[str, str]:
     try:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
+            config=_NO_THINKING,
             contents=(
                 f"다음 한국어 관광지/매장 정보를 자연스러운 중국어(간체)로 번역해줘.\n"
                 f"제목: {title}\n내용: {content}\n\n"

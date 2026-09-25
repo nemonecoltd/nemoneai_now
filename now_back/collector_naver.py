@@ -22,6 +22,9 @@ from notification import send_alert
 
 load_dotenv()
 
+# 원데이클래스 정기 수집 스위치 — 2026-09-25부터 끔(설명은 run_all 참고)
+ENABLE_CLASS_SCRAPING = False
+
 
 def ai_generate_intro(title: str, location: str, category: Optional[str] = None) -> str:
     kind = "원데이클래스/체험 공방" if category == "class" else "소품샵/편집숍" if category == "shopping" else "팝업스토어"
@@ -30,6 +33,8 @@ def ai_generate_intro(title: str, location: str, category: Optional[str] = None)
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = client.models.generate_content(
             model="gemini-2.5-flash",
+            # 짧은 소개 문구 생성이라 추론 불필요 — thinking 토큰 과금을 끈다(gemini_service._NO_THINKING 참고)
+            config=genai.types.GenerateContentConfig(thinking_config=genai.types.ThinkingConfig(thinking_budget=0)),
             contents=(
                 f"다음 {kind}의 소개 문구를 정확히 2~3문장으로 작성해줘.\n"
                 f"장소명: {title}\n위치: {location}\n"
@@ -395,16 +400,23 @@ async def run_all():
         await run_jamsil(),
         await run_busan(),
         await run_jeju(),
-        await run_jeju_class(),
-        await run_class("성수", "성수 원데이클래스"),
-        await run_class("성수", "성수 공방 체험"),
-        await run_class("홍대", "홍대 원데이클래스"),
-        await run_class("강북", "용산 원데이클래스"),
-        await run_class("강북", "용산 공방 체험"),
-        await run_class("강남", "강남 원데이클래스", allowed_districts=["강남구"]),
-        await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
-        await run_shopping("제주", "제주 소품샵"),
     ]
+    # 원데이클래스는 기간한정이 아닌 상시 운영 장소라 매번 다시 수집할 이유가 없다.
+    # 켜 둔 동안 실행할 때마다 신규 소개문·번역 호출이 쌓여 Gemini 비용이 튀었다
+    # (2026-09-22/24 실행에서 신규 class 329건 → PT 9/21·9/23 비용 5배). 당분간 끄고,
+    # 다시 수집하려면 위 상수 ENABLE_CLASS_SCRAPING을 True로.
+    if ENABLE_CLASS_SCRAPING:
+        results += [
+            await run_jeju_class(),
+            await run_class("성수", "성수 원데이클래스"),
+            await run_class("성수", "성수 공방 체험"),
+            await run_class("홍대", "홍대 원데이클래스"),
+            await run_class("강북", "용산 원데이클래스"),
+            await run_class("강북", "용산 공방 체험"),
+            await run_class("강남", "강남 원데이클래스", allowed_districts=["강남구"]),
+            await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
+        ]
+    results.append(await run_shopping("제주", "제주 소품샵"))
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")
