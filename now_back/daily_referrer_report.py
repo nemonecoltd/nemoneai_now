@@ -10,9 +10,9 @@
 사이트 안에서 이동하거나 화면 링크를 미리 불러오는 요청(Next.js 프리페치)은 리퍼러가 내부라 제외된다.
 
 서비스 판정
-  - 로그 끝에 도메인 필드가 있으면(`"$host"`, nginx log_format 확장 이후) 그걸 그대로 쓴다.
-  - 없는 예전 로그는 추정: 같은 접속자(ip+UA)가 now 전용 정적파일/`/api-now/`를 함께 요청했는지로 판정.
-    → 추정 구간은 캐시 등으로 실제보다 적게 잡힐 수 있어 리포트에 각주를 붙인다.
+  - 로그 끝에 도메인 필드가 있으면(`"$host"`, nginx log_format 확장 이후) 서비스는 그걸로 확정한다.
+  - 없는 예전 로그는 같은 접속자(ip+UA)가 now 전용 정적파일/`/api-now/`를 함께 요청했는지로 서비스를 추정한다.
+  - '사람' 기준(브라우저 UA + 정적파일/API 동반 + 데이터센터·검색봇 IP 제외)은 모든 구간에 동일하게 적용한다.
 
 사용: python3 daily_referrer_report.py [--at "2026-09-25 21:00"] [--send]
       (--send 없으면 화면 출력만. 토큰은 now_back/.env의 TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)
@@ -41,10 +41,42 @@ BOT = re.compile(r"bot|spider|crawl|slurp|Yeti|Daum|facebookexternalhit|Twitterb
                  r"Bingpreview|WhatsApp|Telegram|Discord|PlayStore|Mediapartners|AdsBot|Google-Read|FeedFetcher|Nexus 5X Build/MMB29P", re.I)
 ASSET = re.compile(r"^/(_next|api|favicon|static|hero|brand|images|robots|sitemap|ads\.txt|\.well|apple-touch|manifest|sw\.js)"
                    r"|\.(js|css|png|jpg|jpeg|webp|svg|ico|woff2?|map|txt|xml|json)(\?|$)")
+# 사람으로 인정하는 UA: 실제 브라우저 엔진 토큰(AppleWebKit/Gecko/Firefox 버전)이 있어야 한다.
+# 이름 목록(BOT)만으로는 "Mozilla/5.0"만 달랑 보내거나 링크 검사기(MatinaleDeSeoul 등)처럼 새 봇이 계속 통과한다(2026-09-26 사고: 직접 3,281건 중 약 3,100건이 봇).
+BROWSER_UA = re.compile(r"(AppleWebKit/\d+|Gecko/\d+|Firefox/\d+)")
+# 한 IP가 24시간 안에 이만큼(외부·직접 유입 기준) 넘게 도착하면 사람이 아니라고 본다(일반 사용자는 내부 이동을 세지 않아 이 수치에 못 미침).
+MAX_ENTRIES_PER_IP = 60
 KST = dt.timedelta(hours=9)
 BOT_IP_FILE = "/etc/nginx/conf.d/now_botips.geo.inc"   # 검색엔진 공식 IP 대역(update_now_bot_ips.py가 매일 갱신)
 _bot_nets = None
 _bot_ip_cache = {}
+
+
+DC_IP_FILE = "/etc/nginx/conf.d/now_dcips.geo.inc"   # AWS EC2·GCP 대역(update_now_bot_ips.py가 매일 갱신) — 일반 방문자는 여기서 오지 않는다
+_dc_nets = None
+_dc_ip_cache = {}
+
+
+def is_dc_ip(ip):
+    global _dc_nets
+    if _dc_nets is None:
+        import ipaddress
+        _dc_nets = []
+        try:
+            for l in open(DC_IP_FILE):
+                parts = l.split()
+                if len(parts) == 2 and parts[1].startswith("1"):
+                    _dc_nets.append(ipaddress.ip_network(parts[0], strict=False))
+        except OSError:
+            pass
+    if ip not in _dc_ip_cache:
+        import ipaddress
+        try:
+            a = ipaddress.ip_address(ip)
+            _dc_ip_cache[ip] = any(a in n for n in _dc_nets if n.version == a.version)
+        except ValueError:
+            _dc_ip_cache[ip] = False
+    return _dc_ip_cache[ip]
 
 
 def is_bot_ip(ip):
@@ -122,46 +154,55 @@ def load(lo, hi):
 
 
 def entries(rows):
-    """구간 내 now 사람 유입 목록 [(t, ip, ua, path, channel, sub, estimated)]"""
-    # 호스트 정보가 없는 줄에 대한 추정용 학습: now 전용 정적파일 + /api-now/
+    """구간 내 now 사람 유입 목록 [(t, ip, ua, path, channel, sub, estimated)]
+
+    '사람' 기준은 도메인 필드 유무와 무관하게 모든 구간에 똑같이 적용한다:
+      실제 브라우저처럼 페이지 도착 직후(-3~+120초) 같은 접속자(ip+UA)가 now의 정적파일(/_next/static)이나 /api-now/를 함께 요청했을 것.
+    (도메인이 찍히기 전의 옛 로그는 이 표지로 서비스도 추정하고, 도메인이 있는 로그는 도메인으로 서비스를 확정한다.
+     사람 기준을 구간마다 다르게 하면 전일·7일전 비교가 왜곡된다 — 2026-09-26 직접 유입 3,281건 사고의 원인.)
+    """
+    # 도메인 없는 줄의 서비스 추정용 학습: now 전용 정적파일
     seen = collections.defaultdict(set)
     for t, ip, meth, path, st, ref, ua, host in rows:
-        if path.startswith("/_next/static/") and OWN.get(host_of(ref)):
+        if not host and path.startswith("/_next/static/") and OWN.get(host_of(ref)):
             seen[path.split("?")[0]].add(OWN[host_of(ref)])
     now_asset = {p for p, s in seen.items() if s == {"now"}}
-    idx = collections.defaultdict(list)
+    idx = collections.defaultdict(list)    # 접속자(ip,UA)별 now 관련 요청 시각
     for t, ip, meth, path, st, ref, ua, host in rows:
-        if host:
-            continue
         p = path.split("?")[0]
-        if p in now_asset or path.startswith("/api-now/") or OWN.get(host_of(ref)) == "now":
+        if host:
+            if host == NOW_HOST and (path.startswith("/_next/static/") or path.startswith("/api-now/") or OWN.get(host_of(ref)) == "now"):
+                idx[(ip, ua)].append(t)
+        elif p in now_asset or path.startswith("/api-now/") or OWN.get(host_of(ref)) == "now":
             idx[(ip, ua)].append(t)
 
     out = []
     for t, ip, meth, path, st, ref, ua, host in rows:
-        if meth != "GET" or st != 200 or ASSET.search(path) or BOT.search(ua) or "_rsc=" in path or is_bot_ip(ip):
+        if meth != "GET" or st != 200 or ASSET.search(path) or BOT.search(ua) or "_rsc=" in path or is_bot_ip(ip) or is_dc_ip(ip):
+            continue
+        if not BROWSER_UA.search(ua) or "compatible;" in ua:
             continue
         ch, sub = classify(ref)
         if ch == "내부":
             continue
-        if host:
-            if host != NOW_HOST:
-                continue
-            est = False
-        else:
-            if not any(-3 <= (x - t).total_seconds() <= 120 for x in idx.get((ip, ua), ())):
-                continue
-            est = True
-        out.append((t, ip, ua, path, ch, sub, est))
+        if host and host != NOW_HOST:
+            continue
+        if not any(-3 <= (x - t).total_seconds() <= 120 for x in idx.get((ip, ua), ())):
+            continue
+        out.append((t, ip, ua, path, ch, sub, not host))
     return out
 
 
 def summarize(ent, lo, hi):
     ent = [e for e in ent if lo <= e[0] < hi]
+    per_ip = collections.Counter(e[1] for e in ent)
+    heavy = {ip for ip, n in per_ip.items() if n > MAX_ENTRIES_PER_IP}
+    excluded = sum(1 for e in ent if e[1] in heavy)
+    ent = [e for e in ent if e[1] not in heavy]
     ch = collections.Counter(e[4] for e in ent)
     nav = collections.Counter(e[5] for e in ent if e[4] == "네이버")
     return {"ch": ch, "nav": nav, "total": len(ent), "visitors": len({(e[1], e[2]) for e in ent}),
-            "est": sum(1 for e in ent if e[6])}
+            "est": sum(1 for e in ent if e[6]), "excluded": excluded, "heavy_ips": len(heavy)}
 
 
 def delta(cur, prev, has_prev):
@@ -195,6 +236,8 @@ def build(T):
     lines += ["────────", "합계: %d | %s | %s" % (tc, delta(tc, ty, has["어제"]), delta(tc, tw, has["7일전"])),
               "방문자(고유): %d" % S["오늘"]["visitors"]]
     notes = []
+    if S["오늘"]["excluded"]:
+        notes.append("봇 의심 접속 %d건 제외" % S["오늘"]["excluded"])
     if not has["어제"]:
         notes.append("전일 데이터 없음")
     if not has["7일전"]:
