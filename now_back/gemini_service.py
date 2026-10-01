@@ -5,7 +5,10 @@ from google.genai import types
 from dotenv import load_dotenv
 
 load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# http_options.timeout 미지정 시 무한대기 — 2026-10-01, collector_naver.py가 이 설정 없는
+# genai.Client로 Gemini 응답을 기다리다 응답이 안 와 2일 넘게 멈춰있던 사고(launchd가 이전
+# 인스턴스가 살아있는 동안 다음 스케줄을 건너뛰어 완료 알림이 안 옴). 60초로 상한선을 둔다.
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options=types.HttpOptions(timeout=60_000))
 
 # 번역처럼 형식이 정해진 단순 작업은 추론이 필요 없는데, thinking을 켜두면 눈에 안 보이는
 # "생각" 토큰이 출력 요금으로 과금된다(enrich_service 실측: 출력 토큰의 74%가 thinking).

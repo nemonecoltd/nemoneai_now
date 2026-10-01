@@ -25,12 +25,21 @@ load_dotenv()
 # 원데이클래스 정기 수집 스위치 — 2026-09-25부터 끔(설명은 run_all 참고)
 ENABLE_CLASS_SCRAPING = False
 
+# 2026-10-01 사고: AI 호출(아래 ai_generate_intro, gemini_service.get_embedding/ai_translate)에
+# 타임아웃이 전혀 없어서 Gemini 호출 하나가 응답 없이 멈추자 run_all 전체가 48시간 넘게
+# 멈춰 있었음(화요일 정오 실행이 목요일 정오 스케줄까지 막음 — launchd가 이전 인스턴스 생존
+# 중엔 다음 실행을 건너뜀). 각 client에 60초 타임아웃 추가로 해결(ai_generate_intro 아래,
+# gemini_service.client).
+
 
 def ai_generate_intro(title: str, location: str, category: Optional[str] = None) -> str:
     kind = "원데이클래스/체험 공방" if category == "class" else "소품샵/편집숍" if category == "shopping" else "팝업스토어"
     try:
         from google import genai
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        # http_options.timeout 미지정 시 무한대기 — 2026-09-29 정오 실행이 이 호출에서 멈춰
+        # 48시간 넘게 안 끝난 사고 원인(gemini_service.client엔 같은 날 타임아웃 추가함, 여긴
+        # 별도 client라 빠져 있었음).
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"), http_options=genai.types.HttpOptions(timeout=60_000))
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             # 짧은 소개 문구 생성이라 추론 불필요 — thinking 토큰 과금을 끈다(gemini_service._NO_THINKING 참고)
@@ -232,7 +241,12 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 conn.commit()
                 print(f"    ✅ 저장 완료")
         except Exception as e:
-            conn.rollback()
+            # 2026-10-01 발견: get_embedding() 등이 with engine.connect() 블록 진입 전에 실패하면
+            # conn이 아직 할당 안 된 상태라 여기서 conn.rollback()이 UnboundLocalError를 또
+            # 일으켜 이 예외가 함수 밖(run_X 지역 래퍼)까지 튀어, 1건 실패가 지역 전체 수집을
+            # 통째로 날려버리는 사고로 이어졌다(어제 저녁 재실행 때 거의 전 지역에서 발생).
+            # with 블록 안에서 실패한 경우는 Connection.__exit__이 이미 자동 롤백·close하므로
+            # 여기서 수동 rollback은 원래도 불필요했음 — 그냥 제거.
             fail_count += 1
             print(f"    ❌ 저장 실패: {e}")
 
