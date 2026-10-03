@@ -31,12 +31,12 @@ export default function HomeSections({
     <div>
       <HeroSection lang={lang} region={region} onRegionChange={setRegion} />
       <HotNowSection lang={lang} places={allPlaces} region={region} onSeeAll={() => onSeeAllRanking(region)} />
-      {/* 가로 배너 — StoreBanner(자체 프로모 이미지)가 아니라 맛매치 메인 페이지가 쓰는 것과
-          동일한 AdSense 배너였음(2026-09-06 사용자 피드백으로 정정). 원래 variant="horizontal-slim"으로
-          리더보드(90px) 높이에 고정했는데, 높이 제한을 없애고 더 키워도 된다는 요청(2026-09-11)으로
-          기본 반응형(auto)으로 전환 — 구글이 컨테이너 폭에 맞춰 더 큰 크기를 자유롭게 고른다. */}
+      {/* 가로 배너 — 원래 맛매치 메인 페이지와 슬롯을 공유했으나(2026-09-06) PACE 전용 슬롯으로
+          분리(2026-09-13, 사용자 지정). 원래 variant="horizontal-slim"으로 리더보드(90px)
+          높이에 고정했는데, 높이 제한을 없애고 더 키워도 된다는 요청(2026-09-11)으로 기본
+          반응형(auto)으로 전환 — 구글이 컨테이너 폭에 맞춰 더 큰 크기를 자유롭게 고른다. */}
       <div className="px-6 md:px-10 max-w-6xl md:mx-auto">
-        <AdBanner dataAdSlot="7051929128" />
+        <AdBanner dataAdSlot="5641514885" />
       </div>
       <PaceNowSection lang={lang} />
       <RegionDiscoverySection lang={lang} regionTopPlaces={regionTopPlaces} />

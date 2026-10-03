@@ -83,7 +83,10 @@ const organizationJsonLd = {
   logo: 'https://now.nemoneai.com/brand/pace-icon-512.png',
   description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
   // 우리가 실제로 소유·운영하는 공식 자산만 연결(검증됨) — 브랜드 실체의 외부 근거가 된다
-  sameAs: ['https://play.google.com/store/apps/details?id=com.nemoneai.now'],
+  sameAs: [
+    'https://play.google.com/store/apps/details?id=com.nemoneai.now',
+    'https://www.instagram.com/nemone_pace/',
+  ],
   parentOrganization: {
     '@type': 'Organization',
     name: '네모네',

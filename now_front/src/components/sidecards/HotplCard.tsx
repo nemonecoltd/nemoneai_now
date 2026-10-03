@@ -54,7 +54,7 @@ export default function HotplCard({ lang = 'ko' }: { lang?: string }) {
           <div className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-zinc-100">
             {post.image_url && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={post.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <img src={post.image_url} alt={post.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             )}
           </div>
           <p className="mt-3 text-[13px] font-semibold text-zinc-900 leading-snug line-clamp-2 group-hover:text-pace-700">{post.title}</p>

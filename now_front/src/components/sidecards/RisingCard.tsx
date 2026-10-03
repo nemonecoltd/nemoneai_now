@@ -74,7 +74,7 @@ export default function RisingCard({ lang = 'ko' }: { lang?: string }) {
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
                     {p.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={p.image_url} alt={titleOf(p)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">

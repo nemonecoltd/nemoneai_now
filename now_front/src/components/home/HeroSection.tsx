@@ -30,7 +30,7 @@ export default function HeroSection({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/hero/pace-hero.jpg"
-          alt=""
+          alt="서울·부산·제주 팝업스토어 실시간 랭킹 - NEMONE PACE"
           className="absolute inset-0 w-full h-full object-cover"
           fetchPriority="high"
         />

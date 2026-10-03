@@ -105,7 +105,7 @@ export default function CourseRankingSection({ lang = 'ko' }: { lang?: string })
                     <div key={i} className="relative overflow-hidden bg-zinc-200">
                       {topCourseImages[i] && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={topCourseImages[i]} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                        <img src={topCourseImages[i]} className="w-full h-full object-cover" alt={course.title} referrerPolicy="no-referrer" />
                       )}
                     </div>
                   ))}

@@ -593,7 +593,7 @@ export default function Recommendation({
                         {Array.from({ length: 3 }).map((_, i) => (
                           <div key={i} className="relative overflow-hidden bg-zinc-200">
                             {topCourseImages[i] && (
-                              <img src={topCourseImages[i]} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                              <img src={topCourseImages[i]} className="w-full h-full object-cover" alt={course.title} referrerPolicy="no-referrer" />
                             )}
                           </div>
                         ))}

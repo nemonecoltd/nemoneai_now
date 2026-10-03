@@ -8,7 +8,7 @@ import AdUnit from './AdUnit';
 
 // 백엔드 category_tags.py의 CATEGORY_TAGS와 같은 값 — 값이 갈리면 필터가 400을 맞으므로
 // 태그 세트를 넓힐 땐 양쪽을 같이 수정해야 한다.
-const CATEGORY_TAGS = ['패션', '뷰티', '캐릭터', '애니웹툰', '종합'];
+const CATEGORY_TAGS = ['패션', '뷰티', '캐릭터', '애니웹툰', '엔터', '종합'];
 
 interface Place {
   id: number;

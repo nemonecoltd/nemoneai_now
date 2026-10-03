@@ -14,9 +14,16 @@ const ADMIN_EMAIL = 'nemonecoltd@gmail.com';
 
 export default function FeedbackPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
-      <FeedbackPageContent />
-    </Suspense>
+    <>
+      {/* h1은 반드시 Suspense 바깥에 둔다 — 안쪽 콘텐츠는 useSearchParams() 때문에 클라이언트
+          전용으로 렌더링돼 서버 HTML에는 fallback(빈 div)만 담긴다. 안쪽에 h1이 있어도 크롤러
+          눈에는 h1이 없는 페이지였다(2026-09-11 빙 웹마스터도구 지적). 아래 본문의 같은 문구는
+          h2로 낮춰 페이지당 h1이 정확히 하나가 되게 했다. */}
+      <h1 className="sr-only">사용자 피드백</h1>
+      <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+        <FeedbackPageContent />
+      </Suspense>
+    </>
   );
 }
 
@@ -149,7 +156,7 @@ function FeedbackPageContent() {
           <button onClick={handleBack} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('사용자 피드백', 'User Feedback', '用户反馈', 'ユーザーフィードバック')}</h1>
+          <h2 className="text-lg font-bold font-display tracking-tight text-zinc-900">{tr('사용자 피드백', 'User Feedback', '用户反馈', 'ユーザーフィードバック')}</h2>
         </div>
       </header>
 

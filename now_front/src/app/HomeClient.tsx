@@ -785,7 +785,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
           <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {[
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
-              { name: 'BLOG', href: 'https://blog.naver.com/nemoneaim' },
+              { name: 'INSTAGRAM', href: 'https://www.instagram.com/nemone_pace/' },
               { name: '네모네AIM', href: 'https://nemoneai.com' },
               { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
             ].map((item) => (

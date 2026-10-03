@@ -72,9 +72,9 @@ const PACE_PICK_TEXT: Record<string, string> = {
   '제주': 'text-[#0369a1]',
   '축제': 'text-amber-600',
 };
-// category_tag(패션/뷰티/캐릭터/애니웹툰/종합) 아이콘 — 상세정보 옆에 붙여 한눈에 성격을 알려준다.
+// category_tag(패션/뷰티/캐릭터/애니웹툰/엔터/종합) 아이콘 — 상세정보 옆에 붙여 한눈에 성격을 알려준다.
 const CATEGORY_TAG_ICON: Record<string, string> = {
-  '패션': '👗', '뷰티': '💄', '캐릭터': '🧸', '애니웹툰': '🎬', '종합': '✨',
+  '패션': '👗', '뷰티': '💄', '캐릭터': '🧸', '애니웹툰': '🎬', '엔터': '🎤', '종합': '✨',
 };
 
 // 카테고리별 쿠팡 파트너스 한 줄 링크(2026-09-03) — 전시는 공연과 같은 링크를 쓴다.
@@ -104,14 +104,14 @@ const REGION_HUB_LABEL: Record<string, (region: string) => string> = {
   zh: (r) => `查看更多${REGION_LABEL[r]?.zh ?? r}热门快闪店 →`,
   ja: (r) => `${REGION_LABEL[r]?.ja ?? r}の人気ポップアップをもっと見る →`,
 };
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사', '엔터'] as const;
+// '엔터'는 지역 카테고리(여기)가 아니라 category_tag(핫플>카테고리)로 이동함(2026-09-11)
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
 const CATEGORY_LABEL: Record<string, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
   class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
   shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
   '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
   '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
-  '엔터': { en: 'Entertainment', zh: '娱乐', ja: 'エンタメ', ko: '엔터' },
 };
 
 export interface BlogReview {
@@ -366,6 +366,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   // 제주는 2026-07-21부터 팝업/클래스(성수·홍대 등과 동일한 실제 네이버 지도 소스)/쇼핑·행사(비짓제주)를
   // 함께 갖는 장소형 지역이 됨 — 공연/축제(KOPIS·문체부 등 외부 이벤트 소스만 있는 지역)와는 구분해야 함
   const isPerformanceRegion = place.region === '공연' || place.region === '축제';
+  // 공연/축제/전시/행사는 AI가 소개문을 새로 쓰지 않고 원본 API 텍스트를 그대로 쓰는
+  // 콘텐츠라 "PACE PICK"(에디터가 고른 이유) 프레이밍이 안 맞는다는 피드백(2026-09-11)
+  // — 이 경우 예전처럼 중립적인 '상세 정보' 라벨만 쓰고 헤드라인 문구는 생략한다.
+  const isApiOnlyContent = isPerformanceRegion || place.category === '전시' || place.category === '행사';
   const hasValidNaverId = place.naver_place_id &&
     !place.naver_place_id.startsWith('raw_') &&
     !place.naver_place_id.startsWith('seoul_') &&
@@ -801,7 +805,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 <div className={cn("rounded-3xl border p-5", pickBoxClass)}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={cn("inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-widest", pickTextClass)}>
-                      <Sparkles size={13} /> {t.pacePick}
+                      {isApiOnlyContent ? t.details : <><Sparkles size={13} /> {t.pacePick}</>}
                     </span>
                     {place.category_tag && CATEGORY_TAG_ICON[place.category_tag] && (
                       <Link
@@ -813,9 +817,11 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                       </Link>
                     )}
                   </div>
-                  <h2 className="text-base font-bold text-zinc-900 tracking-tight mb-2">
-                    {t.pacePickHeadline}
-                  </h2>
+                  {!isApiOnlyContent && (
+                    <h2 className="text-base font-bold text-zinc-900 tracking-tight mb-2">
+                      {t.pacePickHeadline}
+                    </h2>
+                  )}
                   {textLines.length > 0 && (
                     <div className="text-zinc-600 leading-relaxed text-sm font-medium space-y-2">
                       {textLines.map((line, i) =>
@@ -1154,7 +1160,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           <nav className="flex flex-wrap justify-center gap-x-5 gap-y-2">
             {[
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
-              { name: 'BLOG', href: 'https://blog.naver.com/nemoneaim' },
+              { name: 'INSTAGRAM', href: 'https://www.instagram.com/nemone_pace/' },
               { name: '네모네AIM', href: 'https://nemoneai.com' },
               { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
             ].map((item) => (

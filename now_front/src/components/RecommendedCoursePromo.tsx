@@ -182,7 +182,7 @@ export default function RecommendedCoursePromo({ lang = 'ko' }: { lang?: string 
                   <img
                     src={place.image_url}
                     className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-                    alt=""
+                    alt={place.title}
                     referrerPolicy="no-referrer"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />

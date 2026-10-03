@@ -71,7 +71,7 @@ export default function ClosingSoonTicker({ lang = 'ko' }: { lang?: string }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={p.image_url || `https://picsum.photos/seed/${p.id}/60`}
-                  alt=""
+                  alt={title}
                   className="w-6 h-6 rounded-full object-cover flex-shrink-0 border border-zinc-700"
                 />
                 <span className={cn("text-xs font-bold", regionText[p.region || ''] || 'text-zinc-100')}>{title}</span>
