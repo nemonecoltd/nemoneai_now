@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* 시안에 CTA 장이 따로 없어 신규 추가 — 톤(navy bg, 흰 텍스트)과 브랜드 마크만 기존
+카드(#mon)와 동일하게 맞춤. */
+#cta{background:var(--navy);color:#F3F6F9;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:72px}
+#cta .brand{position:absolute;top:72px;left:72px}
+#cta .main{font-weight:900;font-size:72px;line-height:1.25;letter-spacing:-.03em;max-width:820px;white-space:pre-line}
+#cta .sub{font-weight:700;font-size:34px;color:var(--signal);margin-top:36px}
+#cta .arrow{margin-top:56px;font-family:Flap;font-weight:700;font-size:64px;color:#8FA9C6}
+</style>
+</head>
+<body>
+<section class="feed" id="cta">
+  <div class="brand">PACE</div>
+  <div class="main">{{ main_line }}</div>
+  {% if sub_line %}<div class="sub">{{ sub_line }}</div>{% endif %}
+  <div class="arrow">↑ 프로필 링크</div>
+</section>
+</body>
+</html>

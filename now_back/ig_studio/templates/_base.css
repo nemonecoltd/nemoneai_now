@@ -1,0 +1,37 @@
+/* zip 시안(templates.html) <style> 블록에서 공통 토큰·타일만 그대로 추출 — 수치 변경 금지.
+포맷별 신규 카드(연속 리스트/스톱 히어로/CTA)는 이 토큰만 재사용해서 만든다. */
+@font-face{font-family:Pretendard;font-weight:400;src:url(../assets/fonts/Pretendard-Regular.woff2)}
+@font-face{font-family:Pretendard;font-weight:500;src:url(../assets/fonts/Pretendard-Medium.woff2)}
+@font-face{font-family:Pretendard;font-weight:700;src:url(../assets/fonts/Pretendard-Bold.woff2)}
+@font-face{font-family:Pretendard;font-weight:800;src:url(../assets/fonts/Pretendard-ExtraBold.woff2)}
+@font-face{font-family:Pretendard;font-weight:900;src:url(../assets/fonts/Pretendard-Black.woff2)}
+@font-face{font-family:Flap;font-weight:600;src:url(../assets/fonts/barlow-condensed-latin-600-normal.woff2)}
+@font-face{font-family:Flap;font-weight:700;src:url(../assets/fonts/barlow-condensed-latin-700-normal.woff2)}
+
+:root{
+  --navy:#0E2A47; --flap:#1B3E64; --flap-lo:#16365A;
+  --paper:#EEF2F5; --ink:#0E2A47; --muted:#5B7089;
+  --signal:#FFC83D; --pace:#0369A1; --line:#C9D4DE;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#888;font-family:Pretendard,sans-serif}
+.feed{width:1080px;height:1350px;position:relative;overflow:hidden}
+.story{width:1080px;height:1920px;position:relative;overflow:hidden}
+
+.flaps{display:flex;gap:8px}
+.tile{position:relative;background:var(--flap);color:#F3F6F9;font-family:Flap;font-weight:700;
+  display:flex;align-items:center;justify-content:center;border-radius:10px;line-height:1;overflow:hidden}
+.tile::before{content:"";position:absolute;inset:0 0 50% 0;background:rgba(255,255,255,.045)}
+.tile::after{content:"";position:absolute;left:0;right:0;top:50%;height:3px;margin-top:-1.5px;background:var(--navy)}
+.tile.sm{width:64px;height:92px;font-size:74px;border-radius:8px}
+.tile.md{width:96px;height:138px;font-size:112px}
+.tile.lg{width:138px;height:196px;font-size:164px;border-radius:14px}
+.tile.sig{color:var(--signal)}
+.tile.colon{width:30px;background:transparent!important;color:var(--muted)}
+.tile.colon::before,.tile.colon::after{display:none}
+.tile.mc{width:80px;height:116px;font-size:94px;border-radius:9px}
+.on-paper .tile{background:var(--navy)}
+.on-paper .tile::after{background:var(--paper)}
+
+.brand{font-weight:900;letter-spacing:-.02em;font-size:40px}
+.brand small{font-weight:500;font-size:24px;letter-spacing:0;margin-left:14px;opacity:.7}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* mon_cover.html의 #mon 룰을 그대로 재사용 — 카드 2·3장(연속 리스트)은 큰 헤드라인만 빼고
+동일 톤을 유지하기 위해 같은 클래스명을 쓴다(시안에 없는 신규 카드라 최소 추가만). */
+#mon{background:var(--navy);color:#F3F6F9;padding:72px 72px 64px}
+#mon .top{display:flex;justify-content:space-between;align-items:baseline}
+#mon .week{font-family:Flap;font-weight:600;font-size:36px;color:#8FA9C6;letter-spacing:.02em}
+#mon .range{font-weight:900;font-size:64px;letter-spacing:-.03em;margin:56px 0 40px}
+#mon .rows{border-top:3px solid #F3F6F9}
+#mon .row{display:flex;align-items:center;gap:28px;padding:22px 0;border-bottom:2px solid #28496E}
+#mon .name{flex:1;min-width:0}
+#mon .name b{display:block;font-weight:700;font-size:40px;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mon .name .meta{display:flex;align-items:center;gap:14px;font-size:26px;color:#8FA9C6;margin-top:8px}
+#mon .loc{font-style:normal;font-weight:700;font-size:24px;color:#DCE6F0;border:2px solid #4A6B8F;border-radius:6px;padding:1px 12px}
+#mon .chip{font-weight:800;font-size:24px;padding:8px 16px;border-radius:8px;white-space:nowrap}
+#mon .chip.new{background:var(--signal);color:var(--navy)}
+#mon .chip.up{color:var(--signal);border:2px solid var(--signal)}
+#mon .foot{position:absolute;left:72px;right:72px;bottom:60px;display:flex;justify-content:space-between;font-size:26px;color:#8FA9C6}
+</style>
+</head>
+<body>
+<section class="feed" id="mon">
+  <div class="top"><div class="brand">PACE<small>주간 조회 순위</small></div><div class="week">{{ week_range }}</div></div>
+  <div class="range">{{ range_label }}</div>
+  <div class="rows">
+    {% for item in items %}
+    <div class="row">
+      <div class="flaps"><div class="tile sm">{{ item.rank_tens }}</div><div class="tile sm sig">{{ item.rank_ones }}</div></div>
+      <div class="name"><b>{{ item.title }}</b><span class="meta"><em class="loc">{{ item.region_label }}</em>{{ item.period_text }}</span></div>
+      {% if item.badge %}<div class="chip {{ item.badge_class }}">{{ item.badge }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="foot"><span>PACE 이용자 7일 조회로만 집계해요. 광고 없음.</span>{% if has_more %}<span>{{ next_range_label }}위부터 넘겨보기</span>{% endif %}</div>
+</section>
+</body>
+</html>

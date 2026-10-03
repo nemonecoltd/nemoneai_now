@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+#story{background:var(--navy);color:#F3F6F9;padding:230px 80px 0}
+#story .tile.st{width:108px;height:150px;font-size:126px;background:#1F4A76}
+#story .tile.st::after{background:var(--navy)}
+#story .now{font-weight:700;font-size:32px;color:#8FA9C6;margin-top:56px}
+#story h1{font-weight:900;font-size:104px;letter-spacing:-.045em;line-height:1.08;margin:16px 0 44px}
+#story .clk{display:flex;align-items:center;gap:10px}
+#story .colon{font-family:Flap;font-weight:700;font-size:96px;color:#8FA9C6;margin:0 2px}
+/* 지점명 아래 상세 부제(예: "성수카페거리") 삭제(2026-09-17 사용자 지시) — crowd_status
+테이블에 area_nm 하나뿐이라 시안의 2줄 라벨을 그대로 못 채웠음, 굳이 별도 매핑 안 만듦. */
+#story .spot{display:flex;align-items:center;justify-content:space-between;padding:26px 0;border-top:2px solid #28496E}
+#story .spot:last-of-type{border-bottom:2px solid #28496E}
+#story .spot b{font-weight:800;font-size:50px;letter-spacing:-.03em}
+#story .lv{display:flex;align-items:center;gap:18px;font-weight:800;font-size:44px}
+#story .dots{display:flex;gap:8px}
+#story .dots i{width:22px;height:48px;border-radius:5px;background:#28496E}
+#story .dots i.f{background:var(--signal)}
+#story .ask{margin-top:44px;border:3px dashed #8FA9C6;border-radius:24px;padding:28px;text-align:center}
+#story .ask p{font-weight:800;font-size:46px;letter-spacing:-.03em}
+#story .ask small{display:block;font-size:28px;color:#8FA9C6;margin-top:12px}
+</style>
+</head>
+<body>
+<section class="story" id="story">
+  <div class="brand">PACE<small>지금 여기</small></div>
+  <p class="now">서울시 실시간 도시데이터 기준</p>
+  <h1>지금 가면<br>얼마나 붐빌까</h1>
+  <div class="clk">{% for d in time_digits %}<div class="tile st{% if d == ':' %} colon{% endif %}">{{ d }}</div>{% endfor %}</div>
+  <div style="height:44px"></div>
+  {% for spot in spots %}
+  <div class="spot"><b>{{ spot.name }}</b><div class="lv">{{ spot.level }}<div class="dots">
+    {% for i in range(4) %}<i class="{% if i < spot.dot_count %}f{% endif %}"></i>{% endfor %}
+  </div></div></div>
+  {% endfor %}
+  <div class="ask"><p>오늘 어디로 갈까요?</p><small>이 자리에 투표 스티커를 올려요</small></div>
+</section>
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+/* 시안엔 스톱 개별 카드가 없어 신규 추가 — wed_cover.html의 .stop 타이포/색 토큰을
+그대로 키워서 재사용(신규 색·폰트 없음). */
+/* 2026-09-20 — 팝업 대표 이미지(홍보용, 저작권 문제 없음 확인됨)를 풀블리드 배경으로 깔고
+기존 타이포 레이아웃은 유지한 채 다크 스크림 위에 흰 글자로 올리는 방식으로 전환. 사진
+밝기가 제각각이라 전체에 스크림을 깔아 최소 대비를 보장하고, 본문(desc)이 걸리는 하단은
+한 번 더 어둡게 한다. .bgphoto/.scrim엔 음수 z-index를 쓰지 않는다 — Playwright의 요소
+스크린샷(locator.screenshot)에서 음수 z-index 레이어가 통째로 안 찍히는 현상을 실측으로
+확인(2026-09-20, /tmp 격리 테스트). 대신 DOM 순서(사진→스크림→본문 텍스트)와 본문 쪽
+position:relative만으로 쌓는다 — 포지셔닝된 요소끼리는 DOM 순서대로 위에 덮이므로
+나중에 나오는 텍스트가 자연히 사진/스크림 위에 온다. */
+#wedstop{position:relative;background:var(--navy);color:#fff;padding:72px}
+#wedstop .bgphoto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#wedstop .scrim{position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(14,42,71,.55) 0%, rgba(14,42,71,.62) 45%, rgba(14,42,71,.88) 100%)}
+#wedstop .top{position:relative;display:flex;justify-content:space-between;align-items:baseline}
+#wedstop .where{font-weight:700;font-size:28px;color:var(--signal)}
+#wedstop .step{position:relative;font-family:Flap;font-weight:600;font-size:36px;color:rgba(255,255,255,.75)}
+#wedstop .time{position:relative;display:flex;align-items:center;gap:20px;margin:72px 0 8px}
+#wedstop .time i{display:inline-block;width:16px;height:64px;border-radius:4px}
+#wedstop .time b{font-family:Flap;font-weight:700;font-size:88px;color:var(--signal);letter-spacing:-.02em}
+#wedstop h1{position:relative;font-weight:900;font-size:92px;line-height:1.12;letter-spacing:-.04em;margin:24px 0 28px;color:#fff}
+#wedstop .desc{position:relative;font-size:36px;color:rgba(255,255,255,.85);line-height:1.5;max-width:880px}
+#wedstop .dur{position:absolute;left:72px;bottom:220px;font-weight:800;font-size:32px;color:#fff;
+  border:3px solid rgba(255,255,255,.6);border-radius:16px;padding:14px 28px;display:inline-block}
+#wedstop .foot{position:absolute;left:72px;right:72px;bottom:60px;font-size:26px;color:rgba(255,255,255,.75)}
+</style>
+</head>
+<body>
+<section class="feed on-paper" id="wedstop">
+  {% if image_url %}<img class="bgphoto" src="{{ image_url }}">{% endif %}
+  <div class="scrim"></div>
+  <div class="top"><div class="brand">PACE<small>3시간 코스</small></div><div class="where">{{ where }}</div></div>
+  <div class="step">STOP {{ stop_no }}/{{ stop_total }}</div>
+  <div class="time"><i style="background:{{ color }}"></i><b>{{ time }}</b></div>
+  <h1>{{ name }}</h1>
+  {% if desc %}<p class="desc">{{ desc }}</p>{% endif %}
+  <div class="dur">{{ duration_label }}</div>
+  <div class="foot">{% if move_to_next %}{{ move_to_next }}{% else %}지도와 동선은 프로필 링크에서{% endif %}</div>
+</section>
+</body>
+</html>

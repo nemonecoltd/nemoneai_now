@@ -75,6 +75,29 @@ def _handle_kakao(chat_id: str, keyword: str, category: str, region: Optional[st
         _reply(chat_id, f"❌ 카카오맵 수집 실패: {e}")
 
 
+def _handle_ig_command(chat_id: str, cmd: str, text: str) -> None:
+    """ig_studio 승인 명령 — /ok /redo /skip /posted {id}. 기존 폴링 루프에 얹기만 하고
+    봇 자체 구조는 안 건드림(ig_studio 쪽 import는 여기서만, 지연 로딩)."""
+    parts = text.split()
+    if len(parts) < 2 or not parts[1].isdigit():
+        _reply(chat_id, f"형식: {cmd} <ig_posts id>")
+        return
+    post_id = int(parts[1])
+    from ig_studio import approval
+
+    handler = {
+        "/ok": approval.handle_ok,
+        "/redo": approval.handle_redo,
+        "/skip": approval.handle_skip,
+        "/posted": approval.handle_posted,
+    }[cmd]
+    try:
+        result = handler(post_id)
+        _reply(chat_id, result)
+    except Exception as e:
+        _reply(chat_id, f"❌ {cmd} {post_id} 처리 실패: {e}")
+
+
 def _poll_loop(enrich_place_sync, run_favorite_sync, run_kakao_sync) -> None:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("[telegram_admin_bot] TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 — 봇 비활성화")
@@ -94,6 +117,8 @@ def _poll_loop(enrich_place_sync, run_favorite_sync, run_kakao_sync) -> None:
                     continue  # 등록된 chat_id 아니면 무시 (인증되지 않은 사용자가 봇을 알아도 트리거 불가)
                 if text.lstrip("#").isdigit():
                     _handle_place_id(chat_id, int(text.lstrip("#")), enrich_place_sync)
+                elif text.split(" ")[0] in ("/ok", "/redo", "/skip", "/posted"):
+                    _handle_ig_command(chat_id, text.split(" ")[0], text)
                 elif text.startswith("/fav"):
                     parts = text[len("/fav"):].strip().split()
                     if len(parts) < 2:
@@ -128,7 +153,8 @@ def _poll_loop(enrich_place_sync, run_favorite_sync, run_kakao_sync) -> None:
                         chat_id,
                         "플레이스 ID(숫자)를 보내면 블로그갱신을 실행합니다.\n"
                         "/fav <즐겨찾기폴더URL> <지역> [카테고리] 로 즐겨찾기 폴더를 수집할 수 있습니다.\n"
-                        "/kakao <키워드> <카테고리> [지역] 로 카카오맵 키워드 검색을 수집할 수 있습니다(지역 생략 시 구 자동매핑).",
+                        "/kakao <키워드> <카테고리> [지역] 로 카카오맵 키워드 검색을 수집할 수 있습니다(지역 생략 시 구 자동매핑).\n"
+                        "/ok /redo /skip /posted <ig_posts id> 로 인스타그램 카드 승인/재생성/스킵/게시완료 처리를 합니다.",
                     )
         except Exception as e:
             print(f"[telegram_admin_bot] 폴링 오류: {e}")

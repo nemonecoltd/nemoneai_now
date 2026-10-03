@@ -12,3 +12,4 @@ credentials/
 *.credentials.json
 *-*-*-*-*.json
 nol_seen_titles.json
+now_back/ig_studio/output/

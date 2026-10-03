@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+#wed{background:var(--paper);color:var(--ink);padding:72px}
+#wed .top{display:flex;justify-content:space-between;align-items:baseline}
+#wed .where{font-weight:700;font-size:28px;color:var(--pace)}
+#wed h1{font-weight:900;font-size:96px;line-height:1.1;letter-spacing:-.045em;margin:48px 0 36px}
+#wed .clock{display:flex;align-items:center;gap:22px}
+#wed .clock .arrow{font-family:Flap;font-weight:600;font-size:56px;color:var(--muted);margin:0 6px}
+#wed .bar{display:flex;height:22px;margin:40px 0 12px;gap:4px}
+#wed .bar i{display:block;border-radius:4px}
+#wed .scale{display:flex;justify-content:space-between;font-family:Flap;font-weight:600;font-size:26px;color:var(--muted)}
+#wed .stops{margin-top:36px}
+#wed .stop{display:grid;grid-template-columns:176px 1fr auto;align-items:baseline;padding:22px 0;border-top:2px solid var(--line)}
+#wed .stop .t i{display:inline-block;width:12px;height:40px;border-radius:3px;margin-right:14px;vertical-align:-2px}
+#wed .stop .t{font-family:Flap;font-weight:700;font-size:52px;color:var(--pace)}
+#wed .stop b{font-weight:700;font-size:38px;letter-spacing:-.03em}
+#wed .stop em{display:block;font-style:normal;font-size:26px;color:var(--muted);margin-top:4px}
+#wed .stop .d{font-weight:700;font-size:28px;color:var(--muted)}
+#wed .move{font-size:24px;color:var(--muted);padding:0 0 14px 176px;margin-top:-8px}
+#wed .foot{position:absolute;left:72px;right:72px;bottom:60px;display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<section class="feed on-paper" id="wed">
+  <div class="top"><div class="brand">PACE<small>3시간 코스</small></div><div class="where">{{ where }}</div></div>
+  <h1>{{ headline_line1 }}<br>{{ headline_line2 }}</h1>
+  <div class="clock">
+    <div class="flaps">
+      {% for d in start_digits %}<div class="tile mc{% if d == ':' %} colon{% endif %}">{{ d }}</div>{% endfor %}
+    </div>
+    <div class="arrow">→</div>
+    <div class="flaps">
+      {% for d in end_digits %}<div class="tile mc{% if d == ':' %} colon{% endif %}">{{ d }}</div>{% endfor %}
+    </div>
+  </div>
+  <div class="bar">
+    {% for seg in bar_segments %}<i style="flex:{{ seg.flex }};background:{{ seg.color }}"></i>{% endfor %}
+  </div>
+  <div class="scale">{% for t in scale_labels %}<span>{{ t }}</span>{% endfor %}</div>
+  <div class="stops" style="margin-top:56px">
+    {% for stop in stops %}
+    <div class="stop"><span class="t"><i style="background:{{ stop.color }}"></i>{{ stop.time }}</span><div><b>{{ stop.name }}</b>{% if stop.desc %}<em>{{ stop.desc }}</em>{% endif %}</div><span class="d">{{ stop.duration_label }}</span></div>
+    {% if not loop.last %}<div class="move">{{ stop.move_to_next }}</div>{% endif %}
+    {% endfor %}
+  </div>
+</section>
+</body>
+</html>

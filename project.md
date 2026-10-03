@@ -1147,6 +1147,39 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 
 #### 11. 4시간마다 분야별 조회수 텔레그램 리포트 신설
 - `notification.py`에 `send_four_hourly_report()` 추가 — 8개 분야 조회수+직전 48시간 대비 변화율, 전체 DB/코스/유저수를 정리해 발송. 랭킹 갱신과 동일한 KST 0/4/8/12/16/20시 6개 슬롯에 cron 등록(`main.py`), "새벽 4시만 빼달라"는 요청은 등록 자체가 아니라 함수 내부에서 `now_kst.hour == 4`면 조용히 return하는 방식으로 처리
+
+### 2026-09-17 — PACE 인스타그램 콘텐츠 자동생성 파이프라인(`ig_studio`) 신규 구축
+
+#### 1. 작업지시서 진단 단계 — 실제 코드와 다른 점 2건 발견
+- 코스 생성 코어로 지목된 `create_itinerary`가 실제로는 자체 docstring에 "구 AI투어, 신규 흐름은 `/courses/draft?scope=timed`로 대체됐지만 하위호환 유지"라고 적힌 폐기 경로였음. 그런데 현재 경로인 `create_course_draft`도 그대로는 못 씀 — `viewer: dict = Depends(_verify_supabase_user)`가 기본값 없는 필수 파라미터라 인증 없이 직접 호출이 안 되고, `check_daily_ai_limit(viewer["id"])`를 무조건 타서 "일일 한도 카운터를 안 건드린다"는 지시서 요구를 못 지킴 → 실제로 인증·한도체크 둘 다 없는 더 안쪽 함수 `routers.ai.generate_timed_course(region, companion, lang)`를 직접 호출하고 `_clean_steps()`로 정제하는 방식으로 구현
+- 혼잡도 스토리 시안엔 지점명 아래 상세 부제(예: "성수카페거리")가 있는데 `crowd_status.area_nm`엔 "성수" 같은 짧은 이름뿐이라 그대로 못 채움 — 사용자 확인 후 부제 자체를 삭제하는 것으로 결정
+- 그 외 6개 진단 항목(ranking_service import 안전성, 봇 트래픽 필터 존재 여부, closing-soon 쿼리, saved_courses v2 컬럼, region DISTINCT 값, jinja2/Playwright 설치 여부)은 지시서 가정과 실제가 일치함을 확인
+
+#### 2. `now_back/ig_studio/` 모듈 신설 — data/render/caption/approval/publish/cli 분리
+- `templates.html`(zip 시안)을 시안 그대로 4개 포맷(`mon_cover`, `wed_cover`, `fri_cover`, `story_crowd`)으로 분리 + 시안에 없던 신규 카드(`mon_list` 연속 리스트, `wed_stop` 스톱 개별 히어로카드, `cta` 공통 CTA장)는 기존 CSS 토큰(`_base.css`)만 재사용해 신규 디자인 없이 구성
+- `data.py`(DB만 앎) / `render.py`(payload만 앎, Jinja2+Playwright) / `caption.py`(Gemini 캡션+검증) / `approval.py`(ig_posts 기록+텔레그램) / `publish.py`(골격만, `IG_PUBLISH_ENABLED` 기본 OFF) 구조로 분리, `db.py`에 `ig_posts` 테이블 스키마(`CREATE TABLE IF NOT EXISTS`, main.py 미수정)
+
+#### 3. dry-run 반복 중 발견·수정한 실제 버그 4건
+- **CSS 변수 미적용**: 렌더용 임시 HTML을 `output/`에 쓰면 `_base.css`(상대경로)와 그 안의 폰트(`../assets/fonts/...`, templates/ 기준 상대경로)가 둘 다 깨져 `--navy` 등 CSS 변수가 통째로 안 먹고 카드가 흰 배경으로 나왔음 — 임시 HTML을 `templates/` 안에 썼다가 스크린샷 후 삭제하도록 수정
+- **넘침 검사 오탐**: `body *` 전체를 검사하면 제목의 의도된 `text-overflow:ellipsis` 처리까지 "넘침"으로 오탐 — `.feed`/`.story` 루트 카드 자체의 `scrollHeight`만 검사하도록 좁힘
+- **월요일 리스트 카드 실제 넘침**: 지시서는 "6~15위/16~25위 10개씩 2장"을 가정했지만 시안의 `.row` 스타일(CSS 수치 변경 금지) 그대로면 1350px 카드에 최대 7개까지만 들어감(10개 렌더 시 scrollHeight 1739 > 1350 실측) — 행 스타일은 그대로 두고 페이지당 7개·총 3장 구성으로 변경(카드 수만 지시서보다 늘어남)
+- **CTA 카드 줄바꿈 미적용 + 문구 검증 오탐**: `\n`이 든 문자열을 HTML에 그대로 출력하면 줄바꿈이 안 먹혀 단어 중간에서 잘림 → `white-space:pre-line` 추가. 캡션 검증기가 CTA 문구를 마침표까지 완전 일치로 비교해 AI가 마침표 하나만 붙여도 "문구 누락"으로 오탐 → 양쪽 구두점을 벗기고 비교하도록 완화
+- 4개 포맷(mon/wed/fri/story) 전부 dry-run으로 실제 라이브 데이터 렌더까지 확인(월=현재 인기 팝업 25개, 수=AI 자동생성 코스 3스톱, 금=D-0 마감임박 3건, 스토리=혼잡도 5개 지점)
+
+#### 4. 텔레그램 봇 확장 + launchd 스케줄
+- `telegram_admin_bot.py`에 `/ok /redo /skip /posted <id>` 라우팅 추가(기존 숫자ID enrich·`/fav`·`/kakao` 라우팅 구조는 그대로, elif 체인에 얹기만 함) — `approval.py`로 위임
+- launchd plist는 repo에 두지 않고 `~/Library/LaunchAgents/`에만 둠(설치본이 기준). 인터프리터 `matmatch/backend/venv/bin/python3 -m ig_studio.cli <fmt>`, WorkingDirectory=now_back, 로그는 `now_back/logs/ig-*.log`
+- 현재 스케줄(설치본 기준, 2026-10-04):
+  - `ig-mon`: 토요일 08:30
+  - `ig-wed`: 일요일 10:00 (`--next-day`)
+  - `ig-fri`: 금요일 08:30
+  - `ig-story`: 토요일 14:00
+- 지시서의 "잡 전체 타임아웃 5분"은 macOS 기본 셸에 GNU `timeout`이 없어 `signal.alarm(300)`으로 자체 구현(Playwright hang 재발 대비)
+
+#### 미완료 항목 (다음 단계)
+- 텔레그램 발송: launchd 자동 실행으로 발송 확인됨(월·금 포맷, 2026-10-02~03). `/ok`·`/redo`·`/skip`·`/posted` 명령 동작 검증은 아직 안 함
+- launchd 4개 잡: 설치·로드 완료(2026-09-27 설치, 2026-10-03 월 포맷 스케줄 토요일로 변경)
+- `publish.py`의 Graph API 캐러셀/스토리 게시 사양은 이번 스코프에서 의도적으로 미검증(TODO로 명시)
 - **배포 후 발견한 잠재 버그**: 이 cron이 로컬 개발 서버(`main.py`가 동일 코드라 로컬도 동일하게 6개 슬롯 등록)에도 그대로 등록돼, 텔레그램 봇용으로 로컬 서버를 켜두는 시간대와 겹치면 서버·로컬 양쪽에서 중복 발송될 뻔함 — `TELEGRAM_BOT_ENABLED=true`(로컬 전용 게이트) 있을 때는 이 cron을 아예 등록하지 않도록 조건 추가, 로컬 프로세스 재시작해 실제로 등록 안 되는 것까지 확인
 
 ### 2026-09-25 — Supabase Cached Egress 폭등(9/23 120MB → 9/24 600MB) 원인 규명 및 전 이미지 GCS 이전
