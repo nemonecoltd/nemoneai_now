@@ -70,9 +70,26 @@ def _existing_translation(kakao_place_id: str) -> tuple[str, str, str, str, str,
         return "", "", "", "", "", ""
 
 
-def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optional[str]) -> dict:
+def upsert_kakao_items(
+    items: list[dict], category: Optional[str], region: Optional[str], category_tag: Optional[str] = None
+) -> dict:
     """region이 주어지면 전부 그 region으로 고정, 없으면 구 단위로 DISTRICT_REGION_MAP에서 자동 결정
-    (매핑 없는 구는 '강북')."""
+    (매핑 없는 구는 '강북').
+
+    category(팝업/클래스/쇼핑/전시/행사)는 지역 탭 안의 콘텐츠 '유형' 구분이고,
+    category_tag(패션/뷰티/캐릭터/애니웹툰/엔터/종합)는 핫플>카테고리에서 지역과 무관하게
+    가로지르는 '장르' 구분이다 — 서로 다른 축이라 같은 값을 category에 억지로 넣으면 안 된다
+    (2026-09-11, NOL 아이돌 팝업을 category='엔터'로 분류해 장소>강북 하위에 별도 탭이 생기던
+    오류를 바로잡음. 정상 경로는 category_tag='엔터'로 두고 category는 그대로 팝업 취급).
+
+    /kakao 텔레그램 명령은 "카테고리" 인자 하나만 받아 사람이 두 축(category vs category_tag)을
+    구분해 입력하길 기대할 수 없다 — category 인자 값 자체가 category_tag 고정 목록에 속하면
+    자동으로 그쪽으로 돌린다(예: `/kakao ENHYPEN 팝업 엔터` → category_tag='엔터').
+    """
+    from category_tags import resolve_category_input
+    category, _resolved_tag = resolve_category_input(category)
+    category_tag = category_tag or _resolved_tag
+
     new_count = updated_count = fail_count = 0
 
     for item in items:
@@ -109,6 +126,7 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
                 "embedding": f"[{','.join(map(str, embedding))}]",
                 "region": item_region,
                 "category": category,
+                "category_tag": category_tag,
             }
 
             with engine.connect() as conn:
@@ -120,7 +138,7 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
 
                 # 재수집 때마다 rehost_image()가 매번 새 파일명으로 새로 업로드해 옛 이미지가
                 # 고아로 쌓이던 문제(2026-09) — 이미 이미지가 있는 기존 장소는 재rehost하지 않는다.
-                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item.get("image_url")) or "")
+                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item.get("image_url"), category=(category or "popup")) or "")
 
                 if existing_id:
                     conn.execute(text("""
@@ -131,7 +149,8 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
                             latitude = COALESCE(:latitude, latitude), longitude = COALESCE(:longitude, longitude),
                             naver_place_id = :naver_place_id, image_url = COALESCE(:image_url, image_url),
                             link_url = COALESCE(:link_url, link_url),
-                            embedding = :embedding, region = :region, category = COALESCE(:category, category)
+                            embedding = :embedding, region = :region, category = COALESCE(:category, category),
+                            category_tag = COALESCE(:category_tag, category_tag)
                         WHERE id = :id
                     """), {**params, "id": existing_id})
                     updated_count += 1
@@ -140,11 +159,11 @@ def upsert_kakao_items(items: list[dict], category: Optional[str], region: Optio
                         INSERT INTO seongsu_places
                         (title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja,
                          location, latitude, longitude,
-                         naver_place_id, image_url, link_url, embedding, region, category, end_date)
+                         naver_place_id, image_url, link_url, embedding, region, category, category_tag, end_date)
                         VALUES
                         (:title, :title_en, :title_zh, :title_ja, :content, :content_en, :content_zh, :content_ja,
                          :location, :latitude, :longitude,
-                         :naver_place_id, :image_url, :link_url, :embedding, :region, :category, NULL)
+                         :naver_place_id, :image_url, :link_url, :embedding, :region, :category, :category_tag, NULL)
                     """), params)
                     new_count += 1
                 conn.commit()

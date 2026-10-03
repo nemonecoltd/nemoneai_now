@@ -48,7 +48,14 @@ def _build_content(item: dict, intro: str) -> str:
 
 
 def upsert_favorite_items(items: list[dict], region: str, category: Optional[str]) -> tuple[int, int, int]:
-    print(f"📋 [{region}/{category}] 즐겨찾기 {len(items)}개 DB 반영 시작")
+    # /fav 텔레그램 명령은 "카테고리" 인자 하나만 받아 사람이 지역용(category)과 장르용
+    # (category_tag) 두 축을 구분해 입력하길 기대할 수 없다 — 값 자체가 category_tag 고정
+    # 목록(패션/뷰티/캐릭터/애니웹툰/엔터/종합)에 속하면 자동으로 그쪽으로 돌린다
+    # (2026-09-11, 사용자가 직접 URL을 주며 "엔터"를 지정해도 엉뚱한 축에 저장되던 문제 수정).
+    from category_tags import resolve_category_input
+    category, category_tag = resolve_category_input(category)
+
+    print(f"📋 [{region}/{category or category_tag}] 즐겨찾기 {len(items)}개 DB 반영 시작")
     new_count = updated_count = fail_count = 0
 
     for item in reversed(items):
@@ -56,7 +63,7 @@ def upsert_favorite_items(items: list[dict], region: str, category: Optional[str
         naver_place_id = item["naver_place_id"]
         print(f"  ✨ [{region}] '{title}' 처리 중...")
         try:
-            kind = item.get("category_hint") or category or "가게"
+            kind = item.get("category_hint") or category or category_tag or "가게"
             intro = _ai_generate_intro(title, item.get("location", ""), kind)
             content = _build_content(item, intro)
             title_en, content_en, title_zh, content_zh, title_ja, content_ja = ai_translate(title, content)
@@ -78,6 +85,7 @@ def upsert_favorite_items(items: list[dict], region: str, category: Optional[str
                 "embedding": f"[{','.join(map(str, embedding))}]",
                 "region": region,
                 "category": category,
+                "category_tag": category_tag,
             }
 
             with engine.connect() as conn:
@@ -89,7 +97,7 @@ def upsert_favorite_items(items: list[dict], region: str, category: Optional[str
 
                 # 재수집 때마다 rehost_image()가 매번 새 파일명으로 새로 업로드해 옛 이미지가
                 # 고아로 쌓이던 문제(2026-09) — 이미 이미지가 있는 기존 장소는 재rehost하지 않는다.
-                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item.get("image_url")) or "")
+                params["image_url"] = existing_row[1] if (existing_id and existing_row[1]) else (rehost_image(item.get("image_url"), category=params["category"]) or "")
 
                 if existing_id:
                     conn.execute(text("""
@@ -98,7 +106,8 @@ def upsert_favorite_items(items: list[dict], region: str, category: Optional[str
                             content = :content, content_en = :content_en, content_zh = :content_zh, content_ja = :content_ja,
                             location = :location, latitude = COALESCE(:latitude, latitude), longitude = COALESCE(:longitude, longitude),
                             naver_place_id = :naver_place_id, image_url = COALESCE(:image_url, image_url),
-                            embedding = :embedding, region = :region, category = COALESCE(:category, category)
+                            embedding = :embedding, region = :region, category = COALESCE(:category, category),
+                            category_tag = COALESCE(:category_tag, category_tag)
                         WHERE id = :id
                     """), {**params, "id": existing_id})
                     updated_count += 1
@@ -106,10 +115,10 @@ def upsert_favorite_items(items: list[dict], region: str, category: Optional[str
                     conn.execute(text("""
                         INSERT INTO seongsu_places
                         (title, title_en, title_zh, title_ja, content, content_en, content_zh, content_ja,
-                         location, latitude, longitude, naver_place_id, image_url, embedding, region, category, end_date)
+                         location, latitude, longitude, naver_place_id, image_url, embedding, region, category, category_tag, end_date)
                         VALUES
                         (:title, :title_en, :title_zh, :title_ja, :content, :content_en, :content_zh, :content_ja,
-                         :location, :latitude, :longitude, :naver_place_id, :image_url, :embedding, :region, :category, NULL)
+                         :location, :latitude, :longitude, :naver_place_id, :image_url, :embedding, :region, :category, :category_tag, NULL)
                     """), params)
                     new_count += 1
                 conn.commit()

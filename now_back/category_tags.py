@@ -5,11 +5,14 @@
 수정하면 된다(다른 곳에 하드코딩 금지).
 """
 
+from typing import Optional
+
 CATEGORY_TAGS: list[str] = [
     "패션",
     "뷰티",
     "캐릭터",
     "애니웹툰",
+    "엔터",
     "종합",
 ]
 
@@ -32,6 +35,19 @@ def validate_category_tag(raw) -> str:
     return DEFAULT_CATEGORY_TAG
 
 
+def resolve_category_input(raw: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    """텔레그램 /fav, /kakao 명령은 "카테고리" 인자를 하나만 받는데, 사람이 보기엔 팝업/클래스/
+    쇼핑/전시/행사(지역 서브탭용 category)와 패션/뷰티/캐릭터/애니웹툰/엔터/종합(장르용
+    category_tag)이 똑같이 "카테고리"라 구분 없이 입력한다. 값 자체가 category_tag 고정
+    목록에 있으면 그쪽으로, 아니면 기존처럼 category로 돌린다 — 안 그러면 사람이 직접
+    URL을 주며 "엔터"라고 지정해도 엉뚱한 축(category)에 저장돼버린다(2026-09-11 발견:
+    NOL 자동판별뿐 아니라 /fav·/kakao로 사용자가 직접 지정한 것도 같은 함정에 걸려 있었음).
+    """
+    if raw and raw in _CATEGORY_TAG_SET:
+        return None, raw
+    return raw, None
+
+
 def prompt_block() -> str:
     """소개문 생성 프롬프트에 끼워 넣을 카테고리 태그 지시문."""
     return (
@@ -42,6 +58,7 @@ def prompt_block() -> str:
         f"- 뷰티: 화장품·향수·스킨케어 브랜드 팝업\n"
         f"- 캐릭터: 특정 캐릭터 IP(산리오, 카카오프렌즈 등) 굿즈/체험 팝업\n"
         f"- 애니웹툰: 애니메이션·웹툰·게임 IP 팝업\n"
-        f"- 종합: 위 4개에 뚜렷이 속하지 않는 나머지 전부(식품, 라이프스타일, 전시, 클래스 등)\n"
+        f"- 엔터: 아이돌·연예인 관련 굿즈/체험 팝업\n"
+        f"- 종합: 위 5개에 뚜렷이 속하지 않는 나머지 전부(식품, 라이프스타일, 전시, 클래스 등)\n"
         f"- 애매하면 억지로 세부 카테고리에 끼워 맞추지 말고 종합을 고를 것."
     )

@@ -42,9 +42,12 @@ _NEIGHBORHOOD_REGION_MAP = {
 }
 _IN_SCOPE_REGIONS = tuple(set(_NEIGHBORHOOD_REGION_MAP.values()))
 
-# NOL은 대부분 아이돌/연예인 관련 콘텐츠라 해당되면 category='엔터'로 분류(2026-09-09 요청).
-# 신뢰할 만한 장르 API가 따로 없어 주요 그룹/아티스트명 키워드로만 판별 — 목록에 없는 신인/새
-# 그룹은 놓칠 수 있지만(기본값 '팝업'으로 남을 뿐 오분류는 아님), 새 그룹이 눈에 띄면 추가할 것.
+# NOL은 대부분 아이돌/연예인 관련 콘텐츠라 해당되면 category_tag='엔터'로 분류(2026-09-09 요청).
+# 처음엔 category='엔터'로 넣어 장소>강북 하위에 별도 지역 탭이 생겨버렸다(2026-09-11 발견,
+# 사용자 지적) — 이 팝업들은 여전히 '팝업'이라는 콘텐츠 유형(category)이고, 장르만 아이돌/
+# 연예인이라는 뜻이라 핫플>카테고리 축(category_tag)에 둬야 맞다. 신뢰할 만한 장르 API가
+# 따로 없어 주요 그룹/아티스트명 키워드로만 판별 — 목록에 없는 신인/새 그룹은 놓칠 수 있지만
+# (기본값 '종합'으로 남을 뿐 오분류는 아님), 새 그룹이 눈에 띄면 추가할 것.
 _IDOL_KEYWORDS = [
     "bigbang", "big bang", "blackpink", "aespa", "ive", "anyujin", "an yu-jin", "jangwonyoung", "jang won-young",
     "enhypen", "nct", "txt", "tomorrow x together", "taemin", "cortis", "g-dragon", "gdragon", "and team", "&team",
@@ -170,8 +173,8 @@ def run_nol_compare() -> dict:
                 best_ratio, best_match = ratio, r
 
         if best_match and best_ratio >= _KAKAO_MATCH_THRESHOLD:
-            category = "엔터" if _is_entertainment(item["title"], item["subtitle"]) else None
-            result = upsert_kakao_items([best_match], category, item["region"])
+            category_tag = "엔터" if _is_entertainment(item["title"], item["subtitle"]) else None
+            result = upsert_kakao_items([best_match], None, item["region"], category_tag=category_tag)
             if result["new"] > 0:
                 # 카카오 수집은 원래 상시매장 전제라 end_date를 NULL로 남기는데, NOL 항목은
                 # 실제로 기간제 팝업/전시라 방치하면 마감돼도 영구 노출된다 — NOL 날짜로 덮어써서 동기화.

@@ -90,7 +90,11 @@ def refresh_place_popularity(is_cron: bool = False):
                 viewed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
         """))
+        # IP당 조회수 중복 집계 방지용(2026-09-14, routers/places.py record_place_view 참고) —
+        # 반복 호출로 인기 랭킹을 조작하는 걸 막기 위해 추가.
+        conn.execute(text("ALTER TABLE place_views ADD COLUMN IF NOT EXISTS viewer_ip_hash TEXT"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_place_viewed ON place_views (place_id, viewed_at)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_place_views_dedup ON place_views (place_id, viewer_ip_hash, viewed_at)"))
         # 톱25 'NEW' 배지용 — 프로세스 재시작에도 이전 톱25 목록이 유지되도록 DB에 스냅샷 저장(메모리 캐시만 쓰면 재배포할 때마다 전부 NEW로 오탐)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS ranking_snapshot (
