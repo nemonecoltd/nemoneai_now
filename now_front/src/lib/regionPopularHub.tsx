@@ -12,7 +12,9 @@ import AdUnit from '@/components/AdUnit';
 import RegionHubTickers from '@/components/RegionHubTickers';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
-export const revalidate = 3600;
+// 허브 HTML을 빌드 시점에 굳히면 랭킹 탭(요청마다 최신)과 값이 달라져서, 요청마다 API를 읽는다.
+// 백엔드 랭킹이 이미 4시간 주기로 캐시되어 있어 부하는 작다. (2026-10-04)
+export const revalidate = 0;
 
 export type Lang = 'ko' | 'en' | 'zh' | 'ja';
 
@@ -111,7 +113,7 @@ interface PopularPlace {
 
 async function getPopularPlaces(regionKo: string): Promise<PopularPlace[]> {
   try {
-    const res = await fetch(`${BACKEND}/places/popular?region=${encodeURIComponent(regionKo)}&limit=25`, { next: { revalidate } });
+    const res = await fetch(`${BACKEND}/places/popular?region=${encodeURIComponent(regionKo)}&limit=25`, { cache: 'no-store' });
     if (!res.ok) return [];
     return res.json();
   } catch {
