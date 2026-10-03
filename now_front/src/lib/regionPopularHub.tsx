@@ -101,6 +101,7 @@ interface PopularPlace {
   region: string;
   location?: string;
   date_range?: string;
+  image_url?: string;
   category?: string | null;
   view_count?: number;
   like_count?: number;
@@ -214,42 +215,80 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
           <p className="text-center text-zinc-400 text-sm py-20">{c.empty}</p>
         )}
 
-        {places.map((place, idx) => (
-          <div key={place.id}>
-          <Link
-            href={`/posts/${place.id}${lang !== 'ko' ? `?lang=${lang}` : ''}`}
-            className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
-          >
-            <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">
-              {idx + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h2 className="font-bold text-zinc-900 text-sm truncate">{placeTitle(place, lang)}</h2>
-                {place.category === 'class' && (
-                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
-                    {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课程' : lang === 'ja' ? '体験' : '클래스'}
-                  </span>
-                )}
-                {place.is_new && (
-                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
-                )}
-              </div>
-              <p className="text-[10px] text-zinc-400">{place.location || place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
-            </div>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
-              <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count ?? 0}
-            </span>
-            <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
-          </Link>
-          {idx === 1 && (
-            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
-          )}
-          {idx === 14 && (
-            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
-          )}
+        {/* 랭킹 메뉴와 같은 구성 — 1~3위는 큰 썸네일 강조, 4위부터는 좌측 썸네일 리스트 */}
+        {places.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {places.slice(0, 3).map((place, idx) => {
+              const href = `/posts/${place.id}${lang !== 'ko' ? `?lang=${lang}` : ''}`;
+              const img = place.image_url || `https://picsum.photos/seed/${place.id}/400/400`;
+              if (idx === 0) {
+                return (
+                  <Link key={place.id} href={href} className="row-span-2 relative rounded-3xl overflow-hidden bg-zinc-900 shadow-sm min-h-[240px] group">
+                    <img src={img} alt={placeTitle(place, lang)} className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                    <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                    <span className="absolute top-2 left-2 flex items-center gap-1 bg-zinc-900/90 text-white text-[10px] font-black px-2 py-1 rounded-full">
+                      <Flame size={11} className="text-rose-400" fill="currentColor" /> 1{lang === 'en' ? 'st' : lang === 'ko' ? '위' : '位'}
+                    </span>
+                    <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col gap-1">
+                      <h2 className="text-sm font-bold text-white leading-snug line-clamp-2">{placeTitle(place, lang)}</h2>
+                      <span className="text-[10px] text-zinc-300 truncate">{place.date_range || place.location || place.region}</span>
+                    </div>
+                  </Link>
+                );
+              }
+              return (
+                <Link key={place.id} href={href} className="relative flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group">
+                  <div className="relative w-20 aspect-square flex-shrink-0 bg-zinc-100 overflow-hidden">
+                    <img src={img} alt={placeTitle(place, lang)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                    <span className="absolute top-1.5 left-1.5 w-5 h-5 bg-zinc-900/90 text-white text-[10px] font-black rounded-full flex items-center justify-center">{idx + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0 p-3 flex flex-col justify-center gap-1">
+                    <h2 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2">{placeTitle(place, lang)}</h2>
+                    <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500"><Flame size={9} fill="currentColor" /> {place.score ?? place.like_count ?? 0}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
-        ))}
+        )}
+
+        {places.length === 0 && (
+          <p className="text-center text-zinc-400 text-sm py-20">{c.empty}</p>
+        )}
+
+        {places.length > 0 && <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />}
+
+        {places.slice(3).map((place, i) => {
+          const idx = i + 3;
+          const href = `/posts/${place.id}${lang !== 'ko' ? `?lang=${lang}` : ''}`;
+          const img = place.image_url || `https://picsum.photos/seed/${place.id}/300/300`;
+          return (
+            <div key={place.id}>
+              <Link href={href} className="relative flex bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden group">
+                <div className="relative w-24 aspect-square flex-shrink-0 bg-zinc-100 overflow-hidden">
+                  <img src={img} alt={placeTitle(place, lang)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" referrerPolicy="no-referrer" />
+                  <span className="absolute top-1.5 left-1.5 w-5 h-5 bg-zinc-900/90 text-white text-[10px] font-black rounded-full flex items-center justify-center">{idx + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0 p-3 flex flex-col justify-center gap-1">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {place.category === 'class' && (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">
+                        {lang === 'en' ? 'Class' : lang === 'zh' ? '体验课程' : lang === 'ja' ? '体験' : '클래스'}
+                      </span>
+                    )}
+                    {place.is_new && (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
+                    )}
+                  </div>
+                  <h2 className="text-xs font-bold text-zinc-900 leading-snug line-clamp-2">{placeTitle(place, lang)}</h2>
+                  <span className="text-[9px] text-zinc-400 truncate">{place.location || place.region}{place.date_range ? ` · ${place.date_range}` : ''}</span>
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-rose-500"><Flame size={9} fill="currentColor" /> {place.score ?? place.like_count ?? 0}</span>
+                </div>
+              </Link>
+              {idx === 14 && <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />}
+            </div>
+          );
+        })}
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">{c.desc(region, area)}</p>
 
