@@ -11,7 +11,6 @@
 		<string>-m</string>
 		<string>ig_studio.cli</string>
 		<string>course</string>
-		<string>--next-day</string>
 	</array>
 	<key>RunAtLoad</key>
 	<false/>
@@ -22,7 +21,7 @@
 	<key>StartCalendarInterval</key>
 	<dict>
 		<key>Hour</key>
-		<integer>10</integer>
+		<integer>12</integer>
 		<key>Minute</key>
 		<integer>0</integer>
 		<key>Weekday</key>

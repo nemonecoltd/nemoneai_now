@@ -1,10 +1,10 @@
-"""진입점: python -m ig_studio.cli <ranking|course|closing|crowd> [--date YYYY-MM-DD] [--next-day] [--dry-run]"""
+"""진입점: python -m ig_studio.cli <ranking|course|closing|crowd> [--date YYYY-MM-DD] [--dry-run]"""
 from __future__ import annotations
 import argparse
 import signal
 import sys
 import traceback
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -230,17 +230,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("format", choices=["ranking", "course", "closing", "crowd"])
     parser.add_argument("--date", type=str, default=None)
-    parser.add_argument("--next-day", action="store_true")
     parser.add_argument("--region", type=str, default=None, help="course 포맷 지역 강제 지정(로테이션 무시)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    if args.date:
-        target = date.fromisoformat(args.date)
-    else:
-        target = datetime.now(KST).date()
-        if args.next_day:
-            target += timedelta(days=1)
+    target = date.fromisoformat(args.date) if args.date else datetime.now(KST).date()
 
     result = run_format(args.format, target, dry_run=args.dry_run, region_override=args.region)
     print(f"완료: created={result.get('created')} needs_review={result.get('payload', {}).get('needs_review')}")

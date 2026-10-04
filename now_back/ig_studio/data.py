@@ -250,13 +250,9 @@ def get_course_payload(target_date: date, region_override: str | None = None) ->
         if i < len(stops) - 1:
             bar_segments.append({"flex": round(10 / total_span * 100), "color": "var(--line)"})
 
-    next_saturday = target_date + timedelta(days=(5 - target_date.weekday()) % 7 or 7)
-
-    # 2026-09-28 — outing_day가 "토요일"처럼 요일 이름만 담고 있어서, 실제 게시일(target_date,
-    # 예: 9/27 일요일)과 이 라벨이 가리키는 날짜(다음 토요일, 예: 10/3)가 서로 다른데도 화면엔
-    # 요일 이름만 보여 "27일인데 왜 토요일이라 나오냐"는 혼동이 생겼다. 날짜 숫자를 라벨에
-    # 같이 박아 어느 날을 말하는 건지 명확하게 한다.
-    outing_date_label = f"{next_saturday.month}월 {next_saturday.day}일 {WEEKDAY_KO[next_saturday.weekday()]}요일"
+    # 코스는 발행일 당일 나갈 팝업용이다(매주 일요일 12:00 발행 → 그날 방문). 날짜·요일 라벨은
+    # 발행일(target_date)을 그대로 쓴다 — 예전엔 "다음 토요일"을 계산해 발행일과 6일 어긋났다.
+    outing_date_label = f"{target_date.month}월 {target_date.day}일 {WEEKDAY_KO[target_date.weekday()]}요일"
 
     # course_key는 항상 "saved:{id}" 형태(_generate_course도 이제 saved_courses에 저장하고
     # 그 id를 씀, 2026-09-20) — 실제 공유 가능한 코스 상세 URL을 여기서 뽑아 텔레그램
@@ -264,11 +260,7 @@ def get_course_payload(target_date: date, region_override: str | None = None) ->
     course_id = course["course_key"].split(":", 1)[1] if course["course_key"].startswith("saved:") else None
     share_url = f"https://now.nemoneai.com/course/{course_id}" if course_id else None
 
-    # 캡션 생성 프롬프트(caption.py)가 "수요일"을 문자열로 하드코딩하고 있어서, 이미지의
-    # "다음 토요일" 라벨과 캡션 텍스트("이번 주 수요일...")가 실제 발행 요일과 무관하게
-    # 서로 어긋나던 문제(2026-09-20 발견 — 스케줄을 일요일로 옮기고 나서야 눈에 띔, 화요일
-    # 스케줄 때도 사실 같은 불일치가 있었음). outing_day를 여기서 계산해 캡션 프롬프트에도
-    # 그대로 넘겨 이미지·텍스트가 항상 같은 요일을 가리키게 한다.
+    # 이미지와 캡션이 같은 날짜를 보도록 outing_day를 캡션 프롬프트에도 그대로 넘긴다.
     outing_day = outing_date_label
 
     return {

@@ -1171,7 +1171,7 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 - launchd plist는 repo에 두지 않고 `~/Library/LaunchAgents/`에만 둠(설치본이 기준). 인터프리터 `matmatch/backend/venv/bin/python3 -m ig_studio.cli <fmt>`, WorkingDirectory=now_back, 로그는 `now_back/logs/ig-*.log`
 - 현재 스케줄(설치본 기준, 2026-10-04):
   - `ig-ranking`: 토요일 08:30
-  - `ig-course`: 일요일 10:00 (`--next-day`)
+  - `ig-course`: 일요일 12:00 (발행일 당일 방문 기준, 옵션 없음)
   - `ig-closing`: 금요일 08:30
   - `ig-crowd`: 토요일 14:00
 - 지시서의 "잡 전체 타임아웃 5분"은 macOS 기본 셸에 GNU `timeout`이 없어 `signal.alarm(300)`으로 자체 구현(Playwright hang 재발 대비)
