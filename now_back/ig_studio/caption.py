@@ -16,9 +16,9 @@ _MAX_CAPTION_LEN = 500
 _MIN_TAGS, _MAX_TAGS = 3, 5
 
 _CTA_LINE = {
-    "mon": "댓글에 \"링크\" 남기면 보내드려요",
-    "wed": "댓글에 \"코스\" 남기면 링크를 보내드려요",
-    "fri": "댓글에 \"링크\" 남기면 보내드려요",
+    "ranking": "댓글에 \"링크\" 남기면 보내드려요",
+    "course": "댓글에 \"코스\" 남기면 링크를 보내드려요",
+    "closing": "댓글에 \"링크\" 남기면 보내드려요",
 }
 
 
@@ -33,7 +33,7 @@ _NO_FABRICATION_RULE = (
 
 
 def _prompt_for(fmt: str, payload: dict) -> str:
-    if fmt == "mon":
+    if fmt == "ranking":
         # 2026-10-03 — 이 포맷은 원래 월요일 발행이었다가 토요일로 스케줄이 바뀌었는데
         # 프롬프트엔 "월요일"이 문자열로 박혀 있어서, 토요일에 올라간 글이 "월요일 시작!!"으로
         # 시작하는 사고가 있었다(wed가 이미 2026-09-20에 겪은 것과 같은 함정 — outing_day처럼
@@ -45,9 +45,9 @@ def _prompt_for(fmt: str, payload: dict) -> str:
 규칙: 캡션 500자 이내, 첫 줄은 "이번 주 진짜 많이 본 곳"과 다른 문장으로 시작, 해시태그 3~5개(#포함),
 "PACE 이용자들의 실제 조회수 기준 집계"라는 취지의 문장을 반드시 포함, 과장 표현·날씨 언급·가격/대기시간 단정 금지.
 {_NO_FABRICATION_RULE}
-마지막 줄에 {_CTA_LINE['mon']}를 그대로 포함.
+마지막 줄에 {_CTA_LINE['ranking']}를 그대로 포함.
 JSON으로만 응답: {{"caption": "...", "hashtags": ["...", ...]}}"""
-    if fmt == "fri":
+    if fmt == "closing":
         # 2026-10-03 — mon과 같은 이유로 요일 하드코딩 제거(지금은 금요일 발행이라 안 어긋나지만,
         # 나중에 스케줄이 또 바뀌면 똑같은 사고가 재발하므로 애초에 요일 언급 자체를 안 함).
         names = ", ".join(i["title"] for i in payload["items"])
@@ -56,9 +56,9 @@ JSON으로만 응답: {{"caption": "...", "hashtags": ["...", ...]}}"""
 규칙: 캡션 500자 이내, 해시태그 3~5개, 과장 표현·날씨 언급·가격/대기시간 단정 금지.
 특정 요일(월요일/화요일 등)을 언급하지 말 것.
 {_NO_FABRICATION_RULE}
-마지막 줄에 {_CTA_LINE['fri']}를 그대로 포함.
+마지막 줄에 {_CTA_LINE['closing']}를 그대로 포함.
 JSON으로만 응답: {{"caption": "...", "hashtags": ["...", ...]}}"""
-    if fmt == "wed":
+    if fmt == "course":
         stops_text = "\n".join(f"- {s['name']}: {s['activity'] or s['raw_content']}" for s in payload["stops"])
         outing_day = payload.get("outing_day", "주말")
         # 2026-09-20 — "수요일"을 프롬프트에 문자열로 박아뒀던 게, 이미지 표지가 계산해서 보여주는
@@ -78,7 +78,7 @@ JSON으로만 응답: {{"caption": "...", "hashtags": ["...", ...]}}"""
 3. caption: 500자 이내, 첫 줄은 headline과 다른 문장, "{outing_day}" 표현을 자연스럽게 포함,
    해시태그 3~5개, 과장·날씨·가격 단정 금지
    {_NO_FABRICATION_RULE}
-   마지막 줄에 "{_CTA_LINE['wed']}"를 그대로 포함
+   마지막 줄에 "{_CTA_LINE['course']}"를 그대로 포함
 JSON으로만 응답: {{"headline": "...", "stop_summaries": {{"장소명": "..."}}, "caption": "...", "hashtags": ["...", ...]}}"""
     raise ValueError(f"caption 지원 안 하는 포맷: {fmt}")
 
@@ -113,14 +113,14 @@ def _validate(result: dict, fmt: str) -> list[str]:
     for word in _FORBIDDEN:
         if word.lower() in lower:
             problems.append(f"금지어({word})")
-    if fmt == "mon" and "조회" not in caption:
+    if fmt == "ranking" and "조회" not in caption:
         problems.append("조회수 집계 기준 문장 누락")
     # 끝에 마침표/느낌표를 붙이는 등 사소한 구두점 변형까지 "문구 누락"으로 오탐하지 않게
     # 양쪽 다 구두점을 벗기고 비교(2026-09-17 dry-run에서 실제로 오탐 발견).
     cta = _CTA_LINE.get(fmt, "")
     if cta and cta.rstrip(".!") not in caption.rstrip(".!\n "):
         problems.append("CTA 문구 누락")
-    if fmt == "wed":
+    if fmt == "course":
         headline = result.get("headline", "")
         if not headline or len(headline) > 16:
             problems.append("headline 길이")

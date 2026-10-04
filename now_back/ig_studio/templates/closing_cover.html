@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+#closing{background:var(--paper);color:var(--ink);padding:72px}
+#closing .top{display:flex;justify-content:space-between;align-items:baseline}
+#closing .date{font-family:Flap;font-weight:600;font-size:36px;color:var(--muted)}
+#closing h1{font-weight:900;font-size:104px;line-height:1.08;letter-spacing:-.045em;margin:64px 0 60px;white-space:pre-line}
+.tile.fd{width:116px;height:166px;font-size:138px;border-radius:12px}
+#closing .item{display:flex;align-items:center;gap:40px;padding:34px 0;border-top:2px solid var(--line)}
+#closing .item:last-child{border-bottom:2px solid var(--line)}
+#closing .dd{display:flex;gap:6px}
+#closing .info b{display:block;font-weight:800;font-size:48px;letter-spacing:-.03em;line-height:1.2}
+#closing .info .meta{display:flex;align-items:center;gap:14px;font-size:32px;color:var(--muted);margin-top:10px}
+#closing .loc{font-style:normal;font-weight:700;font-size:26px;color:var(--ink);border:2px solid var(--line);border-radius:6px;padding:1px 12px}
+#closing .foot{position:absolute;left:72px;right:72px;bottom:60px;display:flex;justify-content:space-between;font-size:28px;color:var(--muted)}
+</style>
+</head>
+<body>
+<section class="feed on-paper" id="closing">
+  <div class="top"><div class="brand">PACE<small>마감 임박</small></div><div class="date">{{ date_label }}</div></div>
+  <h1>{{ headline }}</h1>
+  <div class="items">
+    {% for item in items %}
+    <div class="item">
+      <div class="dd"><div class="tile fd">D</div><div class="tile fd sig">{{ item.dday }}</div></div>
+      <div class="info"><b>{{ item.title }}</b><span class="meta"><em class="loc">{{ item.region_label }}</em>{{ item.end_text }}</span></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="foot"><span>저장해두고 주말에 꺼내 보세요</span><span>now.nemoneai.com</span></div>
+</section>
+</body>
+</html>

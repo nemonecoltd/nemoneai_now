@@ -89,7 +89,7 @@ def course_already_used(place_ids_key: str) -> bool:
     ensure_schema()
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT 1 FROM ig_posts WHERE format = 'wed' AND payload->>'course_key' = :k AND status IN ('approved','posted') LIMIT 1"),
+            text("SELECT 1 FROM ig_posts WHERE format = 'course' AND payload->>'course_key' = :k AND status IN ('approved','posted') LIMIT 1"),
             {"k": place_ids_key},
         ).fetchone()
     return row is not None

@@ -28,7 +28,7 @@ _OVERFLOW_CHECK_JS = """
 
 
 async def render_card(template_name: str, payload: dict, output_path: Path, viewport: tuple[int, int]) -> list[str]:
-    """template_name(예: 'mon_cover.html')을 렌더해 output_path에 PNG 저장.
+    """template_name(예: 'ranking_cover.html')을 렌더해 output_path에 PNG 저장.
     반환값: 넘침이 감지된 요소 클래스 목록(비어있으면 정상)."""
     template = _env.get_template(template_name)
     html = template.render(**payload)
@@ -48,7 +48,7 @@ async def render_card(template_name: str, payload: dict, output_path: Path, view
             page = await browser.new_page(viewport={"width": viewport[0], "height": viewport[1]})
             await page.goto(tmp_html.resolve().as_uri())
             await page.evaluate("document.fonts.ready")
-            # wed_stop.html이 처음으로 원격 https 이미지(팝업 대표 사진)를 쓰기 시작하면서
+            # course_stop.html이 처음으로 원격 https 이미지(팝업 대표 사진)를 쓰기 시작하면서
             # (2026-09-20) 생긴 새 레이스 컨디션 — 폰트만 기다리고 스샷하면 이미지 다운로드가
             # 안 끝난 채로 캡처될 수 있다. 이미지가 없는 기존 템플릿에선 Array.every가 빈
             # 배열에 대해 즉시 true라 영향 없음.

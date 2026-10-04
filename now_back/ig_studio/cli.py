@@ -1,4 +1,4 @@
-"""진입점: python -m ig_studio.cli <mon|wed|fri|story> [--date YYYY-MM-DD] [--next-day] [--dry-run]"""
+"""진입점: python -m ig_studio.cli <ranking|course|closing|crowd> [--date YYYY-MM-DD] [--next-day] [--dry-run]"""
 from __future__ import annotations
 import argparse
 import signal
@@ -30,13 +30,13 @@ def _outdir(fmt: str, target_date: date) -> Path:
     return d
 
 
-def _run_mon(target_date: date, dry_run: bool):
-    payload = data.get_mon_payload(target_date)
-    outdir = _outdir("mon", target_date)
+def _run_ranking(target_date: date, dry_run: bool):
+    payload = data.get_ranking_payload(target_date)
+    outdir = _outdir("ranking", target_date)
     png_paths, overflow_all = [], []
 
     p = outdir / "01_cover.png"
-    overflow_all += render_card_sync("mon_cover.html", {**payload, "items": payload["items"][:5], "has_more": len(payload["items"]) > 5}, p, FEED_VIEWPORT)
+    overflow_all += render_card_sync("ranking_cover.html", {**payload, "items": payload["items"][:5], "has_more": len(payload["items"]) > 5}, p, FEED_VIEWPORT)
     png_paths.append(p)
 
     # 지시서는 "2장 6~15위 / 3장 16~25위"(10개씩)를 가정했지만, 시안의 .row 스타일(수치
@@ -50,7 +50,7 @@ def _run_mon(target_date: date, dry_run: bool):
         lo, hi = chunk_start + 6, chunk_start + 6 + len(chunk) - 1
         p = outdir / f"0{i+2}_list_{lo}_{hi}.png"
         has_more = chunk_start + _ROWS_PER_LIST_PAGE < len(remaining)
-        overflow_all += render_card_sync("mon_list.html", {**payload, "items": chunk, "range_label": f"{lo}–{hi}위", "has_more": has_more, "next_range_label": hi + 1}, p, FEED_VIEWPORT)
+        overflow_all += render_card_sync("ranking_list.html", {**payload, "items": chunk, "range_label": f"{lo}–{hi}위", "has_more": has_more, "next_range_label": hi + 1}, p, FEED_VIEWPORT)
         png_paths.append(p)
 
     p = outdir / "99_cta.png"
@@ -60,20 +60,20 @@ def _run_mon(target_date: date, dry_run: bool):
     if payload["needs_review"] or overflow_all:
         payload["needs_review"] = True
 
-    cap = caption_mod.generate_caption("mon", payload)
-    return _finalize("mon", target_date, payload, cap, png_paths, overflow_all, dry_run, outdir)
+    cap = caption_mod.generate_caption("ranking", payload)
+    return _finalize("ranking", target_date, payload, cap, png_paths, overflow_all, dry_run, outdir)
 
 
-def _run_wed(target_date: date, dry_run: bool, region_override: str | None = None):
-    payload = data.get_wed_payload(target_date, region_override=region_override)
-    outdir = _outdir("wed", target_date)
+def _run_course(target_date: date, dry_run: bool, region_override: str | None = None):
+    payload = data.get_course_payload(target_date, region_override=region_override)
+    outdir = _outdir("course", target_date)
 
     if payload.get("needs_review") and "stops" not in payload:
         if not dry_run:
-            approval.send_no_candidate("wed", target_date.isoformat(), payload.get("reason", "알 수 없음"))
+            approval.send_no_candidate("course", target_date.isoformat(), payload.get("reason", "알 수 없음"))
         return {"created": False, "payload": payload}
 
-    cap = caption_mod.generate_caption("wed", payload)
+    cap = caption_mod.generate_caption("course", payload)
     summaries = cap.get("stop_summaries", {})
     for s in payload["stops"]:
         s["desc"] = summaries.get(s["name"], s["activity"][:20] if s.get("activity") else None)
@@ -95,7 +95,7 @@ def _run_wed(target_date: date, dry_run: bool, region_override: str | None = Non
         scale_labels.append(f"{m // 60:02d}:00")
 
     p = outdir / "01_cover.png"
-    overflow_all += render_card_sync("wed_cover.html", {
+    overflow_all += render_card_sync("course_cover.html", {
         **payload, "headline_line1": payload["headline_line1"], "headline_line2": payload["headline_line2"],
         "start_digits": start_digits, "end_digits": end_digits, "scale_labels": scale_labels,
     }, p, FEED_VIEWPORT)
@@ -103,7 +103,7 @@ def _run_wed(target_date: date, dry_run: bool, region_override: str | None = Non
 
     for i, s in enumerate(payload["stops"]):
         p = outdir / f"0{i+2}_stop.png"
-        overflow_all += render_card_sync("wed_stop.html", {
+        overflow_all += render_card_sync("course_stop.html", {
             "where": payload["where"], "stop_no": i + 1, "stop_total": len(payload["stops"]),
             "time": s["time"], "color": s["color"], "name": s["name"], "desc": s.get("desc"),
             "duration_label": s["duration_label"], "image_url": s.get("image_url"),
@@ -118,7 +118,7 @@ def _run_wed(target_date: date, dry_run: bool, region_override: str | None = Non
     if overflow_all:
         payload["needs_review"] = True
 
-    return _finalize("wed", target_date, payload, cap, png_paths, overflow_all, dry_run, outdir)
+    return _finalize("course", target_date, payload, cap, png_paths, overflow_all, dry_run, outdir)
 
 
 def _to_minutes(hhmm: str) -> int:
@@ -126,48 +126,48 @@ def _to_minutes(hhmm: str) -> int:
     return int(h) * 60 + int(m)
 
 
-def _run_fri(target_date: date, dry_run: bool):
-    payload = data.get_fri_payload(target_date)
-    outdir = _outdir("fri", target_date)
+def _run_closing(target_date: date, dry_run: bool):
+    payload = data.get_closing_payload(target_date)
+    outdir = _outdir("closing", target_date)
 
     if not payload["items"]:
         if not dry_run:
-            approval.send_no_candidate("fri", target_date.isoformat(), "이번 주 마감 임박 없음")
+            approval.send_no_candidate("closing", target_date.isoformat(), "이번 주 마감 임박 없음")
         return {"created": False, "payload": payload}
 
     p = outdir / "01_cover.png"
-    overflow = render_card_sync("fri_cover.html", payload, p, FEED_VIEWPORT)
+    overflow = render_card_sync("closing_cover.html", payload, p, FEED_VIEWPORT)
     png_paths = [p]
     if overflow:
         payload["needs_review"] = True
 
-    cap = caption_mod.generate_caption("fri", payload)
-    return _finalize("fri", target_date, payload, cap, png_paths, overflow, dry_run, outdir)
+    cap = caption_mod.generate_caption("closing", payload)
+    return _finalize("closing", target_date, payload, cap, png_paths, overflow, dry_run, outdir)
 
 
-def _run_story(now_kst: datetime, dry_run: bool):
-    payload = data.get_story_payload(now_kst)
-    outdir = _outdir("story", now_kst.date())
+def _run_crowd(now_kst: datetime, dry_run: bool):
+    payload = data.get_crowd_payload(now_kst)
+    outdir = _outdir("crowd", now_kst.date())
 
     if not payload["spots"]:
         if not dry_run:
-            approval.send_no_candidate("story", now_kst.date().isoformat(), payload.get("reason", "데이터 없음"))
+            approval.send_no_candidate("crowd", now_kst.date().isoformat(), payload.get("reason", "데이터 없음"))
         return {"created": False, "payload": payload}
     if payload.get("stale"):
         if not dry_run:
-            approval.send_no_candidate("story", now_kst.date().isoformat(), "혼잡도 데이터가 30분 이상 오래됨")
+            approval.send_no_candidate("crowd", now_kst.date().isoformat(), "혼잡도 데이터가 30분 이상 오래됨")
         return {"created": False, "payload": payload}
 
-    p = outdir / "01_story.png"
-    overflow = render_card_sync("story_crowd.html", payload, p, STORY_VIEWPORT)
+    p = outdir / "01_crowd.png"
+    overflow = render_card_sync("crowd_story.html", payload, p, STORY_VIEWPORT)
     if overflow:
         payload["needs_review"] = True
 
     if dry_run:
         return {"created": True, "payload": payload, "png_paths": [p]}
 
-    post_id = ig_db.create_pending("story", now_kst.date(), payload, payload["needs_review"], str(outdir), None)
-    approval.send_for_approval(post_id, "story", now_kst.date().isoformat(), "(스토리 — 캡션 없음)", payload["needs_review"], ", ".join(overflow) if overflow else "-", [p])
+    post_id = ig_db.create_pending("crowd", now_kst.date(), payload, payload["needs_review"], str(outdir), None)
+    approval.send_for_approval(post_id, "crowd", now_kst.date().isoformat(), "(스토리 — 캡션 없음)", payload["needs_review"], ", ".join(overflow) if overflow else "-", [p])
     return {"created": True, "post_id": post_id, "payload": payload}
 
 
@@ -207,14 +207,14 @@ def run_format(fmt: str, target_date: date, dry_run: bool = False, region_overri
         signal.signal(signal.SIGALRM, _alarm_handler)
         signal.alarm(300)
     try:
-        if fmt == "mon":
-            return _run_mon(target_date, dry_run)
-        if fmt == "wed":
-            return _run_wed(target_date, dry_run, region_override=region_override)
-        if fmt == "fri":
-            return _run_fri(target_date, dry_run)
-        if fmt == "story":
-            return _run_story(datetime.now(KST), dry_run)
+        if fmt == "ranking":
+            return _run_ranking(target_date, dry_run)
+        if fmt == "course":
+            return _run_course(target_date, dry_run, region_override=region_override)
+        if fmt == "closing":
+            return _run_closing(target_date, dry_run)
+        if fmt == "crowd":
+            return _run_crowd(datetime.now(KST), dry_run)
         raise ValueError(f"알 수 없는 포맷: {fmt}")
     except Exception as e:
         if not dry_run:
@@ -228,10 +228,10 @@ def run_format(fmt: str, target_date: date, dry_run: bool = False, region_overri
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("format", choices=["mon", "wed", "fri", "story"])
+    parser.add_argument("format", choices=["ranking", "course", "closing", "crowd"])
     parser.add_argument("--date", type=str, default=None)
     parser.add_argument("--next-day", action="store_true")
-    parser.add_argument("--region", type=str, default=None, help="wed 포맷 지역 강제 지정(로테이션 무시)")
+    parser.add_argument("--region", type=str, default=None, help="course 포맷 지역 강제 지정(로테이션 무시)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 

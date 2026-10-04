@@ -23,7 +23,7 @@ def _send_text(text: str) -> None:
 def send_for_approval(post_id: int, fmt: str, target_date: str, caption: str, needs_review: bool, review_reason: str, png_paths: list[Path], share_url: str | None = None) -> None:
     warn = f" ⚠ 확인 필요: {review_reason}" if needs_review else ""
     header = f"[IG #{post_id}] {fmt} {target_date}{warn}"
-    # wed(3시간코스)만 실제 코스 URL이 있음 — 인스타 캡션 자체엔 안 넣는다(어차피 클릭이
+    # course(3시간코스)만 실제 코스 URL이 있음 — 인스타 캡션 자체엔 안 넣는다(어차피 클릭이
     # 안 먹혀서 캡션은 "댓글 남기면 링크 전달" 방식을 그대로 씀), 대신 관리자가 댓글에
     # 답할 때 바로 쓸 수 있게 텔레그램 메시지에만 실어 보낸다(2026-09-20).
     url_line = f"\n코스 링크: {share_url}" if share_url else ""

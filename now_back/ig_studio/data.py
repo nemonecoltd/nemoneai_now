@@ -35,7 +35,7 @@ def _fetch_end_dates(ids: list[int]) -> dict[int, object]:
 
 # ── 월: 주간 조회 순위 ──────────────────────────────────────
 
-def get_mon_payload(target_date: date) -> dict:
+def get_ranking_payload(target_date: date) -> dict:
     import ranking_service as ranking
 
     with engine.connect() as conn:
@@ -48,7 +48,7 @@ def get_mon_payload(target_date: date) -> dict:
     top25 = rows[:25]
     end_dates = _fetch_end_dates([r.id for r in top25])
 
-    prev_payload = ig_db.last_decided_payload("mon")
+    prev_payload = ig_db.last_decided_payload("ranking")
     prev_ids: list[int] = prev_payload.get("top25_ids", []) if prev_payload else []
     prev_rank_by_id = {pid: i for i, pid in enumerate(prev_ids)}
 
@@ -85,7 +85,7 @@ def get_mon_payload(target_date: date) -> dict:
     week_range = f"{week_start.month:02d}.{week_start.day:02d} – {week_end.month:02d}.{week_end.day:02d}"
 
     return {
-        "format": "mon", "target_date": target_date.isoformat(),
+        "format": "ranking", "target_date": target_date.isoformat(),
         "week_range": week_range,
         "headline_line1": "이번 주", "headline_line2": "진짜 많이 본 곳",
         "aggregation_days": used_days,
@@ -97,17 +97,17 @@ def get_mon_payload(target_date: date) -> dict:
 
 # ── 수: 3시간 코스 ──────────────────────────────────────────
 
-_WED_ROTATION = ["성수", "홍대", "강북", "강남"]
+_COURSE_ROTATION = ["성수", "홍대", "강북", "강남"]
 _BAR_COLORS = ["var(--pace)", "var(--navy)", "var(--signal)", "#5B7089"]
 
 
-def _next_wed_region(target_date: date) -> str:
-    # 예전엔 "직전에 승인/게시된 wed"를 기준으로 다음 지역을 골랐는데, 텔레그램 승인 흐름을
+def _next_course_region(target_date: date) -> str:
+    # 예전엔 "직전에 승인/게시된 course"를 기준으로 다음 지역을 골랐는데, 텔레그램 승인 흐름을
     # 거친 적이 한 번도 없어(ig_posts 전 행이 status='pending') 로테이션이 계속 첫 지역
     # (성수)에 멈춰 있었다(2026-09-27 발견). 승인 여부와 무관하게 항상 돌아가도록 ISO
     # 주차(연중 몇째 주인지) 기준으로 지역을 결정 — 매주 자동으로 다음 지역으로 넘어간다.
     week = target_date.isocalendar()[1]
-    return _WED_ROTATION[week % len(_WED_ROTATION)]
+    return _COURSE_ROTATION[week % len(_COURSE_ROTATION)]
 
 
 def _find_public_course(region: str) -> Optional[dict]:
@@ -160,7 +160,7 @@ def _generate_course(region: str) -> Optional[dict]:
 
     2026-09-20 — 예전엔 공개 코스가 없을 때만 부르는 폴백이었는데, "닫힌 팝업이 섞여있을 수
     있는 몇 주 전 유저 코스를 재사용하지 말고 매번 그 자리에서 새로 생성하라"는 결정에 따라
-    get_wed_payload에서 항상 먼저 호출하는 경로로 바뀜(이 함수 자체는 그대로, 호출 순서만
+    get_course_payload에서 항상 먼저 호출하는 경로로 바뀜(이 함수 자체는 그대로, 호출 순서만
     변경). 그러면서 "생성한 코스는 URL도 있어야 한다"는 요구가 같이 나와 saved_courses에
     is_public=true로 실제 저장해 진짜 공유 URL(/course/{id})이 생기게 함 — user_id는 FK
     제약이 없는 nullable text라 봇 생성분을 안전하게 넣을 수 있음(스키마 확인 완료).
@@ -198,10 +198,10 @@ def _generate_course(region: str) -> Optional[dict]:
     return {"course_key": f"saved:{row.id}", "steps": steps}
 
 
-def get_wed_payload(target_date: date, region_override: str | None = None) -> dict:
+def get_course_payload(target_date: date, region_override: str | None = None) -> dict:
     # region_override: 관리자가 특정 지역으로 강제 지정하고 싶을 때(예: 로테이션이 몇 주째
     # 안 도는 걸 우회해 수동 실행). 없으면 기존 로테이션 로직 그대로.
-    region = region_override or _next_wed_region(target_date)
+    region = region_override or _next_course_region(target_date)
     # 몇 주 전 유저가 저장해둔 공개 코스를 재사용하면 그 사이 팝업이 종료됐을 위험이 있어(비록
     # _find_public_course가 "현재 살아있는 장소인지"는 걸러내지만, 폐점 임박이거나 정보가 오래된
     # 채로 방치될 수 있음) — 항상 그 자리에서 새로 생성하는 걸 우선으로 하고, 생성이 실패할
@@ -209,7 +209,7 @@ def get_wed_payload(target_date: date, region_override: str | None = None) -> di
     course = _generate_course(region) or _find_public_course(region)
     needs_review = course is None
     if course is None:
-        return {"format": "wed", "target_date": target_date.isoformat(), "region": region,
+        return {"format": "course", "target_date": target_date.isoformat(), "region": region,
                 "needs_review": True, "reason": "코스 후보 없음(공개 코스·자동생성 모두 실패)"}
 
     steps = course["steps"][:4]
@@ -272,7 +272,7 @@ def get_wed_payload(target_date: date, region_override: str | None = None) -> di
     outing_day = outing_date_label
 
     return {
-        "format": "wed", "target_date": target_date.isoformat(),
+        "format": "course", "target_date": target_date.isoformat(),
         "region": region, "course_key": course["course_key"], "share_url": share_url,
         "where": f"{region} · {outing_day}", "outing_day": outing_day,
         "start_time": stops[0]["time"], "end_time": cur.strftime("%H:%M"),
@@ -290,7 +290,7 @@ def get_wed_payload(target_date: date, region_override: str | None = None) -> di
 
 # ── 금: 마감 임박 ────────────────────────────────────────────
 
-def get_fri_payload(target_date: date) -> dict:
+def get_closing_payload(target_date: date) -> dict:
     with engine.connect() as conn:
         rows = conn.execute(
             text("""
@@ -314,7 +314,7 @@ def get_fri_payload(target_date: date) -> dict:
         ).fetchall()
 
     if not rows:
-        return {"format": "fri", "target_date": target_date.isoformat(), "items": [], "needs_review": False}
+        return {"format": "closing", "target_date": target_date.isoformat(), "items": [], "needs_review": False}
 
     all_within_d3 = all((r.end_date - target_date).days <= 3 for r in rows)
     headline = "이번 주말이\n마지막인 곳" if all_within_d3 else "일주일 안에\n끝나는 곳"
@@ -334,7 +334,7 @@ def get_fri_payload(target_date: date) -> dict:
         })
 
     return {
-        "format": "fri", "target_date": target_date.isoformat(),
+        "format": "closing", "target_date": target_date.isoformat(),
         "date_label": f"{target_date.month:02d}.{target_date.day:02d} {['MON','TUE','WED','THU','FRI','SAT','SUN'][target_date.weekday()]}",
         "headline": headline, "items": items, "needs_review": needs_review,
     }
@@ -346,12 +346,12 @@ _LEVEL_DOTS = {"여유": 1, "보통": 2, "약간 붐빔": 3, "붐빔": 4}
 _STALE_THRESHOLD_MIN = 30  # 지시서 4절 그대로 — 아래 타임존 버그를 30분 부족 문제로 오진단했다가 바로잡음
 
 
-def get_story_payload(now_kst: datetime) -> dict:
+def get_crowd_payload(now_kst: datetime) -> dict:
     with engine.connect() as conn:
         rows = conn.execute(text("SELECT area_nm, congest_lvl, updated_at FROM crowd_status ORDER BY area_nm")).fetchall()
 
     if not rows:
-        return {"format": "story", "target_date": now_kst.date().isoformat(), "spots": [], "needs_review": True, "reason": "crowd_status 데이터 없음"}
+        return {"format": "crowd", "target_date": now_kst.date().isoformat(), "spots": [], "needs_review": True, "reason": "crowd_status 데이터 없음"}
 
     latest_updated = max(r.updated_at for r in rows)
     # .replace(tzinfo=...)는 시각은 그대로 두고 라벨만 바꿔서(KST 16:11 → "UTC" 16:11로
@@ -370,7 +370,7 @@ def get_story_payload(now_kst: datetime) -> dict:
 
     hh, mm = now_kst.strftime("%H"), now_kst.strftime("%M")
     return {
-        "format": "story", "target_date": now_kst.date().isoformat(),
+        "format": "crowd", "target_date": now_kst.date().isoformat(),
         "time_digits": [hh[0], hh[1], ":", mm[0], mm[1]],
         "spots": spots, "stale": stale, "needs_review": needs_review,
     }

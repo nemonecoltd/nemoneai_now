@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nemoneai.now.ig-closing</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/hansjung/Desktop/matmatch/backend/venv/bin/python3</string>
+        <string>-u</string>
+        <string>-m</string>
+        <string>ig_studio.cli</string>
+        <string>closing</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/hansjung/Desktop/now/now_back</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>5</integer>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/Users/hansjung/Desktop/now/now_back/logs/ig-closing.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/hansjung/Desktop/now/now_back/logs/ig-closing.error.log</string>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
