@@ -17,6 +17,47 @@ logger = logging.getLogger(__name__)
 # 블로그 0건("아직 오픈 전"일 가능성) 재시도 정책 — 스크래핑/타임아웃 실패용 _ENRICH_MAX_ATTEMPTS와는
 # 별개 카운터. 0건은 에러가 아니라 정상 응답이라 "실패"로 잡히지 않는데, 그대로 두면 즉시 완료 처리돼
 # 오픈 후 블로그가 실제로 올라와도 다시 확인하지 않는 문제가 있었다(2026-09-19).
+def _extract_apollo_state(html: str) -> Optional[dict]:
+    """window.__APOLLO_STATE__ = {...} 블록을 추출해 dict로 파싱.
+    예전엔 'window.__APOLLO_STATE__ = {JSON};\\s*</script>' 정규식으로 뽑았는데, 네이버가
+    같은 <script> 태그 안에 JSON 뒤에 트래커 스크립트를 이어붙이면서(2026-10-08 확인)
+    ';' 바로 뒤에 '</script>'가 온다는 가정이 깨져 늘 매칭 실패 → road_text가 계속 빈 값이었다.
+    문자열 리터럴 안의 중괄호는 세지 않고 중괄호 깊이를 직접 추적해 JSON의 정확한 끝을 찾는
+    방식으로 교체 — 뒤에 뭐가 더 붙어도 영향 없다."""
+    start = html.find("window.__APOLLO_STATE__")
+    if start < 0:
+        return None
+    brace_start = html.find("{", start)
+    if brace_start < 0:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(brace_start, len(html)):
+        ch = html[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(html[brace_start:i + 1])
+                except Exception:
+                    return None
+    return None
+
+
 _ENRICH_EMPTY_MAX_RETRIES = 3       # 0건 응답이 이 횟수에 도달하면 그 뒤로는 포기(영구 재시도 방지)
 _ENRICH_EMPTY_RETRY_INTERVAL_DAYS = 2  # 0건일 때 다음 재시도까지 대기 일수
 
@@ -71,7 +112,6 @@ async def _enrich_place_core(place_id: int) -> dict:
     """블로그갱신 실제 처리 로직 — HTTP 엔드포인트(/places/{id}/enrich)와 텔레그램 봇 둘 다에서 재사용.
     FastAPI에 종속되지 않도록 HTTPException 대신 ValueError/RuntimeError를 던짐."""
     import asyncio
-    import re as _re
 
     # 1. DB에서 place 정보 조회 (image_url은 무드 태그 판단용 멀티모달 입력에 사용)
     with engine.connect() as conn:
@@ -122,10 +162,9 @@ async def _enrich_place_core(place_id: int) -> dict:
                 )
                 await page.wait_for_timeout(2000)
                 home_html = await page.content()
-                apollo_match = _re.search(r'window\.__APOLLO_STATE__\s*=\s*(\{.+?\});\s*</script>', home_html, _re.DOTALL)
-                if apollo_match:
+                apollo = _extract_apollo_state(home_html)
+                if apollo:
                     try:
-                        apollo = json.loads(apollo_match.group(1))
                         for key, val in apollo.items():
                             if key.startswith("PlaceDetailBase:") and isinstance(val, dict):
                                 road_text = val.get("road") or ""
