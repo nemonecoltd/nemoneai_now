@@ -18,26 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("Sitemap fetch error:", error)
   }
 
-  // 1-2. 매거진(맛매치 기사 프록시) — 2026-10-11까지 canonical을 맛매치로 몰아 사이트맵에서도
-  // 뺐었는데, 양쪽 다 독립 색인하기로 결정(page.tsx 주석 참고)하면서 사이트맵에도 추가.
-  let magazineUrls: MetadataRoute.Sitemap = []
-  try {
-    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:8081'}/magazine`)
-    if (res.ok) {
-      const posts = await res.json()
-      if (Array.isArray(posts)) {
-        magazineUrls = posts.map((p: any) => ({
-          url: `${baseUrl}/magazine/${p.id}`,
-          lastModified: new Date(p.created_at || new Date()),
-          changeFrequency: 'monthly' as const,
-          priority: 0.6,
-        }))
-      }
-    }
-  } catch (error) {
-    console.error('Sitemap magazine fetch error:', error)
-  }
-
   // 2. 동적 상세 페이지 URL 생성 (개별 스팟 및 테마 장소)
   // 상세페이지는 ?lang= 쿼리로 4개 언어를 서빙하는데, 링크·메타데이터만으론 크롤러가
   // 언어판을 잘 발견하지 못함 — 대규모 사이트에선 sitemap의 hreflang(alternates.languages)이
@@ -73,7 +53,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ja: `${baseUrl}/ja/ranking/place`,
   }
   const staticUrls = [
-    { url: `${baseUrl}/new-popup`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 1.0 },
     { url: `${baseUrl}/ranking/course`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
     { url: `${baseUrl}/ranking/theme`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
@@ -102,5 +81,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]
   })
 
-  return [...staticUrls, ...placeRegionUrls, ...placeUrls, ...magazineUrls]
+  return [...staticUrls, ...placeRegionUrls, ...placeUrls]
 }
