@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { placeHref, regionLabel } from '@/components/home/homeUtils';
+import { getTodayKST } from '@/lib/utils';
 import SideCardShell from './SideCardShell';
 
 interface PopupItem {
@@ -30,7 +31,7 @@ const dict = {
 // 목업의 아이템별 D-N 뱃지 재현). 원데이클래스는 상시 운영이라 대상에서 제외.
 function daysUntilClose(item: PopupItem): number | null {
   if (!item.end_date || item.category === 'class') return null;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayKST();
   if (item.end_date < today) return null;
   const days = Math.ceil(
     (new Date(item.end_date + 'T00:00:00Z').getTime() - new Date(today + 'T00:00:00Z').getTime()) / 86400000
@@ -76,7 +77,7 @@ export default function PopupCard({ lang = 'ko', onSeeAll }: { lang?: string; on
     : p.title;
 
   return (
-    <SideCardShell label={t.title} moreHref={`/?tab=list&category=popup&lang=${lang}`} onMoreClick={onSeeAll}>
+    <SideCardShell label={t.title} moreHref="/new-popup" onMoreClick={onSeeAll}>
       {isLoading ? (
         <div className="py-6 text-center text-[11px] text-zinc-400">···</div>
       ) : items.length === 0 ? (

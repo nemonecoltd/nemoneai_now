@@ -16,7 +16,16 @@ DB_USER = os.getenv("DB_USER", "postgres")
 DB_PASS = os.getenv("DB_PASSWORD", "postgres")
 
 DB_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=1800)
+# 2026-10-11 — DB 세션 타임존이 기본값(UTC)이라 CURRENT_DATE/NOW()가 한국시간보다 최대 9시간
+# 늦게 넘어감(KST 00:00~09:00 사이엔 아직 "어제"로 계산됨). end_date >= CURRENT_DATE로 종료
+# 여부를 거르는 쿼리(랭킹 집계 등)가 이 시간대에 이미 끝난 장소를 계속 "운영중"으로 포함시킨
+# 실제 사고 발견(place_id=12107, end_date 2026-10-10인데 2026-10-11 07시 KST에도 hot_rank 1위).
+# 세션 타임존을 Asia/Seoul로 고정해 모든 CURRENT_DATE/NOW() 호출이 한국시간 기준으로 맞게 함 —
+# TIMESTAMPTZ 저장값 자체는 항상 UTC라 데이터는 안 바뀌고, "오늘이 며칠인지" 계산만 고쳐진다.
+engine = create_engine(
+    DB_URL, pool_pre_ping=True, pool_recycle=1800,
+    connect_args={"options": "-c timezone=Asia/Seoul"},
+)
 
 def cleanup_expired_data():
     """end_date + 45일이 지난 이벤트성 플레이스 삭제. end_date=NULL(테마 스크래핑)은 보호.

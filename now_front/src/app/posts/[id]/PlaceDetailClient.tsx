@@ -14,7 +14,7 @@ import PwaInstallBanner from '@/components/PwaInstallBanner';
 import SideCardLayout, { WIDE_FRAME, WIDE_FRAME_BORDER, useElementHeight } from '@/components/sidecards/SideCardLayout';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, getTodayKST } from '@/lib/utils';
 
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
@@ -336,27 +336,29 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
     if (full) return `${full[1]}-${full[2].padStart(2,'0')}-${full[3].padStart(2,'0')}`;
     const short = clean.match(/^(\d{1,2})[.\-](\d{1,2})\.?$/);
     if (short) return `${new Date().getFullYear()}-${short[1].padStart(2,'0')}-${short[2].padStart(2,'0')}`;
-    return new Date().toISOString().split('T')[0];
+    return getTodayKST();
   };
+
+  const todayKST = getTodayKST();
 
   const [startDate, endDate] = (() => {
     const src = displayDateRange || '';
     const parts = src.split('~').map(s => s.trim());
-    const start = parts[0] ? toISO(parts[0]) : new Date().toISOString().split('T')[0];
+    const start = parts[0] ? toISO(parts[0]) : todayKST;
     const end = parts[1] ? toISO(parts[1]) : undefined;
     return [start, end];
   })();
 
   // 원데이클래스/체험은 상시 운영으로 취급해 종료 표기 대상에서 제외
-  const isEnded = place.category !== 'class' && !!endDate && endDate < new Date().toISOString().split('T')[0];
+  const isEnded = place.category !== 'class' && !!endDate && endDate < todayKST;
 
   // 시작일이 아직 안 된 경우(수동 등록 등) "운영 중"으로 잘못 표시되던 문제 수정(2026-09-02) —
   // startDate는 이미 위에서 date_range 앞부분을 파싱해 계산해뒀음.
-  const isUpcoming = !isEnded && place.category !== 'class' && !!startDate && startDate > new Date().toISOString().split('T')[0];
+  const isUpcoming = !isEnded && place.category !== 'class' && !!startDate && startDate > todayKST;
 
   // 마감임박(D-3 이내) — 종료된 곳/상시 클래스/아직 시작 전인 곳은 대상에서 제외
   const daysUntilClose = (place.category !== 'class' && !!endDate && !isEnded && !isUpcoming)
-    ? Math.ceil((new Date(endDate + 'T00:00:00Z').getTime() - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00Z').getTime()) / 86400000)
+    ? Math.ceil((new Date(endDate + 'T00:00:00Z').getTime() - new Date(todayKST + 'T00:00:00Z').getTime()) / 86400000)
     : null;
   const isClosingSoon = daysUntilClose !== null && daysUntilClose >= 0 && daysUntilClose <= 3;
 

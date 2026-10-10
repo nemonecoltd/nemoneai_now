@@ -1253,3 +1253,31 @@ Google이 다른 표준 선택" 류 경고가 뜨면 이 결정 때문인 걸로
 제외 둘 다 확인. "양쪽을 다르게 처리"(나우 쪽엔 발췌+고유 소개글만 보여주고 전체는 맛매치로
 유도)하는 제대로 된 방법은 별도로 진행 예정 — AI 생성 콘텐츠 방식은 사용자가 보류시킴,
 대안 방식 논의 필요.
+
+### 2026-10-11 — KST/UTC 날짜 경계 버그 수정 (종료된 장소가 매일 자정~오전9시 "운영중"으로 노출)
+
+사용자 신고: `/posts/12107`(킹받는 상점, end_date 2026-10-10)가 다음날 아침에도 "운영중" +
+hot_rank 1위로 노출됨.
+
+**원인(2곳, 같은 뿌리)**:
+1. **백엔드 DB 세션 타임존이 기본값 UTC** — `SHOW timezone` 확인 결과 UTC. `end_date >=
+   CURRENT_DATE`로 종료 여부를 거르는 쿼리(ranking_service.py 등)가 매일 KST 00:00~09:00
+   사이엔 `CURRENT_DATE`를 "어제"로 계산해 이미 끝난 장소를 계속 포함시킴. 실측: KST
+   2026-10-11 07시 49분인데 DB CURRENT_DATE는 아직 2026-10-10.
+2. **프론트 `new Date().toISOString().split('T')[0]`도 동일한 UTC 변환 버그** —
+   `PlaceDetailClient.tsx`(상태뱃지·마감임박 계산, 5곳), `PopupCard.tsx`(마감임박, 1곳)에서
+   "오늘" 계산에 이 패턴을 썼음. 브라우저가 한국에 있어도 toISOString()은 항상 UTC로 변환.
+
+**수정**:
+- `now_back/database.py`: `create_engine(..., connect_args={"options": "-c timezone=Asia/Seoul"})`
+  — DB 세션 타임존을 한국시간으로 고정, `CURRENT_DATE`/`NOW()` 전부 한 번에 해결(TIMESTAMPTZ
+  저장값 자체는 항상 UTC라 데이터는 안 바뀜). database.py 단일 파일만 서버에 scp 후
+  `pm2 restart now_backend` — 재시작 시 main.py 79행이 자동으로 랭킹을 즉시 재계산해서
+  12107번 hot_rank가 바로 null로 빠지는 것까지 확인(다음 4시간 주기를 안 기다려도 됨).
+- `now_front/src/lib/utils.ts`: `getTodayKST()` 신설(Intl.DateTimeFormat Asia/Seoul 기준),
+  `PlaceDetailClient.tsx`·`PopupCard.tsx`의 `toISOString()` 패턴 전부 교체.
+- 로컬 빌드로 typecheck 확인 후 배포, 라이브에서 "운영 종료" 정상 표시·NOW TRENDING 제외
+  둘 다 스크린샷으로 확인.
+- **참고**: `init_db_*.py`/`fix_db.py` 등 일회성 마이그레이션 스크립트에도 CURRENT_DATE가
+  남아있지만 상시 실행 경로가 아니라 이번엔 안 건드림 — 나중에 재실행할 일 있으면 같은
+  타임존 문제 있을 수 있음 염두에 둘 것.
