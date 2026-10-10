@@ -1201,3 +1201,46 @@ now(지금여기)를 "NEMONE PACE"로 리브랜딩. 지시서 진행 전 현황 
 
 #### 참고
 - `sites-enabled/`에 `now_matmatch.bak.1786000667`이 같이 로드돼 `conflicting server name` 경고가 나는 상태(기존부터). 원본이 알파벳순으로 먼저 로드돼 동작엔 문제없지만 백업 파일은 `sites-enabled` 밖으로 옮기는 게 맞음
+
+### 2026-10-10 — 블로그갱신 상시(KeepAlive) 실행 발견 및 수정
+
+사용자가 "블로그갱신 메시지가 텔레그램으로 계속 온다"고 신고. 조사 결과 큰 문제 발견:
+
+- `com.nemoneai.now.telegram-bot.plist`(launchd)가 **2026-07-23부터 RunAtLoad+KeepAlive로
+  상시 등록**돼 있었음 — `StartCalendarInterval`(요일/시간 조건) 자체가 없어서, 수집
+  스케줄(화/목 12시)과 완전히 무관하게 Mac이 켜진 내내 계속 돌고 있었음. 그 안의
+  `_auto_enrich_new_popups`(10분마다 1건 처리)도 같이 상시 실행.
+- **사용자는 이걸 요청한 적이 없다고 명확히 확인**. 7/23 당시 project.md 기록("매번 저한테
+  요청해야 하는 게 번거로워서 상시로 전환")은 사용자 요청이 아니라 **에이전트(나)의 단독
+  판단**이었음 — 사용자가 직접 지적("단 한 번도 스케줄링 이외에 실행 요청하지 않았는데")
+- 9/3에 수집 스케줄이 "목요일 14시 주1회" → "화/목 12시 주2회"로 바뀌었는데(배경: 주1회+
+  10분 간격이면 처리 시간이 너무 길고 네이버 차단 위험도 있어서 분산), **이 변경과 블로그갱신
+  로직은 전혀 같이 안 건드려짐** — 상시 10분 루프는 수집 분산과 무관하게 계속 그대로 돌았음.
+  이 9/3 변경 자체도 project.md/git 어디에도 기록이 없음(launchd plist만 직접 수정, 추적 안 됨).
+- 10/2 네이버 차단 사고([[feedback_no_bypass_intentional_throttle]])는 이 상시 루프가
+  "만들어진" 원인이 아니라, 이미 7월부터 있던 상시 구조 위에 겹쳐 일어난 별개 사고.
+
+**조치**:
+1. `launchctl bootout`으로 `com.nemoneai.now.telegram-bot` 즉시 중단(재부팅해도 재시작 안 됨)
+2. `main.py`의 상시 10분 스케줄러(`AUTO_ENRICH_POPUPS` 게이트) 완전 제거
+3. `enrich_service.py`에 `run_post_scrape_enrich_batch()` 신설 — 호출 시점 백로그를 기존과
+   동일한 안전 간격(10분/건)으로 끝까지 처리하고 종료(상시 아님)
+4. `collector_naver.py`의 `run_all()`(화/목 12시 launchd) 끝에서 위 배치를 1회만 호출하도록 연결
+   — 이제 "수집 → 그 직후 블로그갱신"이 사용자가 원래 의도한 대로 하나로 묶임
+
+### 2026-10-11 — 매거진(맛매치 프록시) 독립 색인 전환
+
+**배경**: PACE 핫플>매거진은 맛매치(nemoneai.com) Special #5(20건)를 그대로 프록시해서
+보여주는 구조. `canonical`이 맛매치 원문을 가리키도록 설계돼 있어서(의도적 설계, 중복콘텐츠
+방지) PACE 쪽 매거진 URL은 검색에서 제외돼 있었음. 사용자가 "매거진도 PACE 주소로 검색되게"
+요청 → 중복 콘텐츠 리스크를 설명했더니 "감수하겠다, 둘 다 색인되게 해달라"고 최종 결정.
+
+**조치**: `now_front/src/app/magazine/[id]/page.tsx`의 canonical을
+`https://nemoneai.com/posts/{id}` → `https://now.nemoneai.com/magazine/{id}`(자기 자신)로 변경.
+맛매치 `/posts/{id}`는 원래부터 자기 자신을 canonical로 가리키고 있어 그쪽은 안 건드림 —
+이제 둘 다 각자 독립적으로 색인 대상. `sitemap.ts`에 매거진 URL(20건) 추가.
+로컬 production 빌드로 canonical·sitemap 둘 다 확인 후 배포, 라이브 확인 완료.
+
+**리스크(사용자 인지·감수함)**: 완전히 동일한 본문이 두 도메인에 있어 구글이 중복으로
+판단해 둘 중 하나만 고르거나 양쪽 다 순위가 깎일 수 있음. 서치콘솔에서 추후 "중복,
+Google이 다른 표준 선택" 류 경고가 뜨면 이 결정 때문인 걸로 이해할 것.

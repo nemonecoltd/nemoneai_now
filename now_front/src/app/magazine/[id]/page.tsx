@@ -33,9 +33,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const post = await getPost(id);
-  // 원문 소유자는 맛매치(nemoneai.com) — 검색 색인/정본은 그쪽으로 유지하고
-  // 나우 페이지는 앱 내 열람 UX로만 제공 (중복 콘텐츠로 잡히지 않도록 canonical을 원문으로 지정)
-  const canonical = `https://nemoneai.com/posts/${id}`;
+  // 2026-10-11까지는 원문(맛매치)으로 canonical을 몰아 나우 쪽은 중복으로 색인 제외시켰었음.
+  // 사용자 결정(2026-10-11)으로 양쪽 다 독립 색인 — 중복 콘텐츠 리스크는 감수하기로 함.
+  // 맛매치 /posts/{id}는 원래부터 자기 자신을 canonical로 가리키고 있어 그쪽은 손 안 댐.
+  const canonical = `https://now.nemoneai.com/magazine/${id}`;
 
   if (!post) {
     return { title: `매거진 #${id}`, alternates: { canonical } };
