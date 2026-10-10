@@ -18,7 +18,7 @@ import ranking_service as ranking
 import push_service
 import notification
 import ga4_service
-from enrich_service import _auto_enrich_new_popups, _enrich_place_core
+from enrich_service import _enrich_place_core
 from scraper_seoul_crowd import poll_crowd
 from routers import admin, ai, courses, crowd, internal, magazine, places, push, rankings, social
 
@@ -134,8 +134,10 @@ if os.getenv("TELEGRAM_BOT_ENABLED") != "true":
 scheduler.start()
 
 
-if os.getenv("AUTO_ENRICH_POPUPS") == "true":
-    scheduler.add_job(_auto_enrich_new_popups, IntervalTrigger(minutes=10), id="auto_enrich_new_popups")
+# 2026-10-10 제거 — 블로그갱신 상시(10분 간격) 스케줄러. 수집(화/목 12시) 스케줄과 무관하게
+# Mac이 켜진 내내 계속 돌며 텔레그램 알림을 보내고 있었음(7월부터, 사용자 미승인·미인지 상태로
+# 방치됨). collector_naver.py의 run_all() 끝에서 enrich_service.run_post_scrape_enrich_batch()를
+# 1번만 호출하는 방식으로 교체 — "수집 후에만 블로그갱신" 요청 반영.
 
 # 서울시 실시간 도시데이터(혼잡도) — 로컬 launchd(맥 꺼지면 중단)에서 서버 cron으로 이전(2026-08-09).
 # 30분 간격(2026-08-31, 10분→30분 완화 — 그 정도로 자주 갖고올 필요가 없다는 판단).

@@ -1,5 +1,6 @@
 """블로그갱신(enrich) 서비스 — pcmap 스크래핑 + Gemini 소개 재생성 + 번역/ISR 재검증.
 HTTP 엔드포인트(/places/{id}/enrich), 텔레그램 봇, 신규 팝업 자동갱신 스케줄러가 공유."""
+import asyncio
 import json
 import logging
 import os
@@ -346,11 +347,18 @@ async def _enrich_place_core(place_id: int) -> dict:
     }
 
 
-# 신규 팝업 자동 블로그갱신 — 10분마다 blog_reviews가 비어있는 네이버 팝업(공연/축제/코피스/비짓제주 등
-# 레거시 소스 제외)을 찾아 자동으로 갱신. Playwright가 로컬에만 있어 프로덕션에선 절대 켜면 안 됨 —
-# 로컬 .env에만 AUTO_ENRICH_POPUPS=true를 넣어서 게이트.
-# created_at 7일(지난주치까지) 이내로 한정 — 매주 목요일 스크래핑분만 대상으로 하고 그보다 예전부터
-# 쌓인 미갱신 백로그는 안 건드림(백로그는 기존처럼 어드민/텔레그램 수동 트리거로 처리).
+# 신규 팝업 블로그갱신 — blog_reviews가 비어있는 네이버 팝업(공연/축제/코피스/비짓제주 등
+# 레거시 소스 제외)을 찾아 갱신. Playwright가 로컬에만 있어 프로덕션에선 절대 켜면 안 됨.
+# created_at 7일 이내로 한정 — 이번 수집 주기분만 대상으로 하고 그보다 예전부터 쌓인
+# 미갱신 백로그는 안 건드림(백로그는 기존처럼 어드민/텔레그램 수동 트리거로 처리).
+#
+# 2026-10-10까지는 main.py에 상시(KeepAlive) 등록된 APScheduler가 10분마다 이 중 1건씩
+# 영구히 처리하는 구조였음 — 수집(collector_naver.py, 화/목 12시 launchd)과 완전히 분리돼
+# 있어서, 수집 스케줄과 무관하게 Mac이 켜진 내내 계속 돌며 텔레그램 알림을 보내고 있었다
+# (사용자 미승인·미인지 상태로 7월부터 방치). "스크래핑 후에만 블로그갱신" 요청에 따라
+# run_post_scrape_enrich_batch()로 교체 — collector_naver.py의 run_all() 끝에서 딱 1번
+# 호출되고, 그 시점의 백로그를 끝까지(간격은 기존과 동일하게 안전하게) 처리한 뒤 종료한다.
+# 상시 스케줄러(_auto_enrich_new_popups)는 코드만 남겨두고 더 이상 등록하지 않는다.
 _auto_enrich_success_count = 0
 _auto_enrich_fail_count = 0
 
@@ -369,34 +377,45 @@ def _bump_enrich_fail_count(place_id: int) -> int:
     return row[0] if row else 0
 
 
+_ENRICH_QUEUE_SQL = """
+    SELECT id FROM seongsu_places
+    WHERE (
+        blog_reviews IS NULL
+        OR (enrich_next_retry_at IS NOT NULL AND enrich_next_retry_at <= NOW())
+      )
+      AND COALESCE(enrich_fail_count, 0) < :max_attempts
+      AND COALESCE(category, 'popup') = 'popup'
+      AND region NOT IN ('공연', '축제')
+      AND naver_place_id NOT LIKE 'kopis_%'
+      AND naver_place_id NOT LIKE 'jeju_%'
+      AND naver_place_id NOT LIKE 'culture_%'
+      AND naver_place_id NOT LIKE 'visitjeju_%'
+      AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+      AND created_at >= NOW() - INTERVAL '7 days'
+    ORDER BY created_at ASC
+    LIMIT :limit
+"""
+
+
+def _ensure_enrich_columns(conn) -> None:
+    conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_fail_count INTEGER DEFAULT 0"))
+    conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_empty_count INTEGER DEFAULT 0"))
+    conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_next_retry_at TIMESTAMPTZ"))
+    conn.commit()
+
+
 def _auto_enrich_new_popups() -> None:
+    """더 이상 스케줄러에 등록하지 않음(2026-10-10) — run_post_scrape_enrich_batch() 참고.
+    과거 상시(10분 간격) 호출용으로 남겨둔 코드, 필요하면 수동으로도 쓸 수 있게 유지."""
     import asyncio as _asyncio
     global _auto_enrich_success_count, _auto_enrich_fail_count
     BATCH_LIMIT = 1  # 10분마다 1건 — 안전하게 천천히
     ITEM_TIMEOUT_SEC = 120  # 한 건이 멈춰도 다음 10분 주기를 막지 않도록 상한
     with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_fail_count INTEGER DEFAULT 0"))
-        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_empty_count INTEGER DEFAULT 0"))
-        conn.execute(text("ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_next_retry_at TIMESTAMPTZ"))
-        conn.commit()
-        rows = conn.execute(text("""
-            SELECT id FROM seongsu_places
-            WHERE (
-                blog_reviews IS NULL
-                OR (enrich_next_retry_at IS NOT NULL AND enrich_next_retry_at <= NOW())
-              )
-              AND COALESCE(enrich_fail_count, 0) < :max_attempts
-              AND COALESCE(category, 'popup') = 'popup'
-              AND region NOT IN ('공연', '축제')
-              AND naver_place_id NOT LIKE 'kopis_%'
-              AND naver_place_id NOT LIKE 'jeju_%'
-              AND naver_place_id NOT LIKE 'culture_%'
-              AND naver_place_id NOT LIKE 'visitjeju_%'
-              AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-              AND created_at >= NOW() - INTERVAL '7 days'
-            ORDER BY created_at ASC
-            LIMIT :limit
-        """), {"limit": BATCH_LIMIT, "max_attempts": _ENRICH_MAX_ATTEMPTS}).fetchall()
+        _ensure_enrich_columns(conn)
+        rows = conn.execute(
+            text(_ENRICH_QUEUE_SQL), {"limit": BATCH_LIMIT, "max_attempts": _ENRICH_MAX_ATTEMPTS}
+        ).fetchall()
 
     if not rows:
         # 처리할 게 없어짐 = 이번 배치 종료. 뭔가 했었으면(카운터>0) 요약 알림 후 리셋, 이미 0이면(계속 idle) 조용히 넘어감
@@ -426,3 +445,45 @@ def _auto_enrich_new_popups() -> None:
             attempts = _bump_enrich_fail_count(row.id)
             logger.error("[auto_enrich] 실패(%d/%d회) (place_id=%s): %s", attempts, _ENRICH_MAX_ATTEMPTS, row.id, e)
             _auto_enrich_fail_count += 1
+
+
+async def run_post_scrape_enrich_batch(item_interval_sec: int = 600) -> None:
+    """collector_naver.py의 run_all() 끝에서 한 번만 호출 — 그 시점의 블로그갱신 백로그를
+    끝까지 처리하고 종료한다(상시 스케줄러 아님). 아이템 간 간격(기본 10분)은 기존
+    _auto_enrich_new_popups와 동일하게 유지 — 네이버 차단 사고(2026-10-02, 2초 간격으로
+    돌리다 IP 차단) 이후의 안전장치라 임의로 좁히지 않는다. 간격을 더 당기고 싶으면
+    실행 전에 먼저 사용자 확인을 받을 것.
+    """
+    ITEM_TIMEOUT_SEC = 120
+    success_count = 0
+    fail_count = 0
+
+    while True:
+        with engine.connect() as conn:
+            _ensure_enrich_columns(conn)
+            rows = conn.execute(
+                text(_ENRICH_QUEUE_SQL), {"limit": 1, "max_attempts": _ENRICH_MAX_ATTEMPTS}
+            ).fetchall()
+
+        if not rows:
+            break
+
+        place_id = rows[0].id
+        try:
+            await asyncio.wait_for(_enrich_place_core(place_id), timeout=ITEM_TIMEOUT_SEC)
+            logger.info("[post_scrape_enrich] 완료 (place_id=%s)", place_id)
+            success_count += 1
+        except asyncio.TimeoutError:
+            attempts = _bump_enrich_fail_count(place_id)
+            logger.error("[post_scrape_enrich] 타임아웃(%ss 초과, %d/%d회) — (place_id=%s)", ITEM_TIMEOUT_SEC, attempts, _ENRICH_MAX_ATTEMPTS, place_id)
+            fail_count += 1
+        except Exception as e:
+            attempts = _bump_enrich_fail_count(place_id)
+            logger.error("[post_scrape_enrich] 실패(%d/%d회) (place_id=%s): %s", attempts, _ENRICH_MAX_ATTEMPTS, place_id, e)
+            fail_count += 1
+
+        await asyncio.sleep(item_interval_sec)
+
+    if success_count or fail_count:
+        from notification import send_alert
+        send_alert(f"[블로그갱신] 수집 후 배치 완료 — 성공 {success_count}건, 실패 {fail_count}건")

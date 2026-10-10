@@ -445,6 +445,13 @@ async def run_all():
         + "\n" + "\n".join(lines)
     )
 
+    # 2026-10-10 — 블로그갱신을 "수집 끝난 직후 1번"으로 변경. 예전엔 main.py에 상시(KeepAlive)
+    # 등록된 10분 간격 스케줄러가 수집 스케줄과 무관하게 Mac이 켜진 내내 계속 돌고 있었음
+    # (사용자 미승인 상태로 7월부터 방치돼 반복 텔레그램 알림의 원인이었음 — 경위는
+    # project.md 참고). 이제 이 수집(화/목 12시)이 끝날 때만 그 시점의 백로그를 처리한다.
+    from enrich_service import run_post_scrape_enrich_batch
+    await run_post_scrape_enrich_batch()
+
 
 async def run_busan_only():
     """부산만 단독 수집 + 완료 알림 — 첫 확장 시 부산만 따로 돌릴 때 사용.
