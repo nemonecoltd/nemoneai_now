@@ -85,11 +85,19 @@ def last_decided_payload(fmt: str) -> Optional[dict]:
 
 
 def course_already_used(place_ids_key: str) -> bool:
-    """saved_courses 선택 시 '아직 ig_posts에 안 쓰인 코스' 조건(4절) — payload.course_key로 매칭."""
+    """saved_courses 선택 시 '아직 ig_posts에 안 쓰인 코스' 조건(4절) — payload.course_key로 매칭.
+
+    2026-10-11 수정 — status IN ('approved','posted') 조건 때문에 사실상 항상 False였다.
+    텔레그램 승인 흐름을 실제로 끝까지 밟은 적이 한 번도 없어서(ig_posts 전 행이 영구히
+    'pending', create_pending()의 "같은 날짜 pending은 대체" 주석 참고) "이미 쓰였다"는
+    판정이 절대 안 나고, _find_public_course()가 매번 좋아요 1위 코스를 그대로 다시 골랐다
+    (사용자 리포트: "지난주 홍대랑 이번주 홍대랑 거의 같다" — 실제로 saved:60을 반복 선택 중이었음
+    확인). status 조건을 빼고 "format=course로 생성된 적이 있는지"만 본다 — 승인 여부와 무관하게
+    한 번 쓰인 코스는 재사용하지 않는 게 실제 의도에 맞는다."""
     ensure_schema()
     with engine.connect() as conn:
         row = conn.execute(
-            text("SELECT 1 FROM ig_posts WHERE format = 'course' AND payload->>'course_key' = :k AND status IN ('approved','posted') LIMIT 1"),
+            text("SELECT 1 FROM ig_posts WHERE format = 'course' AND payload->>'course_key' = :k LIMIT 1"),
             {"k": place_ids_key},
         ).fetchone()
     return row is not None
