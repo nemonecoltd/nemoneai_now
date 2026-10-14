@@ -145,4 +145,6 @@ def run_busan_exhibition() -> None:
 
 
 if __name__ == "__main__":
+    import run_watchdog
+    run_watchdog.arm("비짓부산 수집", 45 * 60)  # 정상 실행은 약 3분
     run_busan_exhibition()

@@ -399,4 +399,7 @@ def run_all():
 
 
 if __name__ == "__main__":
+    # 응답 없는 연결에 걸려 2주간 멈춘 사고(2026-09-30) 방지 — run_watchdog.py 참고. 정상 실행은 20~30분.
+    import run_watchdog
+    run_watchdog.arm("비짓제주 수집", 90 * 60)
     run_all()

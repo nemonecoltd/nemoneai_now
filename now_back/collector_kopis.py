@@ -112,6 +112,8 @@ async def run_all():
 
 
 if __name__ == "__main__":
+    import run_watchdog
+    run_watchdog.arm("KOPIS 수집", 60 * 60)  # 정상 실행은 약 15분
     target = sys.argv[1] if len(sys.argv) > 1 else "all"
     if target == "concert":
         asyncio.run(run_concert())

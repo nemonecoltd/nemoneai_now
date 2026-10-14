@@ -73,7 +73,7 @@ def upload_popup_image(raw_bytes: bytes, name_hint: str = "popup", precompressed
     bucket = _get_bucket()
     blob = bucket.blob(path)
     blob.cache_control = "public, max-age=31536000, immutable"
-    blob.upload_from_string(webp_bytes, content_type="image/webp")
+    blob.upload_from_string(webp_bytes, content_type="image/webp", timeout=60)
     return f"https://storage.googleapis.com/{BUCKET}/{path}"
 
 
