@@ -70,16 +70,33 @@ def _bootstrap_session() -> requests.Session:
     return s
 
 
+LIST_FAILURES = 0  # 이번 실행에서 재시도 후에도 실패한 목록 조회 수(run_all 알림에 반영)
+
+
 def _fetch_list(session: requests.Session, params: dict) -> list[dict]:
+    """목록 조회. 비정상 응답(빈 본문/비-JSON/비-200)은 최대 3회 재시도하고, 끝내 실패하면 사유를 남기고 집계한다.
+    2026-10-14: 과거 실행에서 전 목록이 빈 응답으로 와 '신규 0 · 갱신 0 완료'로 조용히 끝난 적이 있어 추가."""
+    global LIST_FAILURES
     items: list[dict] = []
     page = 1
     while True:
         p = {**params, "page": page, "pageSize": 100}
-        try:
-            r = session.get(LIST_URL, params=p, timeout=15)
-            data = r.json()
-        except Exception as e:
-            print(f"  ⚠️ [Visit Jeju] 목록 조회 실패 (page {page}, {params}): {e}")
+        data, last = None, ""
+        for attempt in (1, 2, 3):
+            try:
+                r = session.get(LIST_URL, params=p, timeout=15)
+                if r.status_code != 200:
+                    last = f"HTTP {r.status_code} {r.text[:60]!r}"
+                else:
+                    data = r.json()
+                    break
+            except Exception as e:  # noqa: BLE001
+                last = f"{type(e).__name__}: {e} (len={len(r.content) if 'r' in locals() else '?'})"
+            if attempt < 3:
+                time.sleep(3 * attempt)
+        if data is None:
+            LIST_FAILURES += 1
+            print(f"  ⚠️ [Visit Jeju] 목록 조회 실패 3회 (page {page}, {params}): {last}")
             break
         page_items = data.get("items") or []
         items.extend(page_items)
@@ -392,10 +409,12 @@ def run_all():
     print("\n" + "=" * 50)
     print(f"🏁 완료 — 신규 {new_count} / 갱신 {updated_count} / 실패 {fail_count}")
     print("=" * 50)
-    send_alert(
-        f"Visit Jeju 쇼핑/행사 수집 완료\n신규 {new_count} · 갱신 {updated_count}"
-        + (f" · 실패 {fail_count}" if fail_count else "")
-    )
+    body = f"신규 {new_count} · 갱신 {updated_count}" + (f" · 실패 {fail_count}" if fail_count else "")
+    if LIST_FAILURES or not items:
+        send_alert(f"⚠️ Visit Jeju 수집 불완전 — 재실행 필요\n{body}\n목록 조회 실패 {LIST_FAILURES}회 · 수집 {len(items)}건\n"
+                   f"(python3 scraper_visitjeju.py 로 다시 실행)")
+    else:
+        send_alert(f"Visit Jeju 쇼핑/행사 수집 완료\n{body}")
 
 
 if __name__ == "__main__":
