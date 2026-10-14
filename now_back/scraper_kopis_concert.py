@@ -20,6 +20,37 @@ DETAIL_URL = "http://www.kopis.or.kr/openApi/restful/pblprfr/{mt20id}"
 WINDOW_DAYS = 31
 WINDOW_COUNT = 3  # 오늘부터 약 93일
 
+# 목록/상세 조회는 일시적으로 비정상 응답(비-200, 빈 응답, 파싱 실패)이 오는 경우가 있다 — 2026-10-14
+# 목록 2페이지부터 전부 실패해 100건만 받고도 "수집 완료"로 보고된 사고(최근 5회 중 3회 불완전)가 있어,
+# 요청마다 재시도하고 실패를 숨기지 않고 집계한다(collector_kopis가 읽어 알림에 반영).
+LIST_ATTEMPTS = 3
+DETAIL_ATTEMPTS = 3
+RETRY_SLEEP = (2, 5)          # 재시도 전 대기(초)
+LAST_STATS: dict = {}
+
+
+def _reset_stats() -> None:
+    LAST_STATS.clear()
+    LAST_STATS.update({"found": 0, "list_failures": 0, "list_retries": 0, "detail_failures": 0, "detail_retries": 0})
+
+
+def _get_with_retry(url: str, params: dict, label: str, attempts: int, kind: str):
+    """200 응답을 얻을 때까지 최대 attempts회. 실패 사유를 로그에 남기고, 끝내 못 받으면 None."""
+    last = ""
+    for i in range(1, attempts + 1):
+        try:
+            r = requests.get(url, params=params, timeout=15)
+            if r.status_code == 200:
+                return r
+            last = f"HTTP {r.status_code} {r.text[:80]!r}"
+        except Exception as e:  # noqa: BLE001
+            last = f"{type(e).__name__}: {e}"
+        if i < attempts:
+            LAST_STATS[f"{kind}_retries"] = LAST_STATS.get(f"{kind}_retries", 0) + 1
+            time.sleep(RETRY_SLEEP[min(i - 1, len(RETRY_SLEEP) - 1)])
+    print(f"  ⚠️ [KOPIS] {label} 조회 실패({attempts}회): {last}")
+    return None
+
 
 def _date_windows():
     windows = []
@@ -45,33 +76,39 @@ def _fetch_list(genre: str | None, signgucode: str, stdate: str, eddate: str) ->
         }
         if genre:
             params["shcate"] = genre
-        try:
-            r = requests.get(LIST_URL, params=params, timeout=15)
-            if r.status_code != 200:
-                break
-            root = ET.fromstring(r.text)
-            page_items = root.findall(".//db")
-            if not page_items:
-                break
-            items.extend(page_items)
-            if len(page_items) < 100:
-                break
-            cpage += 1
-        except Exception as e:
-            print(f"  ⚠️ [KOPIS] 목록 조회 실패 ({genre}/{signgucode}/{stdate}): {e}")
+        label = f"목록({genre or '전체'}/{signgucode}/{stdate}~{eddate}/p{cpage})"
+        r = _get_with_retry(LIST_URL, params, label, LIST_ATTEMPTS, "list")
+        if r is None:
+            LAST_STATS["list_failures"] = LAST_STATS.get("list_failures", 0) + 1
             break
+        try:
+            root = ET.fromstring(r.text)
+        except ET.ParseError as e:
+            print(f"  ⚠️ [KOPIS] {label} XML 파싱 실패: {e} / {r.text[:80]!r}")
+            LAST_STATS["list_failures"] = LAST_STATS.get("list_failures", 0) + 1
+            break
+        page_items = root.findall(".//db")
+        if not page_items:
+            break  # 마지막 페이지 뒤의 빈 응답(정상). 비-200/파싱 실패는 위에서 이미 실패로 집계됨
+        items.extend(page_items)
+        if len(page_items) < 100:
+            break
+        cpage += 1
+        time.sleep(0.3)
     return items
 
 
 def _fetch_detail(mt20id: str) -> ET.Element | None:
+    r = _get_with_retry(DETAIL_URL.format(mt20id=mt20id), {"service": KOPIS_SERVICE_KEY},
+                        f"상세({mt20id})", DETAIL_ATTEMPTS, "detail")
+    if r is None:
+        LAST_STATS["detail_failures"] = LAST_STATS.get("detail_failures", 0) + 1
+        return None
     try:
-        r = requests.get(DETAIL_URL.format(mt20id=mt20id), params={"service": KOPIS_SERVICE_KEY}, timeout=15)
-        if r.status_code != 200:
-            return None
-        root = ET.fromstring(r.text)
-        return root.find(".//db")
-    except Exception as e:
-        print(f"  ⚠️ [KOPIS] 상세 조회 실패 ({mt20id}): {e}")
+        return ET.fromstring(r.text).find(".//db")
+    except ET.ParseError as e:
+        print(f"  ⚠️ [KOPIS] 상세({mt20id}) XML 파싱 실패: {e}")
+        LAST_STATS["detail_failures"] = LAST_STATS.get("detail_failures", 0) + 1
         return None
 
 
@@ -105,6 +142,7 @@ async def scrape_kopis_concert() -> list[dict]:
         print("⚠️ KOPIS_SERVICE_KEY가 설정되지 않았습니다.")
         return []
 
+    _reset_stats()
     print("🎭 [KOPIS] 공연 목록 수집 중 (서울: 전체 장르/연극·뮤지컬·음악·종합 분류)...")
     today = date.today()
     found: dict[str, dict] = {}  # mt20id -> {"region": ..., "category": ...}
@@ -121,6 +159,7 @@ async def scrape_kopis_concert() -> list[dict]:
             genrenm = el.findtext("genrenm", "").strip()
             found[mt20id] = {"region": "공연", "category": _classify_genre(genrenm)}
 
+    LAST_STATS["found"] = len(found)
     print(f"📦 [KOPIS] 공연 {len(found)}건 발견. 상세 정보 조회 중...")
 
     results: list[dict] = []
@@ -191,7 +230,8 @@ async def scrape_kopis_concert() -> list[dict]:
             "link_url": link_url,
         })
 
-    print(f"✅ [KOPIS] 공연 {len(results)}건 정제 완료.")
+    print(f"✅ [KOPIS] 공연 {len(results)}건 정제 완료. (목록 실패 {LAST_STATS.get('list_failures', 0)}"
+          f" · 상세 실패 {LAST_STATS.get('detail_failures', 0)} · 재시도 {LAST_STATS.get('list_retries', 0) + LAST_STATS.get('detail_retries', 0)}회)")
     return results
 
 
