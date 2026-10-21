@@ -437,6 +437,54 @@ def _auto_enrich_new_popups() -> None:
             _auto_enrich_fail_count += 1
 
 
+# DB 접속이 일시적으로 막혔을 때(2026-10-21 00:27 — 이 맥에서 Cloud SQL·msm VM 양쪽 접속이 2분가량
+# 시간 초과되며 배치 전체가 재시도 없이 종료, 알림도 없었음) 바로 포기하지 않고 기다렸다 다시 붙는다.
+_DB_RETRY_WAITS_SEC = (60, 120, 300)
+
+
+async def _with_db_retry(fn, what: str):
+    """DB 접속 계열 오류(OperationalError 등)만 60초·120초·300초 간격으로 재시도. 그래도 실패하면 예외를 그대로 올린다."""
+    from sqlalchemy.exc import OperationalError, DBAPIError
+    for attempt in range(len(_DB_RETRY_WAITS_SEC) + 1):
+        try:
+            return fn()
+        except (OperationalError, DBAPIError) as e:
+            if attempt >= len(_DB_RETRY_WAITS_SEC):
+                raise
+            wait = _DB_RETRY_WAITS_SEC[attempt]
+            logger.warning("[post_scrape_enrich] DB 접속 실패(%s) — %d초 뒤 재시도 (%d/%d): %s",
+                           what, wait, attempt + 1, len(_DB_RETRY_WAITS_SEC), str(e)[:120])
+            await asyncio.sleep(wait)
+
+
+def _fetch_next_queue_row():
+    with engine.connect() as conn:
+        _ensure_enrich_columns(conn)
+        return conn.execute(
+            text(_ENRICH_QUEUE_SQL), {"limit": 1, "max_attempts": _ENRICH_MAX_ATTEMPTS}
+        ).fetchall()
+
+
+def _count_queue_remaining():
+    """중단 알림용 남은 건수. 이때 DB가 막혀 있을 수 있어 실패하면 None."""
+    try:
+        with engine.connect() as conn:
+            return len(conn.execute(
+                text(_ENRICH_QUEUE_SQL), {"limit": 100000, "max_attempts": _ENRICH_MAX_ATTEMPTS}
+            ).fetchall())
+    except Exception:
+        return None
+
+
+def _bump_fail_safe(place_id: int) -> int:
+    """실패 횟수 기록 자체가 DB 문제로 터져 배치가 죽지 않게 한다(기록 못 하면 0으로 보고하고 계속)."""
+    try:
+        return _bump_enrich_fail_count(place_id)
+    except Exception as e:
+        logger.warning("[post_scrape_enrich] 실패 횟수 기록 불가(place_id=%s): %s", place_id, str(e)[:120])
+        return 0
+
+
 async def run_post_scrape_enrich_batch(item_interval_sec: int = 600) -> None:
     """collector_naver.py의 run_all() 끝에서 한 번만 호출 — 그 시점의 블로그갱신 백로그를
     끝까지 처리하고 종료한다(상시 스케줄러 아님). 아이템 간 간격(기본 10분)은 기존
@@ -448,31 +496,42 @@ async def run_post_scrape_enrich_batch(item_interval_sec: int = 600) -> None:
     success_count = 0
     fail_count = 0
 
-    while True:
-        with engine.connect() as conn:
-            _ensure_enrich_columns(conn)
-            rows = conn.execute(
-                text(_ENRICH_QUEUE_SQL), {"limit": 1, "max_attempts": _ENRICH_MAX_ATTEMPTS}
-            ).fetchall()
+    try:
+        while True:
+            rows = await _with_db_retry(_fetch_next_queue_row, "대기열 조회")
 
-        if not rows:
-            break
+            if not rows:
+                break
 
-        place_id = rows[0].id
-        try:
-            await asyncio.wait_for(_enrich_place_core(place_id), timeout=ITEM_TIMEOUT_SEC)
-            logger.info("[post_scrape_enrich] 완료 (place_id=%s)", place_id)
-            success_count += 1
-        except asyncio.TimeoutError:
-            attempts = _bump_enrich_fail_count(place_id)
-            logger.error("[post_scrape_enrich] 타임아웃(%ss 초과, %d/%d회) — (place_id=%s)", ITEM_TIMEOUT_SEC, attempts, _ENRICH_MAX_ATTEMPTS, place_id)
-            fail_count += 1
-        except Exception as e:
-            attempts = _bump_enrich_fail_count(place_id)
-            logger.error("[post_scrape_enrich] 실패(%d/%d회) (place_id=%s): %s", attempts, _ENRICH_MAX_ATTEMPTS, place_id, e)
-            fail_count += 1
+            place_id = rows[0].id
+            try:
+                await asyncio.wait_for(_enrich_place_core(place_id), timeout=ITEM_TIMEOUT_SEC)
+                logger.info("[post_scrape_enrich] 완료 (place_id=%s)", place_id)
+                success_count += 1
+            except asyncio.TimeoutError:
+                attempts = _bump_fail_safe(place_id)
+                logger.error("[post_scrape_enrich] 타임아웃(%ss 초과, %d/%d회) — (place_id=%s)", ITEM_TIMEOUT_SEC, attempts, _ENRICH_MAX_ATTEMPTS, place_id)
+                fail_count += 1
+            except Exception as e:
+                attempts = _bump_fail_safe(place_id)
+                logger.error("[post_scrape_enrich] 실패(%d/%d회) (place_id=%s): %s", attempts, _ENRICH_MAX_ATTEMPTS, place_id, e)
+                fail_count += 1
 
-        await asyncio.sleep(item_interval_sec)
+            await asyncio.sleep(item_interval_sec)
+    except Exception as e:
+        # 재시도로도 못 살린 오류 — 조용히 죽으면 "완료 메시지가 안 온다"로만 알게 되므로 즉시 알린다
+        from notification import send_alert
+        remaining = _count_queue_remaining()
+        remaining_txt = f"{remaining}건" if remaining is not None else "확인 불가(DB 접속 불가)"
+        send_alert(
+            "[블로그갱신] ⚠️ 중단됨\n"
+            f"원인: {type(e).__name__}: {str(getattr(e, 'orig', e)).splitlines()[0][:140]}\n"
+            f"이번 배치: 성공 {success_count}건 · 실패 {fail_count}건\n"
+            f"남은 대기열: {remaining_txt}\n"
+            "이어서 처리하려면 같은 배치를 다시 실행하면 됩니다(남은 건부터 자동으로 이어짐)."
+        )
+        logger.exception("[post_scrape_enrich] 배치 중단")
+        return
 
     if success_count or fail_count:
         from notification import send_alert
