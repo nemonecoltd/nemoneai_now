@@ -59,8 +59,6 @@ def _extract_apollo_state(html: str) -> Optional[dict]:
     return None
 
 
-_ENRICH_EMPTY_MAX_RETRIES = 3       # 0건 응답이 이 횟수에 도달하면 그 뒤로는 포기(영구 재시도 방지)
-_ENRICH_EMPTY_RETRY_INTERVAL_DAYS = 2  # 0건일 때 다음 재시도까지 대기 일수
 
 def _revalidate_place(place_id: int):
     """공개 도메인으로 호출 — 127.0.0.1:3002는 프로덕션 서버 안에서만 유효한 주소라 로컬 백엔드(텔레그램 봇 등)에서
@@ -292,10 +290,9 @@ async def _enrich_place_core(place_id: int) -> dict:
     # 실제로 리뷰가 0건인 장소가 영원히 "미처리(NULL)"로 보여서 자동갱신 스케줄러가 같은 곳을 무한 재시도했음.
     # 스크래핑이 실행됐다는 사실 자체를 항상 빈 배열로라도 기록해 "처리 완료"를 구분할 수 있게 함.
     #
-    # 다만 0건은 "블로그가 영원히 없다"가 아니라 "아직 오픈 전이라 없다"인 경우가 많다(2026-09-19,
-    # id=11248 사례 — 오픈 직후엔 블로그가 없다가 며칠 뒤 올라옴). 그런데 위 수정으로 0건도 즉시
-    # "완료"로 확정돼버려서 자동 스케줄러가 다시는 재시도하지 않는 문제가 있었음. enrich_empty_count/
-    # enrich_next_retry_at로 0건 결과에 한해 며칠 간격으로 몇 차례 더 재시도하고, 그래도 없으면 포기함.
+    # 0건은 그대로 "처리 완료"로 확정한다(재시도 없음). 한때 0건에 한해 2일 간격으로 최대 3회 재시도하게
+    # 했으나(2026-09-19), 신규 팝업은 원래 후기가 없는 게 보통이라 Gemini 호출만 중복되고 신규 처리가
+    # 오래된 재시도분에 밀려서 제거함(2026-10-21). 후기를 다시 확인하려면 수동 갱신을 쓴다.
     with engine.connect() as conn:
         conn.execute(text(
             "ALTER TABLE seongsu_places ADD COLUMN IF NOT EXISTS enrich_empty_count INTEGER DEFAULT 0"
@@ -312,11 +309,7 @@ async def _enrich_place_core(place_id: int) -> dict:
                     category_tag = :category_tag,
                     updated_at = NOW(),
                     enrich_empty_count = CASE WHEN :found_any THEN 0 ELSE COALESCE(enrich_empty_count, 0) + 1 END,
-                    enrich_next_retry_at = CASE
-                        WHEN :found_any THEN NULL
-                        WHEN COALESCE(enrich_empty_count, 0) + 1 >= {_ENRICH_EMPTY_MAX_RETRIES} THEN NULL
-                        ELSE NOW() + INTERVAL '{_ENRICH_EMPTY_RETRY_INTERVAL_DAYS} days'
-                    END
+                    enrich_next_retry_at = NULL
                 WHERE id = :id
             """),
             {
@@ -379,10 +372,7 @@ def _bump_enrich_fail_count(place_id: int) -> int:
 
 _ENRICH_QUEUE_SQL = """
     SELECT id FROM seongsu_places
-    WHERE (
-        blog_reviews IS NULL
-        OR (enrich_next_retry_at IS NOT NULL AND enrich_next_retry_at <= NOW())
-      )
+    WHERE blog_reviews IS NULL
       AND COALESCE(enrich_fail_count, 0) < :max_attempts
       AND COALESCE(category, 'popup') = 'popup'
       AND region NOT IN ('공연', '축제')
