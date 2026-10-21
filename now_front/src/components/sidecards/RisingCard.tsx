@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { placeImage } from '@/lib/placeImage'
 import Link from 'next/link';
 import { TrendingUp } from 'lucide-react';
 import { placeHref, regionLabel } from '@/components/home/homeUtils';
@@ -72,10 +73,8 @@ export default function RisingCard({ lang = 'ko' }: { lang?: string }) {
               <li key={p.id}>
                 <Link href={placeHref(p, lang)} className="flex items-center gap-3 group">
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
-                    {p.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt={titleOf(p)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    )}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={placeImage(p.id, p.image_url, 96, 96)} alt={titleOf(p)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-semibold text-zinc-900 truncate group-hover:text-pace-700">{titleOf(p)}</p>

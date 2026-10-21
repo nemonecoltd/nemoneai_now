@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { placeImage } from '@/lib/placeImage'
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Sparkles, Share2 } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import AdUnit from './AdUnit';
 
 // 백엔드 category_tags.py의 CATEGORY_TAGS와 같은 값 — 값이 갈리면 필터가 400을 맞으므로
@@ -108,21 +109,15 @@ export default function CategoryBrowser({ lang = 'ko', initialCategory }: { lang
                 className="bg-white rounded-2xl border border-zinc-100 overflow-hidden shadow-sm hover:shadow-md transition-all group h-full"
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-zinc-100">
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image_url}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                      src={placeImage(p.id, p.image_url, 400, 300)}
                       alt={titleOf(p)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       referrerPolicy="no-referrer"
                       loading="lazy"
                       decoding="async"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-zinc-300">
-                      <Sparkles size={24} />
-                    </div>
-                  )}
+                  />
                 </div>
                 <div className="p-3">
                   {p.region && (

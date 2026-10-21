@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { placeImage } from '@/lib/placeImage'
 import Link from 'next/link';
 import { DISCOVERY_REGIONS, HomeRegion, placeHref, placeTitle, regionLabel } from '@/components/home/homeUtils';
 import SideCardShell from './SideCardShell';
@@ -72,10 +73,8 @@ export default function RankingCard({
               <Link href={placeHref(p, lang)} className="flex items-center gap-3 group">
                 <span className="text-[11px] font-bold text-zinc-300 w-3 flex-shrink-0">{idx + 1}</span>
                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-100 flex-shrink-0">
-                  {p.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.image_url} alt={placeTitle(p, lang)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={placeImage(p.id, p.image_url, 96, 96)} alt={placeTitle(p, lang)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <p className="text-[13px] font-semibold text-zinc-900 truncate flex-1 group-hover:text-pace-700">
                   {placeTitle(p, lang)}
