@@ -33,7 +33,18 @@ async function getMagazine(): Promise<MagazineItem[]> {
 
 // 2026-10-24: PACE 소속 기사(맛매치 Special #5)의 색인·정본이 PACE로 이동 — 크롤러가 개별 기사를 발견하도록
 // 서버에서 목록을 그려 둔 인덱스 페이지(푸터 링크 + 사이트맵에 포함).
-export const metadata: Metadata = {
+const PER_PAGE = 20;
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ page?: string }> }): Promise<Metadata> {
+  const { page: pageParam } = await searchParams;
+  // 범위를 벗어난 ?page=N은 마지막 페이지로 보여 주므로 정본도 그쪽으로(임의 번호로 중복 페이지가 생기지 않게)
+  const total = Math.max(1, Math.ceil((await getMagazine()).length / PER_PAGE));
+  const page = Math.min(Math.max(1, parseInt(pageParam || '1', 10) || 1), total);
+  const canonical = page > 1 ? `https://now.nemoneai.com/magazine?page=${page}` : 'https://now.nemoneai.com/magazine';
+  return { ...baseMetadata, title: page > 1 ? `${baseMetadata.title} (${page}페이지)` : baseMetadata.title, alternates: { canonical } };
+}
+
+const baseMetadata: Metadata = {
   title: 'NEMONE PACE 매거진 — 서울 팝업·핫플레이스 이야기',
   description: '서울·부산·제주 팝업스토어 주간 랭킹과 핫플레이스 이야기. NEMONE PACE가 직접 쓰는 매거진.',
   alternates: { canonical: 'https://now.nemoneai.com/magazine' },
@@ -46,8 +57,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function MagazineIndexPage() {
-  const posts = await getMagazine();
+export default async function MagazineIndexPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page: pageParam } = await searchParams;
+  const all = await getMagazine();
+  const totalPages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+  const page = Math.min(Math.max(1, parseInt(pageParam || '1', 10) || 1), totalPages);
+  const posts = all.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   return (
     <div className={cn('min-h-screen bg-zinc-50 relative pb-28', WIDE_FRAME, WIDE_FRAME_BORDER)}>
       <header className="sticky top-0 bg-white/90 backdrop-blur-xl z-50 border-b border-zinc-100 px-6 pt-4 pb-1">
@@ -88,6 +103,13 @@ export default async function MagazineIndexPage() {
                 </li>
               ))}
             </ul>
+            {totalPages > 1 && (
+              <nav className="flex items-center justify-center gap-4 pt-4 text-sm font-bold" aria-label="매거진 페이지">
+                {page > 1 ? <Link href={page === 2 ? '/magazine' : `/magazine?page=${page - 1}`} rel="prev" className="text-pace-600">← 이전</Link> : <span className="text-zinc-300">← 이전</span>}
+                <span className="text-zinc-500">{page} / {totalPages}</span>
+                {page < totalPages ? <Link href={`/magazine?page=${page + 1}`} rel="next" className="text-pace-600">다음 →</Link> : <span className="text-zinc-300">다음 →</span>}
+              </nav>
+            )}
             <SiteFooter lang="ko" />
           </div>
         </SideCardLayout>

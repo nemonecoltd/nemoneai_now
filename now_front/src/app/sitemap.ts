@@ -55,7 +55,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch (error) {
     console.error("Sitemap magazine fetch error:", error)
   }
-  const magazineUrls = magazine.map((m) => ({
+  // 기준일(2026-10-24) 이후 발행한 글만 PACE가 정본 — 그 전 글은 맛매치 정본이라 싣지 않는다
+  const ownedSince = process.env.SERVICE_OWNED_SINCE || '2026-10-24'
+  const magazineUrls = magazine.filter((m) => String(m.created_at || '').slice(0, 10) >= ownedSince).map((m) => ({
     url: `${baseUrl}/magazine/${m.id}`,
     lastModified: new Date(m.created_at || new Date()),
     changeFrequency: 'monthly' as const,

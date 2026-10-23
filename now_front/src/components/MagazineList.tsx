@@ -19,10 +19,10 @@ interface MagazinePost {
 }
 
 const dict = {
-  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.', loading: '불러오는 중...', mood: '무드', category: '카테고리' },
-  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.', loading: 'Loading...', mood: 'Mood', category: 'Category' },
-  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。', loading: '加载中...', mood: '氛围', category: '分类' },
-  ja: { title: 'マガジン', desc: 'ネモネAIMに掲載されたNEMONE PACE関連記事', empty: 'まだ記事がありません。', loading: '読み込み中...', mood: 'ムード', category: 'カテゴリ' },
+  ko: { title: '매거진', desc: '네모네AIM에 실린 NEMONE PACE 관련 아티클', empty: '아직 등록된 아티클이 없어요.', loading: '불러오는 중...', more: '더 보기', mood: '무드', category: '카테고리' },
+  en: { title: 'Magazine', desc: 'NOW-related articles from Nemone AIM', empty: 'No articles yet.', loading: 'Loading...', more: 'Load more', mood: 'Mood', category: 'Category' },
+  zh: { title: '杂志', desc: '来自네모네AIM的相关文章', empty: '暂无文章。', loading: '加载中...', more: '查看更多', mood: '氛围', category: '分类' },
+  ja: { title: 'マガジン', desc: 'ネモネAIMに掲載されたNEMONE PACE関連記事', empty: 'まだ記事がありません。', loading: '読み込み中...', more: 'もっと見る', mood: 'ムード', category: 'カテゴリ' },
 };
 
 const DATE_LOCALE: Record<string, string> = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP' };
@@ -34,6 +34,8 @@ export type MagazineSub = 'article' | 'mood' | 'category';
 export default function MagazineList({ lang = 'ko', sub, initialMood, initialCategory }: { lang?: string; sub: MagazineSub; initialMood?: string; initialCategory?: string }) {
   const [posts, setPosts] = useState<MagazinePost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // 기사가 늘어도 목록이 끝없이 길어지지 않게 20개씩 "더 보기"(2026-10-24 — 예전엔 Special 20개 상한으로 막았음)
+  const [visible, setVisible] = useState(20);
   const t = dict[lang as keyof typeof dict] || dict.ko;
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function MagazineList({ lang = 'ko', sub, initialMood, initialCat
         <div className="text-center py-20 text-zinc-400 italic">{t.empty}</div>
       ) : (
         <div className="space-y-4">
-          {posts.map((post, idx) => (
+          {posts.slice(0, visible).map((post, idx) => (
             <React.Fragment key={post.id}>
               <Link href={`/magazine/${post.id}?lang=${lang}`}>
                 <motion.div
@@ -117,6 +119,14 @@ export default function MagazineList({ lang = 'ko', sub, initialMood, initialCat
               {idx === 0 && <AdUnit slotId="1670386458" layoutKey="-6t+ed+2i-1n-4w" />}
             </React.Fragment>
           ))}
+          {posts.length > visible && (
+            <button
+              onClick={() => setVisible((v) => v + 20)}
+              className="w-full py-3 rounded-2xl border border-zinc-200 bg-white text-sm font-bold text-zinc-600 hover:border-zinc-400"
+            >
+              {t.more} ({visible}/{posts.length})
+            </button>
+          )}
         </div>
       )}
       </>

@@ -22,14 +22,24 @@ async function getPost(id: string): Promise<MagazinePost | null> {
   }
 }
 
-// PACE 소속 기사(맛매치 Special #5)만 이 페이지가 정본. 사이드카 등이 연결하는 그 밖의 맛매치 기사 /magazine/N은
-// 종전처럼 맛매치 /posts/N이 정본(조회 실패 시에도 이쪽으로 폴백 — 중복 색인 방지).
+// 2026-10-24부터 **새로 발행하는** PACE 소속 기사(맛매치 Special #5)만 이 페이지가 정본.
+// 그 전 글과 사이드카 등이 연결하는 그 밖의 맛매치 기사 /magazine/N은 종전처럼 맛매치 /posts/N이 정본
+// (과거 글 색인 이동 리스크 회피). 조회 실패 시에도 맛매치 정본으로 폴백(중복 색인 방지).
+// 맛매치(serviceHome.ts)·PLANTS와 같은 기준일 — 바꿀 땐 세 곳을 함께.
+const OWNED_SINCE = process.env.SERVICE_OWNED_SINCE || '2026-10-24';
+
 async function isOwned(id: string): Promise<boolean> {
   try {
     const res = await fetch(`${BACKEND}/magazine`, { next: { revalidate: 300 } });
     if (!res.ok) return false;
     const list = await res.json();
-    return Array.isArray(list) && list.some((m: { id: number }) => String(m.id) === String(id));
+    return (
+      Array.isArray(list) &&
+      list.some(
+        (m: { id: number; created_at?: string | null }) =>
+          String(m.id) === String(id) && String(m.created_at || '').slice(0, 10) >= OWNED_SINCE
+      )
+    );
   } catch {
     return false;
   }
