@@ -44,6 +44,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   })
 
+  // 2-2. 매거진(맛매치 Special #5 기사) — 2026-10-24부터 색인·정본이 PACE 쪽이라 여기 사이트맵에 싣는다
+  let magazine: any[] = []
+  try {
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:8081'}/magazine`)
+    if (res.ok) {
+      const data = await res.json()
+      magazine = Array.isArray(data) ? data : []
+    }
+  } catch (error) {
+    console.error("Sitemap magazine fetch error:", error)
+  }
+  const magazineUrls = magazine.map((m) => ({
+    url: `${baseUrl}/magazine/${m.id}`,
+    lastModified: new Date(m.created_at || new Date()),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }))
+
   // 3. 고정 페이지 URL 생성 (홈 화면 + 랭킹 페이지)
   // /ranking/place만 title_en/title_zh/title_ja 데이터가 있어 en/zh/ja 버전 존재 — course/theme는 유저생성 콘텐츠라 번역본 없음
   const placeRankingLanguages = {
@@ -81,5 +99,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ]
   })
 
-  return [...staticUrls, ...placeRegionUrls, ...placeUrls]
+  const magazineIndex = { url: `${baseUrl}/magazine`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.6 }
+
+  return [...staticUrls, ...placeRegionUrls, magazineIndex, ...magazineUrls, ...placeUrls]
 }

@@ -122,12 +122,12 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
 
           <div className="mt-8 flex items-center gap-3">
             <a
-              href={`https://nemoneai.com/posts/${post.id}`}
+              href="https://nemoneai.com"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs font-bold text-pace-600 hover:text-pace-700"
             >
-              {lang === 'en' ? 'Read original on Nemone AIM' : lang === 'zh' ? '在네모네AIM查看原文' : lang === 'ja' ? 'ネモネAIMで原文を見る' : '네모네AIM에서 원문 보기'} <ExternalLink size={12} />
+              {lang === 'en' ? 'More stories on Nemone AIM' : lang === 'zh' ? '在네모네AIM查看更多文章' : lang === 'ja' ? 'ネモネAIMで他の記事を見る' : '네모네AIM에서 더 많은 이야기'} <ExternalLink size={12} />
             </a>
             <button
               onClick={handleShare}
