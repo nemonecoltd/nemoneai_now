@@ -27,8 +27,20 @@ engine = create_engine(
     connect_args={"options": "-c timezone=Asia/Seoul"},
 )
 
+# 종료 후 보관 기간 — 팝업 등은 종료 페이지로도 검색 유입이 이어져 1년 보관(2026-10-28 사용자 결정),
+# 공연·축제는 검색 색인에서 제외(noindex)했으므로 기존처럼 45일 유예 후 삭제한다.
+SHORT_RETENTION_REGIONS = ("공연", "축제")
+POPUP_RETENTION_DAYS = 365
+SHORT_RETENTION_DAYS = 45
+_EXPIRED_WHERE = (
+    "end_date IS NOT NULL AND ("
+    "(region IN ('공연','축제') AND end_date < CURRENT_DATE - INTERVAL '45 days') OR "
+    "(COALESCE(region,'') NOT IN ('공연','축제') AND end_date < CURRENT_DATE - INTERVAL '365 days'))"
+)
+
+
 def cleanup_expired_data():
-    """end_date + 45일이 지난 이벤트성 플레이스 삭제. end_date=NULL(테마 스크래핑)은 보호.
+    """종료 후 보관 기간이 지난 이벤트성 플레이스 삭제(팝업 등 365일, 공연·축제 45일). end_date=NULL(테마 스크래핑)은 보호.
 
     45일 유예기간: 종료 후 검색 유입이 남아있는 동안 404 없이 페이지를 유지,
     크롤러가 자연스럽게 de-index할 시간을 확보한 뒤 삭제.
@@ -39,10 +51,10 @@ def cleanup_expired_data():
 
     with engine.connect() as conn:
         expired = conn.execute(
-            text("SELECT id, image_url FROM seongsu_places WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE - INTERVAL '45 days'")
+            text(f"SELECT id, image_url FROM seongsu_places WHERE {_EXPIRED_WHERE}")
         ).fetchall()
         conn.execute(
-            text("DELETE FROM seongsu_places WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE - INTERVAL '45 days'")
+            text(f"DELETE FROM seongsu_places WHERE {_EXPIRED_WHERE}")
         )
         conn.commit()
 
@@ -68,7 +80,7 @@ def cleanup_expired_data():
 
     if expired:
         logger.info(
-            "[cleanup] 45일 경과 %d건 삭제 — 이미지: 삭제 %d / 실패 %d / 내부아님-스킵 %d / 이미지없음 %d",
+            "[cleanup] 보관기간 경과(팝업 365일·공연/축제 45일) %d건 삭제 — 이미지: 삭제 %d / 실패 %d / 내부아님-스킵 %d / 이미지없음 %d",
             len(expired), tally["deleted"], tally["failed"], tally["skipped"], tally["no_image"],
         )
 

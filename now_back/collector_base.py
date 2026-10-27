@@ -155,7 +155,8 @@ def upsert_items(combined_data: "list[dict]", region: Optional[str] = None):
                         VALUES (:title, :title_en, :content, :content_en, :location, :latitude, :longitude, :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :link_url, :category)
                         RETURNING id
                     """), params).first()
-                    new_urls.append(f"https://now.nemoneai.com/posts/{new_row[0]}")
+                    if params.get("region") not in ("공연", "축제"):    # 공연·축제는 noindex라 색인 요청을 보내지 않는다
+                        new_urls.append(f"https://now.nemoneai.com/posts/{new_row[0]}")
                     new_count += 1
                 conn.commit()
             except Exception as e:

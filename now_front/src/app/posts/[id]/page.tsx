@@ -98,6 +98,9 @@ function normalizeLang(raw?: string): 'ko' | 'en' | 'zh' | 'ja' {
   return raw === 'en' || raw === 'zh' || raw === 'ja' ? raw : 'ko';
 }
 
+// 공연·축제는 소개글이 얇고 종료가 빨라 검색 색인에서 제외한다(2026-10-28) — 페이지 자체는 접근 가능, 사이트맵에서도 뺀다.
+const NOINDEX_REGIONS = new Set(['공연', '축제']);
+
 export async function generateMetadata({
   params,
   searchParams,
@@ -156,7 +159,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical, languages },
-    ...(hasRealTranslation ? {} : { robots: { index: false, follow: true } }),
+    ...(hasRealTranslation && !NOINDEX_REGIONS.has(place.region ?? '') ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       title,
       description,
