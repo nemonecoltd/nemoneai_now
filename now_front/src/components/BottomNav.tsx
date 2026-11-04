@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { SHOW_AI_GUIDE_BUTTON } from '@/lib/featureFlags';
 import { Home as HomeIcon, TrendingUp, Map as MapIcon, MapPin, Route as RouteIcon, Newspaper, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -35,12 +36,12 @@ export default function BottomNav({ region = '성수', lang = 'ko', isPerformanc
   // 페이지에서만 넓어지도록 수정(2026-09-08).
   return (
     <div className={cn("fixed inset-x-0 bottom-0 mx-auto z-50 pointer-events-none", wide ? "max-w-md xl:max-w-6xl" : "max-w-md")}>
-      <button
+      {SHOW_AI_GUIDE_BUTTON && <button
         onClick={() => router.push(`/?region=${encodedRegion}&tab=chat&lang=${lang}`)}
         className="pointer-events-auto absolute bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-zinc-900 text-white hover:bg-pace-600 active:scale-90 transition-all"
       >
         <MessageCircle size={28} />
-      </button>
+      </button>}
 
       <nav className="pointer-events-auto bg-white/90 backdrop-blur-xl border-t border-zinc-100 px-4 pt-2 pb-4 flex justify-between items-center">
         <NavButton

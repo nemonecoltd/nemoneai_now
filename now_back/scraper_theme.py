@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 # 일관된 프로젝트 사용 모델 유지
-gemini_model = genai.GenerativeModel("models/gemini-pro-latest")
+gemini_model = genai.GenerativeModel("models/gemini-2.5-flash")   # 2026-11-04: pro-latest → flash
 
 async def scrape_theme(keyword: str = "보이넥스트도어"):
     """[PoC] 네이버 뉴스와 유튜브 검색 결과를 통합 스크래핑"""

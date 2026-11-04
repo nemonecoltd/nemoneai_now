@@ -33,8 +33,9 @@ def generate_answer(user_query: str, context: str, region: str = "성수", lang:
 
 질문: {user_query}"""
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
-        contents=prompt
+        model="gemini-2.5-flash",   # 2026-11-04: pro 사용 중단 → flash(Google 2.5 API 종료·3.5 flash 자동 전환 대비)
+        contents=prompt,
+        config=_NO_THINKING,
     )
     return response.text
 
@@ -75,10 +76,11 @@ def generate_walking_tour(companion: str, context: str, region: str = "성수", 
     """
     
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-2.5-flash",   # 2026-11-04: pro → flash
         contents=prompt,
         config=types.GenerateContentConfig(
-            response_mime_type="application/json"
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_budget=0),   # 후보가 이미 골라져 있어 추론이 필요 없다 — thinking 토큰 과금 방지
         )
     )
     

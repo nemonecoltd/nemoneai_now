@@ -22,6 +22,7 @@ import {
 import MapView from '@/components/MapView';
 import PlaceList, { PlaceSort } from '@/components/PlaceList';
 import AskAI from '@/components/AskAI';
+import { SHOW_AI_GUIDE_BUTTON } from '@/lib/featureFlags';
 import ThemeMenu from '@/components/ThemeMenu';
 import MagazineList from '@/components/MagazineList';
 import Logo from '@/components/Logo';
@@ -826,7 +827,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
       </button>
       <AiCourseModal open={showAiCourseModal} onClose={() => setShowAiCourseModal(false)} />
 
-      <button
+      {SHOW_AI_GUIDE_BUTTON && <button
         onClick={() => setActiveTab('chat')}
         className={cn(
           "fixed bottom-28 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all z-[60] active:scale-90",
@@ -838,7 +839,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
         {activeTab !== 'chat' && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-pace-500 rounded-full border-2 border-zinc-50 animate-bounce" />
         )}
-      </button>
+      </button>}
 
       {/* Bottom Navigation — sticky bottom-0 방어 처리(2026-09-06): 정상 상황(모바일 앱셸이
           h-[100dvh]+overflow-hidden로 정확히 뷰포트에 맞음)에선 이미 자연스러운 맨 아래라 아무

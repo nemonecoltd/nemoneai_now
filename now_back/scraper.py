@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-gemini_model = genai.GenerativeModel("models/gemini-pro-latest")
+gemini_model = genai.GenerativeModel("models/gemini-2.5-flash")   # 2026-11-04: pro-latest → flash
 
 async def scrape_popup(region: str = "성수동"):
     """[지침] 지정된 지역의 팝업스토어 정보를 스크래핑"""
