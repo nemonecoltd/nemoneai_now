@@ -83,6 +83,16 @@ def build_content(item: dict, intro: str) -> str:
     return link_line
 
 
+def build_cafe_content(item: dict) -> str:
+    """제주 카페 기본 내용 — 사실 정보만(주소 + 네이버 지도 링크). AI 문장 없음."""
+    naver_url = f"https://map.naver.com/p/entry/place/{item.get('naver_place_id', '')}"
+    parts = []
+    if item.get("location"):
+        parts.append(f"주소: {item['location']}")
+    parts.append(f"네이버 지도 바로가기: {naver_url}")
+    return "\n\n".join(parts)
+
+
 def _existing_content(naver_place_id: str) -> str:
     """DB에 이미 저장된 content 반환. 없으면 빈 문자열."""
     try:
@@ -115,7 +125,12 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
 
         existing = _existing_content(naver_place_id)
         regenerated = False
-        if existing and "카테고리:" not in existing and "주소:" not in existing:
+        if category == "cafe":
+            # 제주 카페(2026-11-04): AI 소개문 없음 — 네이버가 주는 기본 정보(주소·지도 링크)만 넣는다. 카카오 매칭 정보는 뒤에서 덧붙인다(cafe_kakao.py).
+            intro = ""
+            content = build_cafe_content(item)
+            regenerated = True
+        elif existing and "카테고리:" not in existing and "주소:" not in existing:
             print(f"    ⏭️ 기존 content 있음, AI 생성 건너뜀")
             intro = ""
             content = existing
@@ -146,7 +161,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 print(f"    🌐 번역(EN/ZH/JA): {title_en[:40]} / {title_zh[:20]} / {title_ja[:20]}...")
 
         try:
-            embedding = get_embedding(content)
+            embedding = None if category == "cafe" else get_embedding(content)   # 카페는 AI 호출(임베딩) 없음 — AI 추천·코스 후보에서 제외됨
             # 네이버 popupstore/list에서 실제 운영 시작/종료일을 가져온 경우 그걸 쓰고,
             # 못 찾았을 때만 today+30일 임시값으로 fallback (정확한 기간 모름을 의미)
             start_date = item.get("start_date")
@@ -170,7 +185,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                 "longitude":      item.get("longitude"),
                 "naver_place_id": naver_place_id,
                 "video_url":      item.get("video_url", ""),
-                "embedding":      f"[{','.join(map(str, embedding))}]",
+                "embedding":      (f"[{','.join(map(str, embedding))}]" if embedding is not None else None),
                 "end_date":       end_date,
                 "real_end_date":  item.get("end_date"),
                 "date_range":     date_range,
@@ -421,6 +436,13 @@ async def run_cafe(region: str, query: str, allowed_districts: Optional[list] = 
     except Exception as e:
         print(f"  ⚠️ [{region}/카페] 실패: {e}")
         return f"{region}/카페", 0, 0, 1
+    # 1차(네이버 기본 정보) 직후 카카오에서 같은 카페가 매칭되면 그 카페만 카카오 정보로 보강 — 미매칭은 그대로(AI 없음, cafe_kakao.py)
+    try:
+        from cafe_kakao import enrich_cafes_from_kakao
+        k = enrich_cafes_from_kakao()
+        print(f"  ☕ 카카오 보강: 매칭 {k['matched']} / 미매칭 {k['unmatched']}")
+    except Exception as e:
+        print(f"  ⚠️ [{region}/카페] 카카오 보강 실패(네이버 기본 정보는 저장됨): {e}")
     print(f"✅ [{region}/카페] 완료")
     return (f"{region}/카페", *counts)
 

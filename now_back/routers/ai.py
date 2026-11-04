@@ -132,6 +132,9 @@ def log_ai_usage(user_id: str) -> None:
         logger.error(f"❌ Usage logging failed: {e}")
 
 
+COURSE_POPUP_MIN = 8   # 활성 팝업이 이보다 적은 지역은 팝업만으로 코스를 만들 수 없어 다른 카테고리(클래스·카페 제외)를 섞는다
+
+
 async def generate_timed_course(region: str, companion: str, lang: str = "ko") -> dict:
     """3시간 코스 AI 생성 — 후보 선정(pgvector 유사도 + 카테고리 round-robin) + Gemini 호출.
     /itinerary(캐시 있음)와 /courses/draft(캐시 없음, 매번 새 saved_courses row가 목적)가 공유."""
@@ -144,25 +147,32 @@ async def generate_timed_course(region: str, companion: str, lang: str = "ko") -
     companion_embedding = await asyncio.to_thread(get_embedding, companion_query_text)
     companion_embedding_str = f"[{','.join(map(str, companion_embedding))}]"
 
-    search_query = text(f"""
-        WITH ranked AS (
-            SELECT id, {title_field} AS title, {content_field} AS content, location, date_range,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY COALESCE(category, 'popup')
-                       ORDER BY embedding <-> :embedding
-                   ) AS rn,
-                   COALESCE(category, 'popup') AS cat
-            FROM seongsu_places
-            WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
-              AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'
-        )
-        SELECT id, title, content, location, date_range FROM ranked
-        ORDER BY rn ASC, cat ASC
-        LIMIT 15
-    """)
+    # 후보 선정(2026-11-04): 3시간 코스는 **팝업만**으로 구성한다(클래스·카페 메뉴 삭제 결정). 활성 팝업이 적은 지역(제주 3건 등)은
+    # 코스가 성립하지 않으므로 그때만 기존처럼 카테고리 round-robin(단, 클래스·카페는 제외 — 카페는 임베딩이 없어 순서가 정해지지 않고 후보에 섞여 들어옴)
+    def _candidates(cat_filter: str):
+        return text(f"""
+            WITH ranked AS (
+                SELECT id, {title_field} AS title, {content_field} AS content, location, date_range,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY COALESCE(category, 'popup')
+                           ORDER BY embedding <-> :embedding
+                       ) AS rn,
+                       COALESCE(category, 'popup') AS cat
+                FROM seongsu_places
+                WHERE region = :region AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+                  AND COALESCE(naver_place_id, '') NOT LIKE 'kopis_%' AND COALESCE(naver_place_id, '') NOT LIKE 'jeju_%' AND COALESCE(naver_place_id, '') NOT LIKE 'culture_%'
+                  {cat_filter}
+            )
+            SELECT id, title, content, location, date_range FROM ranked
+            ORDER BY rn ASC, cat ASC
+            LIMIT 15
+        """)
+
     with engine.connect() as conn:
-        result = conn.execute(search_query, {"region": region, "embedding": companion_embedding_str})
-        rows = result.fetchall()
+        params = {"region": region, "embedding": companion_embedding_str}
+        rows = conn.execute(_candidates("AND COALESCE(category, 'popup') = 'popup'"), params).fetchall()
+        if len(rows) < COURSE_POPUP_MIN:
+            rows = conn.execute(_candidates("AND COALESCE(category, 'popup') NOT IN ('cafe', 'class')"), params).fetchall()
         context_text = "\n".join([f"[id:{row[0]}][{row[1]}] {row[2]} (위치: {row[3]})" + (f" (운영일시: {row[4]})" if row[4] else "") for row in rows])
 
     from gemini_service import generate_walking_tour

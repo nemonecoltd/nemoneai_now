@@ -46,9 +46,9 @@ type Lang = 'ko' | 'en' | 'zh' | 'ja';
 // '엔터'는 여기(지역 안 콘텐츠 유형)가 아니라 category_tag(핫플>카테고리, 지역 무관 장르
 // 분류)로 들어가야 맞다 — 한 번 여기 넣었다가 장소>강북 하위에 별도 탭이 생기는 오류가
 // 있었음(2026-09-11 발견, category_tags.py 쪽으로 이동)
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', 'cafe', '전시', '행사'] as const;   // cafe=제주 전용(2026-11-04, 데이터가 있는 지역에만 탭이 뜬다)
+const CATEGORY_ORDER = ['popup', 'shopping', 'cafe', '전시', '행사'] as const;   // 'class'(클래스) 메뉴는 2026-11-04 삭제 — 라벨·타입은 남겨 되살릴 수 있게(되살리려면 'class'를 다시 추가)   // cafe=제주 전용(2026-11-04, 데이터가 있는 지역에만 탭이 뜬다)
 type PlaceCategory = typeof CATEGORY_ORDER[number];
-const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string; ko: string }> = {
+const CATEGORY_LABEL: Record<PlaceCategory | 'class', { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
   class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
   shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
@@ -242,7 +242,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
       setRecPlaceRegion(r as PlaceRankingRegion);
     }
     if (l === 'en' || l === 'zh' || l === 'ja' || l === 'ko') setLang(l);
-    if (c === 'popup' || c === 'class' || c === 'shopping' || c === 'cafe' || c === '전시' || c === '행사') setPlaceCategory(c);
+    if (c === 'popup' || c === 'shopping' || c === 'cafe' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
     // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
     const m = params.get('mood');

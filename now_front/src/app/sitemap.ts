@@ -28,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // (2026-09-18 — "nemone pace" 브랜드검색에 lang=en/ja 변형만 노출되던 원인).
   // page.tsx의 generateMetadata도 동일 기준(translated en/zh/ja)으로 canonical/noindex를 분기함.
   // 공연·축제는 noindex(posts/[id]/page.tsx NOINDEX_REGIONS) — 사이트맵에도 싣지 않는다
-  const placeUrls = places.filter((place) => place.region !== '공연' && place.region !== '축제' && place.category !== 'cafe').map((place) => {
+  const placeUrls = places.filter((place) => place.region !== '공연' && place.region !== '축제' && place.category !== 'cafe' && place.category !== 'class').map((place) => {
     const languages: Record<string, string> = {
       ko: `${baseUrl}/posts/${place.id}`,
       'x-default': `${baseUrl}/posts/${place.id}`,

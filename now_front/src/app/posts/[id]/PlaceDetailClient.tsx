@@ -105,7 +105,7 @@ const REGION_HUB_LABEL: Record<string, (region: string) => string> = {
   ja: (r) => `${REGION_LABEL[r]?.ja ?? r}の人気ポップアップをもっと見る →`,
 };
 // '엔터'는 지역 카테고리(여기)가 아니라 category_tag(핫플>카테고리)로 이동함(2026-09-11)
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', 'cafe', '전시', '행사'] as const;
+const CATEGORY_ORDER = ['popup', 'shopping', 'cafe', '전시', '행사'] as const;   // 클래스 메뉴 삭제(2026-11-04)
 const CATEGORY_LABEL: Record<string, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
   class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
@@ -372,7 +372,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
   // 공연/축제/전시/행사는 AI가 소개문을 새로 쓰지 않고 원본 API 텍스트를 그대로 쓰는
   // 콘텐츠라 "PACE PICK"(에디터가 고른 이유) 프레이밍이 안 맞는다는 피드백(2026-09-11)
   // — 이 경우 예전처럼 중립적인 '상세 정보' 라벨만 쓰고 헤드라인 문구는 생략한다.
-  const isApiOnlyContent = isPerformanceRegion || place.category === '전시' || place.category === '행사';
+  const isApiOnlyContent = isPerformanceRegion || place.category === '전시' || place.category === '행사' || place.category === 'cafe';   // cafe: AI 문장이 아닌 사실 정보(주소·전화·키워드·평점)라 'PACE PICK' 프레이밍 없이 '상세 정보'로
   const hasValidNaverId = place.naver_place_id &&
     !place.naver_place_id.startsWith('raw_') &&
     !place.naver_place_id.startsWith('seoul_') &&
@@ -829,6 +829,13 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                     <div className="text-zinc-600 leading-relaxed text-sm font-medium space-y-2">
                       {textLines.map((line, i) =>
                         line.match(/map\.naver\.com/) ? null :
+                        line.match(/place\.map\.kakao\.com/) ? (
+                          <p key={i}>
+                            <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-pace-600 underline font-bold">
+                              카카오맵에서 보기
+                            </a>
+                          </p>
+                        ) :
                         line.match(/https?:\/\/\S+/) ? (
                           <p key={i}>
                             <a href={line.match(/https?:\/\/\S+/)![0]} target="_blank" rel="noopener noreferrer" className="text-pace-600 underline font-bold">
@@ -949,7 +956,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
             </a>
           )}
 
-          {hasValidNaverId && (
+          {hasValidNaverId && place.category !== 'cafe' && (   // 카페는 AI 생성 문장이 없어 AI 안내 문구를 붙이지 않는다
             <p className="text-[10px] text-zinc-400 text-center leading-relaxed">
               {lang === 'en'
                 ? 'This content is AI-generated from public information and may differ from actual facts.'
