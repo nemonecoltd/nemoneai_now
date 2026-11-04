@@ -18,7 +18,7 @@ import { cn, getTodayKST } from '@/lib/utils';
 
 
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
-const EVENT_REGIONS = ['공연', '축제'] as const;
+const EVENT_REGIONS = ['공연'] as const;   // '축제' 메뉴는 2026-11-04 삭제(되살리려면 '축제' 추가)
 const REGION_LABEL: Record<string, { en: string; zh: string; ja: string }> = {
   '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
   '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
@@ -105,11 +105,12 @@ const REGION_HUB_LABEL: Record<string, (region: string) => string> = {
   ja: (r) => `${REGION_LABEL[r]?.ja ?? r}の人気ポップアップをもっと見る →`,
 };
 // '엔터'는 지역 카테고리(여기)가 아니라 category_tag(핫플>카테고리)로 이동함(2026-09-11)
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', 'cafe', '전시', '행사'] as const;
 const CATEGORY_LABEL: Record<string, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
   class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
   shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
+  cafe: { en: 'Cafe', zh: '咖啡馆', ja: 'カフェ', ko: '카페' },
   '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
   '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
 };
@@ -615,7 +616,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                 onClick={() => router.push(`/?region=${encodeURIComponent(place.region!)}&category=${encodeURIComponent(c)}&tab=list&lang=${lang}`)}
                 className={cn(
                   "text-xs font-bold transition-all px-2 py-0.5 rounded-full border",
-                  (place.category === 'class' ? 'class' : place.category === 'shopping' ? 'shopping' : place.category === '전시' ? '전시' : place.category === '행사' ? '행사' : 'popup') === c
+                  (place.category === 'class' ? 'class' : place.category === 'shopping' ? 'shopping' : place.category === 'cafe' ? 'cafe' : place.category === '전시' ? '전시' : place.category === '행사' ? '행사' : 'popup') === c
                     ? REGION_PILL_ACTIVE[place.region || '성수']
                     : "text-zinc-400 border-zinc-200 hover:border-zinc-400"
                 )}
@@ -1048,7 +1049,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
           </div>
         )}
 
-        {(() => {
+        {place.category !== 'cafe' && (() => {   // 카페에는 맞는 관련상품 링크가 없어(입장권 링크가 폴백으로 나가던 것) 숨긴다
           const coupang = getCoupangLink(place.region, place.category);
           return (
             <div className="space-y-1.5">

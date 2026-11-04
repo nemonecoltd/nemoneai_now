@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import text
 
 from database import engine
-from deps import ADMIN_EMAIL, _verify_supabase_user
+from deps import ADMIN_EMAIL, _require_admin, _verify_supabase_user
 from enrich_service import _enrich_place_core, _revalidate_place, _translate_and_save
 from gemini_service import get_embedding
 from image_storage import delete_image, rehost_image, upload_bytes, is_internal_url
@@ -41,6 +41,8 @@ async def list_places(region: Optional[str] = None, category: Optional[str] = No
         where_clause += " AND p.category = 'class'"
     elif category == "shopping":
         where_clause += " AND p.category = 'shopping'"
+    elif category == "cafe":
+        where_clause += " AND p.category = 'cafe'"   # 제주 > 카페(2026-11-04)
     elif category == "전시":
         where_clause += " AND p.category = '전시'"
     elif category == "행사":
@@ -191,7 +193,7 @@ async def record_place_view(place_id: int, request: Request):
         conn.commit()
     return {"ok": True, "counted": True}
 
-@router.post("/places/upload-image")
+@router.post("/places/upload-image", dependencies=[Depends(_require_admin)])
 async def upload_place_image(file: UploadFile = File(...)):
     """어드민 장소 등록/수정 화면에서 이미지 파일 직접 업로드 (압축 후 Supabase Storage 저장)."""
     try:
@@ -201,7 +203,7 @@ async def upload_place_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/places")
+@router.post("/places", dependencies=[Depends(_require_admin)])
 async def create_place(place: PlaceUpdate):
     try:
         data = place.dict(exclude_unset=True)
@@ -231,7 +233,7 @@ async def create_place(place: PlaceUpdate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/places/{place_id}")
+@router.put("/places/{place_id}", dependencies=[Depends(_require_admin)])
 async def update_place(place_id: int, place: PlaceUpdate):
     try:
         import re as _re
@@ -307,7 +309,7 @@ async def update_place(place_id: int, place: PlaceUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/places/{place_id}/enrich")
+@router.post("/places/{place_id}/enrich", dependencies=[Depends(_require_admin)])
 async def enrich_place_content(place_id: int):
     """pcmap에서 방문자 리뷰 텍스트를 수집해 Gemini로 고품질 소개 생성. 어드민 수동 트리거용."""
     try:

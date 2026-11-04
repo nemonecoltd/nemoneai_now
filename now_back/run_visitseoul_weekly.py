@@ -12,7 +12,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 failed = []
-for category in ("shopping", "festival"):
+# 2026-11-04: 축제 수집 중단(축제 메뉴 삭제, 코드는 되살릴 수 있게 남김) — 다시 하려면 "festival"을 이 목록에 추가
+for category in ("shopping",):
     print(f"[visitseoul-weekly] {category} 시작", flush=True)
     rc = subprocess.call([sys.executable, os.path.join(HERE, "scraper_visitseoul.py"), category], cwd=HERE)
     print(f"[visitseoul-weekly] {category} 종료 (exit={rc})", flush=True)

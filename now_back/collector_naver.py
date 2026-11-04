@@ -33,7 +33,7 @@ ENABLE_CLASS_SCRAPING = False
 
 
 def ai_generate_intro(title: str, location: str, category: Optional[str] = None) -> str:
-    kind = "원데이클래스/체험 공방" if category == "class" else "소품샵/편집숍" if category == "shopping" else "팝업스토어"
+    kind = "원데이클래스/체험 공방" if category == "class" else "소품샵/편집숍" if category == "shopping" else "로스터리·커피 전문 카페" if category == "cafe" else "팝업스토어"
     try:
         from google import genai
         # http_options.timeout 미지정 시 무한대기 — 2026-09-29 정오 실행이 이 호출에서 멈춰
@@ -96,10 +96,13 @@ def _existing_content(naver_place_id: str) -> str:
         return ""
 
 
-def upsert_naver_items(items: list[dict], region: str, category: Optional[str] = None):
+def upsert_naver_items(items: list[dict], region: str, category: Optional[str] = None, translate: bool = True):
     """naver_place_id 기준 upsert. 기존 content 있으면 AI 생성 건너뜀.
     category: None=팝업스토어(기본), 'class'=원데이클래스/체험 — 지금은 region(성수/홍대) 리스트에 병합해 노출하되,
-    나중에 '체험' 메뉴로 분리하고 싶을 때 이 값으로 필터링할 수 있도록 태깅만 해둠."""
+    나중에 '체험' 메뉴로 분리하고 싶을 때 이 값으로 필터링할 수 있도록 태깅만 해둠.
+    category='cafe'(제주 카페, 2026-11-04): 상시 운영 장소라 end_date를 NULL로 둔다(목록 필터 `end_date IS NULL OR >= 오늘`을 항상 통과하고
+    365일 만료 정리 대상이 아님). translate=False면 번역(en/zh/ja)을 만들지 않는다 — 번역이 비면 사이트맵·hreflang에 한국어판만 실리고
+    ?lang= 변형은 noindex로 처리돼 한국어와 똑같은 중복 페이지가 생기지 않는다(posts/[id]/page.tsx)."""
     print(f"📋 [{region}/{category or '팝업'}] {len(items)}개 DB 반영 시작")
     new_count = 0
     updated_count = 0
@@ -124,7 +127,10 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             print(f"    소개: {intro[:60]}...")
 
         existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja = _existing_translation(naver_place_id)
-        if category is None:
+        if not translate:
+            # 번역 없음(제주 카페) — 이미 저장된 번역이 있으면 그대로 두고, 없으면 비워 둔다(AI 번역 호출 없음)
+            title_en, content_en, title_zh, content_zh, title_ja, content_ja = existing_title_en, existing_content_en, existing_title_zh, existing_content_zh, existing_title_ja, existing_content_ja
+        elif category is None:
             # 팝업(category=None)만 신규 팝업 자동 블로그갱신 스케줄러(_enrich_place_core)가 며칠 내로
             # content를 통째로 재생성하고 번역도 다시 하므로, 1차 스크래핑에서의 번역은 곧 버려질 헛수고임 —
             # 여기서는 API 호출 없이 기존 번역(있으면)만 재사용하고, 없으면 한글 그대로 폴백(enrich 전까지 임시 노출)
@@ -144,7 +150,7 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             # 네이버 popupstore/list에서 실제 운영 시작/종료일을 가져온 경우 그걸 쓰고,
             # 못 찾았을 때만 today+30일 임시값으로 fallback (정확한 기간 모름을 의미)
             start_date = item.get("start_date")
-            end_date = item.get("end_date") or (date.today() + timedelta(days=30))
+            end_date = item.get("end_date") or (None if category == "cafe" else date.today() + timedelta(days=30))
             date_range = (
                 f"{start_date.strftime('%Y.%m.%d.')} ~ {end_date.strftime('%Y.%m.%d.')}"
                 if start_date and item.get("end_date") else ""
@@ -175,10 +181,14 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             with engine.connect() as conn:
                 # naver_place_id가 바뀌어도(팝업 재등록 등) title이 같으면 같은 장소로 취급해 병합
                 existing_row = conn.execute(
-                    text("SELECT id, image_url FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
+                    text("SELECT id, image_url, category FROM seongsu_places WHERE naver_place_id = :naver_place_id OR title = :title LIMIT 1"),
                     {"naver_place_id": naver_place_id, "title": title}
                 ).fetchone()
                 existing_id = existing_row[0] if existing_row else None
+                if category == "cafe" and existing_row and existing_row[2] != "cafe":
+                    # 이미 팝업·클래스·쇼핑 등으로 들어 있는 같은 장소는 카페 수집이 카테고리를 덮어쓰지 않는다(예: 카페 겸 소품샵)
+                    print(f"    ⏭️ 이미 '{existing_row[2] or '팝업'}'로 등록된 장소라 건너뜀")
+                    continue
 
                 if not existing_id and date_range:
                     # naver_place_id도 다르고 title도 완전히 다른 문자열이지만(다른 블로그 글을 따로 수집한 경우),
@@ -401,6 +411,19 @@ async def run_shopping(region: str, query: str, allowed_districts: Optional[list
     return (f"{region}/쇼핑", *counts)
 
 
+async def run_cafe(region: str, query: str, allowed_districts: Optional[list] = None):
+    """네이버 지도 검색 기반 카페 수집(제주 > 카페 메뉴, category='cafe') — 번역 없음, 상시 운영 장소라 end_date NULL."""
+    print(f"\n🚀 [{region}/카페] 수집 시작 ('{query}')")
+    try:
+        result = await scrape_naver_map_popups(query, allowed_districts=allowed_districts)
+        counts = upsert_naver_items(result, region, category="cafe", translate=False) if result else (0, 0, 0)
+    except Exception as e:
+        print(f"  ⚠️ [{region}/카페] 실패: {e}")
+        return f"{region}/카페", 0, 0, 1
+    print(f"✅ [{region}/카페] 완료")
+    return (f"{region}/카페", *counts)
+
+
 async def run_all():
     print("=" * 50)
     print("🗺️  네이버 팝업스토어 수집 시작")
@@ -431,6 +454,7 @@ async def run_all():
             await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
         ]
     results.append(await run_shopping("제주", "제주 소품샵"))
+    results.append(await run_cafe("제주", "제주 로스터리 카페"))   # 2026-11-04 제주 > 카페 메뉴 — 번역 없음
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")
@@ -465,9 +489,19 @@ async def run_busan_only():
     print("🏁 부산 수집 완료")
 
 
+async def run_cafe_only():
+    """제주 카페만 단독 수집 + 완료 알림(첫 도입 때 따로 돌릴 때). 이후엔 run_all에 포함돼 정기 수집과 함께 돈다."""
+    print("🗺️  제주 카페 단독 수집 시작")
+    r = await run_cafe("제주", "제주 로스터리 카페")
+    send_alert(f"제주 카페 단독 수집 완료\n- {r[0]}: 신규 {r[1]} / 갱신 {r[2]}" + (f" / 실패 {r[3]}" if r[3] else ""))
+    print("🏁 제주 카페 수집 완료")
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "busan":
         asyncio.run(run_busan_only())
+    elif len(sys.argv) > 1 and sys.argv[1] == "cafe":
+        asyncio.run(run_cafe_only())
     else:
         asyncio.run(run_all())

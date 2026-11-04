@@ -22,6 +22,7 @@ _performance_popularity_cache: list = []
 _festival_popularity_cache: list = []
 _shopping_popularity_cache: list = []
 _exhibition_popularity_cache: list = []
+_cafe_popularity_cache: list = []   # 제주 카페 랭킹(2026-11-04)
 _place_popularity_by_region: dict = {}
 _popularity_last_refreshed: Optional[str] = None
 
@@ -81,7 +82,7 @@ def refresh_place_popularity(is_cron: bool = False):
     48시간으로 좁힌 이유: 7일 창에서는 소수 인기 항목의 트래픽 쏠림(자기강화)으로 순위가 거의 안 바뀌는 문제 완화.
     _MIN_RANKING_SCORE 미만 항목은 아예 제외해, 활동이 적을 땐 25개를 억지로 채우지 않고 그보다 적게 노출될 수 있음.
     is_cron: True면 스케줄러가 정확히 4시간 간격으로 호출한 것 — 이때만 NEW 배지 기준 스냅샷을 갱신함."""
-    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _shopping_popularity_cache, _exhibition_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
+    global _place_popularity_cache, _performance_popularity_cache, _festival_popularity_cache, _shopping_popularity_cache, _exhibition_popularity_cache, _cafe_popularity_cache, _place_popularity_by_region, _popularity_last_refreshed
     with engine.connect() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS place_views (
@@ -300,6 +301,7 @@ def refresh_place_popularity(is_cron: bool = False):
         for cat_key, cache_attr, snapshot_table in (
             ("shopping", "_shopping_popularity_cache", "shopping_ranking_snapshot"),
             ("전시", "_exhibition_popularity_cache", "exhibition_ranking_snapshot"),
+            ("cafe", "_cafe_popularity_cache", "cafe_ranking_snapshot"),
         ):
             conn.execute(text(f"""
                 CREATE TABLE IF NOT EXISTS {snapshot_table} (
@@ -314,9 +316,12 @@ def refresh_place_popularity(is_cron: bool = False):
             prev_snap = conn.execute(text(f"SELECT top25_ids FROM {snapshot_table} WHERE id = 1")).fetchone()
             prev_ids = set(prev_snap[0]) if prev_snap else set()
 
-            cat_result = list(_popularity_rows(conn, 2, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
+            # 카페는 새로 연 카테고리라 조회·좋아요가 거의 없어 최소 점수를 걸면 랭킹이 비므로 점수 0까지 포함한다
+            # (점수 높은 순 → 같으면 최신 순이라 처음엔 최근 수집한 카페가 위에 온다)
+            min_s = 0 if cat_key == "cafe" else _MIN_RANKING_SCORE
+            cat_result = list(_popularity_rows(conn, 2, only_category=cat_key, min_score=min_s, limit=25 if cat_key == "cafe" else 100))
             if len(cat_result) < 25:
-                cat_result = list(_popularity_rows(conn, 30, only_category=cat_key, min_score=_MIN_RANKING_SCORE))
+                cat_result = list(_popularity_rows(conn, 30, only_category=cat_key, min_score=min_s, limit=25 if cat_key == "cafe" else 100))
             cat_cache = [dict(row._mapping) for row in cat_result]
 
             current_ids = [item["id"] for item in cat_cache[:25]]
@@ -436,6 +441,9 @@ def get_shopping() -> list:
 
 def get_exhibition() -> list:
     return _exhibition_popularity_cache
+
+def get_cafe() -> list:
+    return _cafe_popularity_cache
 
 def get_closing_soon() -> list:
     return _closing_soon_cache

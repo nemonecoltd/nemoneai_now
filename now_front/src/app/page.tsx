@@ -46,6 +46,7 @@ const CATEGORY_TEXT: Record<string, Record<Lang, string>> = {
   popup: { ko: '팝업스토어', en: 'pop-up store', zh: '快闪店', ja: 'ポップアップストア' },
   class: { ko: '체험 클래스', en: 'experience class', zh: '体验课程', ja: '体験クラス' },
   shopping: { ko: '쇼핑', en: 'shopping', zh: '购物', ja: 'ショッピング' },
+  cafe: { ko: '카페', en: 'cafe', zh: '咖啡馆', ja: 'カフェ' },
   '전시': { ko: '전시', en: 'exhibition', zh: '展览', ja: '展示' },
   '행사': { ko: '행사', en: 'event', zh: '活动', ja: 'イベント' },
 };

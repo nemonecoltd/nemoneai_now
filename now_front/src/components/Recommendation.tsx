@@ -176,7 +176,7 @@ function placeToBentoItem(place: any, lang: string): BentoItem {
   return { id: place.id, image_url: place.image_url, badgeClass: regionBadgeClass, badgeLabel: regionLabel, categoryTag: placeCategoryTag(place), title: placeTitle, secondaryText, score: place.score, like_count: place.like_count, isNew: place.is_new, rankDelta: place.rank_delta, href };
 }
 
-export type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition';
+export type Tab = 'course' | 'theme' | 'place' | 'concert' | 'festival' | 'shopping' | 'exhibition' | 'cafe';
 const PLACE_RANKING_REGIONS = ['종합', '성수', '홍대', '강북', '강남', '부산', '제주'] as const;
 // 지역 전환 슬라이드 애니메이션 — custom(스와이프 방향)에 따라 진입/퇴장 방향이 반대가 됨
 const regionSlideVariants = {
@@ -221,6 +221,7 @@ export default function Recommendation({
   const [concerts, setConcerts] = useState([]);
   const [festivals, setFestivals] = useState([]);
   const [shopping, setShopping] = useState([]);
+  const [cafes, setCafes] = useState([]);
   const [exhibitions, setExhibitions] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [selectedTheme, setSelectedTheme] = useState<any>(null);
@@ -283,6 +284,8 @@ export default function Recommendation({
       fetchFestivals();
     } else if (activeTab === 'shopping') {
       fetchShopping();
+    } else if (activeTab === 'cafe') {
+      fetchCafes();
     } else if (activeTab === 'exhibition') {
       fetchExhibitions();
     } else if (activeTab === 'place' && placeRegion !== '종합') {
@@ -341,6 +344,16 @@ export default function Recommendation({
     try {
       const res = await fetch(`/api-now/places/popular/festival?t=${Date.now()}`);
       if (res.ok) setFestivals(await res.json());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCafes = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api-now/places/popular/cafe?t=${Date.now()}`);
+      if (res.ok) setCafes(await res.json());
     } finally {
       setIsLoading(false);
     }
@@ -487,12 +500,13 @@ export default function Recommendation({
   };
 
   // 랭킹 공유/마이페이지 저장 — 클릭 시점의 top10 스냅샷을 그대로 고정해서 보관(라이브 랭킹과 무관하게 유지)
-  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival' || activeTab === 'shopping' || activeTab === 'exhibition';
+  const isShareableTab = activeTab === 'place' || activeTab === 'concert' || activeTab === 'festival' || activeTab === 'shopping' || activeTab === 'cafe' || activeTab === 'exhibition';
   const currentRankingLabel = activeTab === 'place'
     ? `${placeRegion === '종합' ? '종합' : placeRegion} 팝업 랭킹`
     : activeTab === 'concert' ? '공연 랭킹'
     : activeTab === 'festival' ? '축제 랭킹'
     : activeTab === 'shopping' ? '쇼핑 랭킹'
+    : activeTab === 'cafe' ? '카페 랭킹'
     : '전시 랭킹';
 
   const getCurrentRankingList = () =>
@@ -500,6 +514,7 @@ export default function Recommendation({
     : activeTab === 'concert' ? concerts
     : activeTab === 'festival' ? festivals
     : activeTab === 'shopping' ? shopping
+    : activeTab === 'cafe' ? cafes
     : exhibitions;
 
   const createRankingShare = async (opts: { tab: string; region?: string | null; label: string; items: any[]; userId?: string }) => {
@@ -885,6 +900,47 @@ export default function Recommendation({
                     <BentoTop3 items={shopping.slice(0, 3).map(toItem)} lang={lang} />
                     {shopping.length > 0 && <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />}
                     {shopping.slice(3, 25).map((place: any, i: number) => {
+                      const idx = i + 3;
+                      const item = toItem(place);
+                      return (
+                        <div key={place.id} className="mb-4">
+                          <RankTile item={item} idx={idx} />
+                          {idx === 14 && (
+                            <div className="mt-4"><AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" /></div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+            </motion.div>
+          ) : activeTab === 'cafe' ? (
+            <motion.div key="cf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-1">
+              {cafes.length === 0 && !isLoading && (
+                <p className="text-center text-xs text-zinc-400 py-10">
+                  {lang === 'en' ? 'No cafe ranking data yet.' : lang === 'zh' ? '暂无咖啡馆排行数据。' : lang === 'ja' ? 'まだカフェランキングデータがありません。' : '아직 카페 랭킹 데이터가 없습니다.'}
+                </p>
+              )}
+              {(() => {
+                // 제주 카페(번역 없음 — 이름·소개는 한국어 그대로). 보조 문구는 주소.
+                const toItem = (place: any): BentoItem => ({
+                  id: place.id,
+                  image_url: place.image_url,
+                  badgeClass: "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]",
+                  badgeLabel: lang === 'en' ? 'JEJU CAFE' : lang === 'zh' ? '济州咖啡' : lang === 'ja' ? '済州カフェ' : '제주 카페',
+                  title: place.title,
+                  secondaryText: place.location || '제주',
+                  score: place.score,
+                  like_count: place.like_count,
+                  isNew: place.is_new,
+                  href: placeHref(place, lang),
+                });
+                return (
+                  <>
+                    <BentoTop3 items={cafes.slice(0, 3).map(toItem)} lang={lang} />
+                    {cafes.length > 0 && <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />}
+                    {cafes.slice(3, 25).map((place: any, i: number) => {
                       const idx = i + 3;
                       const item = toItem(place);
                       return (

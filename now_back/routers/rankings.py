@@ -140,6 +140,14 @@ async def get_popular_shopping(limit: Optional[int] = None, offset: int = 0):
         data = data[:min(limit, 500)]
     return data
 
+@router.get("/places/popular/cafe")
+async def get_popular_cafes(limit: Optional[int] = None, offset: int = 0):
+    """카페 전용 인기 랭킹 (category='cafe', 제주 카페 — 점수 0이어도 포함, 같은 점수면 최신 수집순)."""
+    data = ranking.get_cafe()[offset:]
+    if limit is not None:
+        data = data[:min(limit, 500)]
+    return data
+
 @router.get("/places/popular/exhibition")
 async def get_popular_exhibitions(limit: Optional[int] = None, offset: int = 0):
     """전시 전용 인기 랭킹 (category='전시', 지역 구분 없이 통합 — 트래픽 쌓이면 지역 서브탭 분리 예정)."""

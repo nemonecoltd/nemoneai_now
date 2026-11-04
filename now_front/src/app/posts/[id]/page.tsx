@@ -23,14 +23,15 @@ async function getPlace(id: string): Promise<Place | null> {
 
 // '이런 곳도 있어요' 추천 풀 — 팝업/전시는 자기 카테고리끼리만, 클래스+쇼핑은 '상시 운영' 성격이 같아 하나로 묶음.
 // 공연 장르(연극/뮤지컬/음악/종합)·제주 행사 등은 이번 범위 밖이라 null을 반환해 기존처럼 지역 전체에서 추천.
-function popupCategoryGroup(category?: string | null): 'popup' | 'living' | '전시' | null {
+function popupCategoryGroup(category?: string | null): 'popup' | 'living' | '전시' | 'cafe' | null {
+  if (category === 'cafe') return 'cafe';   // 제주 카페는 카페끼리만 추천
   if (category === 'class' || category === 'shopping') return 'living';
   if (category === '전시') return '전시';
   if (!category || category === 'popup') return 'popup';
   return null;
 }
 
-async function getSuggestions(excludeId: string, region: string, group: 'popup' | 'living' | '전시' | null): Promise<Place[]> {
+async function getSuggestions(excludeId: string, region: string, group: 'popup' | 'living' | '전시' | 'cafe' | null): Promise<Place[]> {
   try {
     let all: Place[] = [];
     if (group === 'living') {

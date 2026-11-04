@@ -46,12 +46,13 @@ type Lang = 'ko' | 'en' | 'zh' | 'ja';
 // '엔터'는 여기(지역 안 콘텐츠 유형)가 아니라 category_tag(핫플>카테고리, 지역 무관 장르
 // 분류)로 들어가야 맞다 — 한 번 여기 넣었다가 장소>강북 하위에 별도 탭이 생기는 오류가
 // 있었음(2026-09-11 발견, category_tags.py 쪽으로 이동)
-const CATEGORY_ORDER = ['popup', 'class', 'shopping', '전시', '행사'] as const;
+const CATEGORY_ORDER = ['popup', 'class', 'shopping', 'cafe', '전시', '행사'] as const;   // cafe=제주 전용(2026-11-04, 데이터가 있는 지역에만 탭이 뜬다)
 type PlaceCategory = typeof CATEGORY_ORDER[number];
 const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string; ko: string }> = {
   popup: { en: 'Pop-up', zh: '快闪店', ja: 'ポップアップ', ko: '팝업' },
   class: { en: 'Class', zh: '体验课程', ja: '体験', ko: '클래스' },
   shopping: { en: 'Shopping', zh: '购物', ja: 'ショッピング', ko: '쇼핑' },
+  cafe: { en: 'Cafe', zh: '咖啡馆', ja: 'カフェ', ko: '카페' },
   '전시': { en: 'Exhibit', zh: '展览', ja: '展示', ko: '전시' },
   '행사': { en: 'Event', zh: '活动', ja: 'イベント', ko: '행사' },
 };
@@ -59,7 +60,7 @@ const CATEGORY_LABEL: Record<PlaceCategory, { en: string; zh: string; ja: string
 // 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
 // 부산은 팝업만 수행 — 다른 장소형 지역과 동일하게 취급하되 실제 서브탭은 데이터(팝업만) 기준으로 자동 결정됨
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
-const EVENT_REGIONS = ['공연', '축제'] as const;
+const EVENT_REGIONS = ['공연'] as const;   // '축제' 메뉴는 2026-11-04 삭제(수집 중단·노출 제외, 되살리려면 여기에 '축제'를 다시 추가)
 const REGION_LABEL: Record<Region, { en: string; zh: string; ja: string }> = {
   '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
   '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
@@ -214,8 +215,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
   };
   // PC 사이드카드 'NEW POP-UP' 전체보기 — 위 goToRanking과 같은 이유로 Link 대신 콜백(2026-09-10).
   const goToPopupList = () => {
-    setActiveTab('list');
-    setPlaceCategory('popup');
+    router.push('/new-popup');
   };
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -231,7 +231,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
     const t = params.get('tab');
     const l = params.get('lang') as Lang;
     const c = params.get('category');
-    if (r) setRegionState(r);
+    if (r && r !== '축제') setRegionState(r);   // 축제 메뉴 삭제(2026-11-04) — 옛 링크(?region=축제)는 기본 지역으로
     // 구버전 링크 호환: '테마'는 그대로 '코스' 밑 서브탭 유지, 'AI코스(tour)'는 신규 /course 페이지로 리다이렉트
     if (t === 'theme') { setActiveTab('course'); setCourseSub('theme'); }
     else if (t === 'tour') { router.push(`/course${l ? `?lang=${l}` : ''}`); return; }
@@ -242,7 +242,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
       setRecPlaceRegion(r as PlaceRankingRegion);
     }
     if (l === 'en' || l === 'zh' || l === 'ja' || l === 'ko') setLang(l);
-    if (c === 'popup' || c === 'class' || c === 'shopping' || c === '전시' || c === '행사') setPlaceCategory(c);
+    if (c === 'popup' || c === 'class' || c === 'shopping' || c === 'cafe' || c === '전시' || c === '행사') setPlaceCategory(c);
     if (c === '연극' || c === '뮤지컬' || c === '음악' || c === '종합') setConcertGenre(c);
     // 상세페이지 무드 칩 → 매거진 탭의 '무드' 서브탭을 해당 무드로 열어줌(2026-09-02)
     const m = params.get('mood');
@@ -466,17 +466,14 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
                     <button onClick={() => setRecSubTab('shopping')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'shopping' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Shopping' : lang === 'zh' ? '购物' : lang === 'ja' ? 'ショッピング' : '쇼핑'}
                     </button>
+                    <button onClick={() => setRecSubTab('cafe')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'cafe' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
+                      {lang === 'en' ? 'Cafes' : lang === 'zh' ? '咖啡馆' : lang === 'ja' ? 'カフェ' : '카페'}
+                    </button>
                     <button onClick={() => setRecSubTab('exhibition')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'exhibition' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : lang === 'ja' ? '展示' : '전시'}
                     </button>
                     <button onClick={() => setRecSubTab('concert')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'concert' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : lang === 'ja' ? '公演' : '공연'}
-                    </button>
-                    <button onClick={() => setRecSubTab('festival')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'festival' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
-                      {lang === 'en' ? 'Festivals' : lang === 'zh' ? '节庆' : lang === 'ja' ? '祭り' : '축제'}
-                    </button>
-                    <button onClick={() => setRecSubTab('course')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'course' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
-                      {lang === 'en' ? '3-Hour' : lang === 'zh' ? '3小时' : lang === 'ja' ? '3時間' : '3시간'}
                     </button>
                     <button onClick={() => setRecSubTab('theme')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'theme' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
@@ -528,6 +525,18 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
                       {label}
                     </button>
                   ))}
+                  <button
+                    onClick={() => router.push('/new-popup')}
+                    className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600"
+                  >
+                    NEW팝업
+                  </button>
+                  <Link
+                    href="/ranking/place/seongsu"
+                    className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600"
+                  >
+                    인기팝업
+                  </Link>
                 </div>
               ) : (
                 <>
