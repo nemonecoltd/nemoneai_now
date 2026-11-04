@@ -477,7 +477,7 @@ async def run_all():
             await run_class("강남", "강남 공방 체험", allowed_districts=["강남구"]),
         ]
     results.append(await run_shopping("제주", "제주 소품샵"))
-    results.append(await run_cafe("제주", "제주 로스터리 카페"))   # 2026-11-04 제주 > 카페 메뉴 — 번역 없음
+    # 제주 카페는 정기(화·목) 수집에서 뺐다 — 매월 1일 한 번만(launchd com.nemoneai.now.collector-cafe, `collector_naver.py cafe`: 네이버 기본 정보 → 카카오 매칭 보강)
     cleanup_expired()
     print("\n" + "=" * 50)
     print("🏁 네이버 수집 완료")

@@ -11,7 +11,7 @@ import AdUnit from './AdUnit';
 // Recommendation.tsx(랭킹 탭) 안에서만 열리던 AI코스 생성 모달을 독립 컴포넌트로 분리(2026-09-06).
 // 원래는 좌하단 FAB이 랭킹 탭으로 전환한 뒤에야 모달을 띄웠는데, 홈 탭에서 눌러도 랭킹으로
 // 화면이 넘어갔다 모달이 뜨는 게 어색하다는 피드백 — 현재 탭이 뭐든 그 위에 바로 오버레이되게 함.
-const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
+const AI_COURSE_REGIONS = ['성수', '홍대', '강북', '강남', '부산'] as const;   // 제주 삭제(2026-11-04)
 type AiCourseRegion = typeof AI_COURSE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 const COMPANION_LABEL: Record<Companion, string> = { solo: '혼자', couple: '연인', friends: '친구' };
@@ -90,7 +90,7 @@ export default function AiCourseModal({ open, onClose }: { open: boolean; onClos
 
             <div className="space-y-3 mb-6">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">지역</label>
-              <div className="grid grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {AI_COURSE_REGIONS.map((r) => (
                   <button
                     key={r}

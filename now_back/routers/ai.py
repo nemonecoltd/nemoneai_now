@@ -138,6 +138,9 @@ COURSE_POPUP_MIN = 8   # 활성 팝업이 이보다 적은 지역은 팝업만�
 async def generate_timed_course(region: str, companion: str, lang: str = "ko") -> dict:
     """3시간 코스 AI 생성 — 후보 선정(pgvector 유사도 + 카테고리 round-robin) + Gemini 호출.
     /itinerary(캐시 있음)와 /courses/draft(캐시 없음, 매번 새 saved_courses row가 목적)가 공유."""
+    if region == "제주":
+        # 제주 3시간 코스는 삭제(2026-11-04) — 활성 팝업이 3건뿐이라 코스가 성립하지 않는다. 화면에서도 선택지를 뺐고 직접 호출도 막는다.
+        raise HTTPException(status_code=400, detail="제주는 3시간 코스를 제공하지 않아요.")
     title_field = _lang_col(lang, "title")
     content_field = _lang_col(lang, "content")
 

@@ -15,7 +15,7 @@ import AdUnit from '@/components/AdUnit';
 import SideCardLayout, { WIDE_FRAME, WIDE_FRAME_BORDER, useElementHeight } from '@/components/sidecards/SideCardLayout';
 import { cn } from '@/lib/utils';
 
-const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
+const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산'] as const;   // 3시간 코스: 제주는 2026-11-04 삭제(팝업 3건뿐이라 코스가 성립하지 않음)
 type Region = typeof PLACE_REGIONS[number];
 type Companion = 'solo' | 'couple' | 'friends';
 
@@ -232,7 +232,7 @@ function CourseHubContent() {
 
               <div className="space-y-3 mb-6">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{tr('지역', 'Region', '地区', 'エリア')}</label>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {PLACE_REGIONS.map((r) => (
                     <button
                       key={r}
