@@ -57,7 +57,8 @@ const REGION_TITLE: Record<string, { en: string; zh: string; ja: string }> = {
   '제주': { en: 'Jeju', zh: '济州', ja: '済州' },
 };
 
-export default function MapView({ places = [], region = '성수', lang = 'ko' }: { places?: Place[], region?: string, lang?: string }) {
+export default function MapView({ places = [], region = '성수', lang = 'ko', category }: { places?: Place[], region?: string, lang?: string, category?: string }) {
+  const isCafe = category === 'cafe';   // 제주 > 카페 지도(2026-11-04) — 제목·개수 문구만 카페용
   const mapRef = useRef<HTMLDivElement>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
@@ -175,7 +176,9 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
           </div>
           <div>
             <h4 className="text-sm font-black text-zinc-900 tracking-tight">
-              {lang === 'en'
+              {isCafe
+                ? (lang === 'en' ? `${REGION_TITLE[region]?.en || 'Jeju'} Cafe Map` : lang === 'zh' ? `${REGION_TITLE[region]?.zh || '济州'}咖啡馆地图` : lang === 'ja' ? `${REGION_TITLE[region]?.ja || '済州'}カフェマップ` : `${region} 카페 맵`)
+                : lang === 'en'
                 ? `${REGION_TITLE[region]?.en || 'Seongsu'} Map`
                 : lang === 'zh'
                   ? `${REGION_TITLE[region]?.zh || '圣水洞'}地图`
@@ -186,7 +189,9 @@ export default function MapView({ places = [], region = '성수', lang = 'ko' }:
                 className="ml-2 text-xs font-bold"
                 style={{ color: REGION_COLOR[region] || REGION_COLOR['성수'] }}
               >
-                {lang === 'en' ? `(${places.length} now)` : lang === 'zh' ? `(现在${places.length}个)` : lang === 'ja' ? `(現在${places.length}件)` : `(지금 당장 ${places.length}개)`}
+                {isCafe
+                  ? (lang === 'en' ? `(${places.length} cafes)` : lang === 'zh' ? `(${places.length}家)` : lang === 'ja' ? `(${places.length}店)` : `(${places.length}곳)`)
+                  : lang === 'en' ? `(${places.length} now)` : lang === 'zh' ? `(现在${places.length}个)` : lang === 'ja' ? `(現在${places.length}件)` : `(지금 당장 ${places.length}개)`}
               </span>
             </h4>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">

@@ -702,7 +702,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
                 onSeeAllCongestion={goToCrowdMap}
                 onSeeAllRanking={goToRanking}
               >
-                <MapView places={mapPlaces} region={region} lang={lang} />
+                <MapView places={mapPlaces} region={region} lang={lang} category={placeCategory} />
               </SideCardLayout>
             </motion.div>
           )}

@@ -246,7 +246,8 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
                          :naver_place_id, :video_url, :image_url, :embedding, :end_date, :date_range, :region, :category)
                         RETURNING id
                     """), params).first()
-                    new_urls.append(f"https://now.nemoneai.com/posts/{new_row[0]}")
+                    if category != "cafe":   # 제주 카페는 noindex(2026-11-04)라 IndexNow로 크롤을 요청하지 않는다
+                        new_urls.append(f"https://now.nemoneai.com/posts/{new_row[0]}")
                     new_count += 1
                 conn.commit()
                 print(f"    ✅ 저장 완료")

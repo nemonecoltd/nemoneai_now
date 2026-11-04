@@ -101,6 +101,8 @@ function normalizeLang(raw?: string): 'ko' | 'en' | 'zh' | 'ja' {
 
 // 공연·축제는 소개글이 얇고 종료가 빨라 검색 색인에서 제외한다(2026-10-28) — 페이지 자체는 접근 가능, 사이트맵에서도 뺀다.
 const NOINDEX_REGIONS = new Set(['공연', '축제']);
+// 제주 카페(category='cafe')도 소개가 2~3문장이라 색인에서 제외한다(2026-11-04) — 지도·목록·랭킹에서만 노출. 사이트맵에서도 뺀다.
+const NOINDEX_CATEGORIES = new Set(['cafe']);
 
 export async function generateMetadata({
   params,
@@ -160,7 +162,7 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical, languages },
-    ...(hasRealTranslation && !NOINDEX_REGIONS.has(place.region ?? '') ? {} : { robots: { index: false, follow: true } }),
+    ...(hasRealTranslation && !NOINDEX_REGIONS.has(place.region ?? '') && !NOINDEX_CATEGORIES.has(place.category ?? '') ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
       title,
       description,
