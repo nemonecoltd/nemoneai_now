@@ -83,7 +83,10 @@ async def scrape_naver_map_popups_hongdae():
         """
         
         print("🧠 Gemini가 홍대 장소 정보를 정제 중입니다...")
-        response = _client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        response = _client.models.generate_content(
+            model="gemini-2.5-flash", contents=prompt,
+            config=_genai.types.GenerateContentConfig(thinking_config=_genai.types.ThinkingConfig(thinking_budget=0)),   # 생각 끔(비용 방지, 2026-11-04)
+        )
         
         try:
             content = response.text

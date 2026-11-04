@@ -25,6 +25,7 @@ def _ai_generate_intro(title: str, location: str, kind: str) -> str:
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = client.models.generate_content(
             model="gemini-2.5-flash",
+            config=genai.types.GenerateContentConfig(thinking_config=genai.types.ThinkingConfig(thinking_budget=0)),   # 생각 끔(2026-11-04)
             contents=(
                 f"다음 {kind}의 소개 문구를 정확히 2~3문장으로 작성해줘.\n"
                 f"장소명: {title}\n위치: {location}\n"

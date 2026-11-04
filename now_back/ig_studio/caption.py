@@ -90,7 +90,7 @@ def _call_gemini(prompt: str) -> dict:
             resp = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
+                config=types.GenerateContentConfig(response_mime_type="application/json", thinking_config=types.ThinkingConfig(thinking_budget=0)),   # 생각 끔(2026-11-04)
             )
             raw = (resp.text or "").strip().replace("```json", "").replace("```", "").strip()
             return json.loads(raw)

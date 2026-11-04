@@ -30,6 +30,7 @@ def ai_generate_intro(title: str, location: str, category: str = "") -> str:
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
+            config=genai.types.GenerateContentConfig(thinking_config=genai.types.ThinkingConfig(thinking_budget=0)),   # 생각 끔(2026-11-04)
         )
         text = response.text.strip()
         return text[:400] if text else ""
