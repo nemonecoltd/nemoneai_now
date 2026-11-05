@@ -349,3 +349,45 @@ async def delete_place(place_id: int, viewer: dict = Depends(_verify_supabase_us
     # 죽은 링크가 됐음을 IndexNow에 알려 재크롤/de-index를 앞당긴다(2026-09-20).
     ping_indexnow([f"https://now.nemoneai.com/posts/{place_id}"])
     return {"status": "success"}
+
+
+# ── SNS 공유용 OG 이미지(JPEG 1200×630) ─────────────────────────────────────────────
+# 썸네일은 webp로 저장돼 있는데 페이스북 크롤러는 webp og:image를 못 읽어 미리보기에 이미지가 안 나온다(2026-11-05 신고).
+# 우리 저장소(nemoneai-thumbnails)의 이미지만 받아 JPEG로 바꿔 내려준다(임의 URL 프록시 방지). 작은 메모리 캐시 + 브라우저/CDN 캐시 1일.
+_OG_ALLOWED_PREFIX = "https://storage.googleapis.com/nemoneai-thumbnails/"
+_og_cache: dict = {}
+_OG_CACHE_MAX = 200
+
+
+@router.get("/og-image")
+def og_image(u: str):
+    import io
+    import requests as _rq
+    from fastapi.responses import Response
+    from PIL import Image, ImageOps
+
+    if not u.startswith(_OG_ALLOWED_PREFIX) or ".." in u or len(u) > 300:
+        raise HTTPException(status_code=404, detail="not found")
+    data = _og_cache.get(u)
+    if data is None:
+        try:
+            r = _rq.get(u, timeout=8, stream=True)
+            if r.status_code != 200:
+                raise HTTPException(status_code=404, detail="not found")
+            raw = r.raw.read(8 * 1024 * 1024 + 1, decode_content=True)
+            if len(raw) > 8 * 1024 * 1024:
+                raise HTTPException(status_code=404, detail="too large")
+            im = Image.open(io.BytesIO(raw))
+            im = ImageOps.exif_transpose(im).convert("RGB")
+            im = ImageOps.fit(im, (1200, 630), method=Image.LANCZOS, centering=(0.5, 0.4))
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=85, optimize=True)
+            data = buf.getvalue()
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=404, detail="not found")
+        if len(_og_cache) >= _OG_CACHE_MAX:
+            _og_cache.pop(next(iter(_og_cache)))
+        _og_cache[u] = data
+    return Response(content=data, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})

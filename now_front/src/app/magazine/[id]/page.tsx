@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { ogImageFor } from '@/lib/ogImage';
 import MagazineDetailClient from './MagazineDetailClient';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
@@ -75,7 +76,7 @@ export async function generateMetadata({
       title: post.title,
       description,
       url: canonical,
-      images: post.image_url ? [{ url: post.image_url, alt: post.title }] : ['/og-image.png'],
+      images: [ogImageFor(post.image_url, post.title) ?? '/og-image.jpg'],
       type: 'article',
       locale: 'ko_KR',
       siteName: 'NEMONE PACE',

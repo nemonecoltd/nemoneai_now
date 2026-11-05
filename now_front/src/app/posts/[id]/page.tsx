@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { ogImageFor } from '@/lib/ogImage';
 import { notFound } from 'next/navigation';
 import PlaceDetailClient, { Place } from './PlaceDetailClient';
 
@@ -167,7 +168,7 @@ export async function generateMetadata({
       title,
       description,
       url: canonical,
-      images: place.image_url ? [{ url: place.image_url, alt: title }] : ['/og-image.png'],
+      images: [ogImageFor(place.image_url, title) ?? '/og-image.jpg'],
       type: 'article',
       locale: OG_LOCALE[lang],
     },
@@ -175,7 +176,7 @@ export async function generateMetadata({
       card: 'summary_large_image',
       title,
       description,
-      images: place.image_url ? [place.image_url] : ['/og-image.png'],
+      images: [ogImageFor(place.image_url)?.url ?? '/og-image.jpg'],
     },
   };
 }
