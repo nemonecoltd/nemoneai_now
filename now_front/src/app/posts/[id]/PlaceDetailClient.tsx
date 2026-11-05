@@ -455,7 +455,7 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
     "name": displayTitle,
     "description": displayContent.replace(/<[^>]*>/g, '').substring(0, 160),
     "url": pageUrl,
-    "image": place.image_url || 'https://now.nemoneai.com/og-image.jpg',
+    "image": place.image_url || 'https://now.nemoneai.com/og-image.png',
     "location": {
       "@type": "Place",
       "name": place.location || (place.region === '제주' ? '제주아트센터' : '서울'),
