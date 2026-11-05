@@ -4,22 +4,23 @@ import os
 from datetime import date, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 
 from database import engine
+from deps import _require_admin
 from image_storage import get_storage_usage
 import ranking_service as ranking
 
 router = APIRouter()
 
-@router.post("/admin/push/weekly")
+@router.post("/admin/push/weekly", dependencies=[Depends(_require_admin)])
 async def trigger_weekly_push():
     """Web Push 주간 발송 수동 트리거 — 스케줄 등록 전 검증용. 자동 스케줄은 아직 미등록."""
     import push_service
     return push_service.run_weekly_push()
 
-@router.get("/admin/themes")
+@router.get("/admin/themes", dependencies=[Depends(_require_admin)])
 async def admin_get_all_themes():
     """어드민 전용 — 전체 테마 조회 ([퍼감] 제외)"""
     with engine.connect() as conn:
@@ -33,7 +34,7 @@ async def admin_get_all_themes():
         """)).fetchall()
         return [dict(row._mapping) for row in rows]
 
-@router.post("/admin/themes/generate-weekly")
+@router.post("/admin/themes/generate-weekly", dependencies=[Depends(_require_admin)])
 async def admin_generate_weekly_theme():
     """어드민 전용 — 최근 7일 인기 팝업 TOP10으로 '주간 TOP10' 테마 자동 생성.
     같은 목적의 테마 하나(pinned_at IS NOT NULL)를 매주 덮어써서 테마 목록 최상단에 고정 노출."""
@@ -79,7 +80,7 @@ async def admin_generate_weekly_theme():
         conn.commit()
         return {"status": "success", "id": theme_id}
 
-@router.put("/admin/themes/{theme_id}")
+@router.put("/admin/themes/{theme_id}", dependencies=[Depends(_require_admin)])
 async def admin_update_theme(theme_id: int, body: dict):
     """어드민 전용 — 소유자 체크 없이 테마 수정 (title/description/places)"""
     allowed = {}
@@ -99,7 +100,7 @@ async def admin_update_theme(theme_id: int, body: dict):
         conn.commit()
     return {"status": "success"}
 
-@router.delete("/admin/themes/{theme_id}")
+@router.delete("/admin/themes/{theme_id}", dependencies=[Depends(_require_admin)])
 async def admin_delete_theme(theme_id: int):
     """어드민 전용 — 소유자 체크 없이 테마 삭제"""
     with engine.connect() as conn:
@@ -108,7 +109,7 @@ async def admin_delete_theme(theme_id: int):
         conn.commit()
     return {"status": "success"}
 
-@router.get("/admin/ranking/weekly")
+@router.get("/admin/ranking/weekly", dependencies=[Depends(_require_admin)])
 async def admin_weekly_ranking():
     """장소 인기 TOP 25 (하루 3회 계산된 48시간 캐시 반환, 메인 추천 랭킹과 동일 산식). 공연 제외.
     blog_reviews만은 캐시가 아닌 실시간 DB 값으로 덮어씀 — 4시간 캐시 주기 사이에 어드민에서 갱신해도
@@ -126,7 +127,7 @@ async def admin_weekly_ranking():
             item["blog_reviews"] = live_blog_reviews.get(item["id"], item.get("blog_reviews"))
     return top25
 
-@router.get("/admin/ranking/weekly7d")
+@router.get("/admin/ranking/weekly7d", dependencies=[Depends(_require_admin)])
 async def admin_weekly_ranking_7d():
     """CSV 다운로드(주간 콘텐츠 제작용) 전용 — 화면 표시용 48시간 캐시와 별개로 항상 최신 7일 데이터를 즉석 계산.
     "이번주 핫플 팝업" 서울권 기사용이라 제주·부산은 제외(화면 표시용 TOP25는 지역 구분 없이 그대로 유지)."""
@@ -146,7 +147,7 @@ async def admin_weekly_ranking_7d():
                 item["rank_delta"] = "new"
         return top25
 
-@router.get("/admin/places")
+@router.get("/admin/places", dependencies=[Depends(_require_admin)])
 async def admin_list_all_places(region: Optional[str] = None):
     """어드민 전용 — 만료 포함 전체 장소 조회"""
     where_clause = "WHERE region = :region" if region else ""
@@ -160,11 +161,11 @@ async def admin_list_all_places(region: Optional[str] = None):
         result = conn.execute(query, params)
         return [dict(row._mapping) for row in result]
 
-_STATS_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주', '공연', '축제']
-_STATS_CATEGORIES = ['팝업', '클래스', '쇼핑', '전시']
+_STATS_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주', '공연']   # 2026-11-05 축제 제외(메뉴 삭제)
+_STATS_CATEGORIES = ['팝업', '쇼핑', '전시', '카페']                       # 2026-11-05 클래스 제외(메뉴 삭제), 카페 추가
 _STATS_WINDOW_HOURS = 48
 
-@router.get("/admin/region-stats")
+@router.get("/admin/region-stats", dependencies=[Depends(_require_admin)])
 async def admin_region_stats():
     """어드민 대시보드 — 분야(지역)별 등록 장소 수/최근 48시간 조회수 + 팝업·클래스·쇼핑·전시 카테고리별 세부 분해.
     4시간 단위 시간대별 집계는 지역 불문 모양이 거의 똑같아 판단에 도움이 안 돼(2026-08-11, 실사용 피드백)
@@ -176,7 +177,7 @@ async def admin_region_stats():
     category_case = """
         CASE
             WHEN p.category IN ('전시', '행사') THEN '전시'
-            WHEN p.category = 'class' THEN '클래스'
+            WHEN p.category = 'cafe' THEN '카페'
             WHEN p.category = 'shopping' THEN '쇼핑'
             ELSE '팝업'
         END
@@ -189,7 +190,7 @@ async def admin_region_stats():
                 FROM seongsu_places p
                 LEFT JOIN place_views v ON v.place_id = p.id
                     AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
-                WHERE p.region = ANY(:regions)
+                WHERE p.region = ANY(:regions) AND COALESCE(p.category, '') <> 'class'   -- 클래스는 집계 제외(제외하지 않으면 팝업 칸으로 섞인다)
                 GROUP BY p.id, p.region, bucket
             ),
             prev AS (
@@ -198,7 +199,7 @@ async def admin_region_stats():
                 LEFT JOIN place_views v ON v.place_id = p.id
                     AND v.viewed_at >= NOW() - INTERVAL '{_STATS_WINDOW_HOURS * 2} hours'
                     AND v.viewed_at < NOW() - INTERVAL '{_STATS_WINDOW_HOURS} hours'
-                WHERE p.region = ANY(:regions)
+                WHERE p.region = ANY(:regions) AND COALESCE(p.category, '') <> 'class'
                 GROUP BY p.id
             )
             SELECT curr.region, curr.bucket,
@@ -263,7 +264,7 @@ async def get_banner():
             return {"text": "", "url": ""}
         return {"text": row.text or "", "url": row.url or ""}
 
-@router.post("/admin/banner")
+@router.post("/admin/banner", dependencies=[Depends(_require_admin)])
 async def update_banner(payload: dict):
     """어드민에서 배너 텍스트/URL 갱신. 비우면 배너가 사라짐."""
     text_val = (payload.get("text") or "").strip()
@@ -284,7 +285,7 @@ async def update_banner(payload: dict):
         conn.commit()
     return {"status": "success"}
 
-@router.get("/admin/stats")
+@router.get("/admin/stats", dependencies=[Depends(_require_admin)])
 async def get_admin_stats():
     """관리자용 통계 (총 유저수/코스수/스팟수)"""
     with engine.connect() as conn:

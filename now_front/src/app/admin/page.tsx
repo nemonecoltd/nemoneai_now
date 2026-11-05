@@ -108,7 +108,7 @@ export default function AdminPage() {
     fetch(url, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${session?.access_token || ''}` } });
   
   const [viewMode, setViewMode] = useState<ViewMode>('ranking');
-  const [rankingSubTab, setRankingSubTab] = useState<'stats' | 'banner' | 'top25'>('stats');
+  const [rankingSubTab, setRankingSubTab] = useState<'stats' | 'banner'>('stats');
   const [places, setPlaces] = useState<Place[]>([]);
   const [themes, setThemes] = useState<Theme[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -490,7 +490,7 @@ export default function AdminPage() {
                   📊 TOP 25
                 </button>
                 <div className="w-px h-4 bg-zinc-300 mb-1 flex-shrink-0"></div>
-                {REGIONS.map((r) => (
+                {REGIONS.filter((r) => r !== '축제').map((r) => (   // 축제 메뉴 삭제(2026-11-05) — 기존 축제 행 편집용 Region 타입·드롭다운은 그대로
                   <button
                     key={r}
                     onClick={() => {
@@ -607,14 +607,6 @@ export default function AdminPage() {
             >
               📣 공지 배너
             </button>
-            <button
-              onClick={() => setRankingSubTab('top25')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                rankingSubTab === 'top25' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-400 hover:text-zinc-600"
-              }`}
-            >
-              📊 TOP25
-            </button>
           </div>
         )}
 
@@ -623,7 +615,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-2 mb-1">
               <span className="text-base font-black text-zinc-900">🗂️ 분야별 카테고리 분포</span>
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">
-                최근 {regionStats.window_hours}시간 조회수 · 팝업/클래스/쇼핑/전시
+                최근 {regionStats.window_hours}시간 조회수 · 팝업/쇼핑/전시/카페
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mb-4">
@@ -733,92 +725,16 @@ export default function AdminPage() {
                 {savingBanner ? '저장 중...' : '갱신'}
               </button>
             </div>
-          </div>
-        )}
-
-        {viewMode === 'ranking' && rankingSubTab === 'top25' && (
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-base font-black text-zinc-900">📊 조회수 TOP {weeklyRanking.length}</span>
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">최근 48시간</span>
+            <div className="mt-4 pt-4 border-t border-zinc-100 flex items-center gap-2">
+              <span className="text-[11px] text-zinc-400">조회수 TOP 25 (7일 기준) 내려받기</span>
               <button
                 onClick={handleDownloadRanking}
                 disabled={downloadingRanking}
-                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 disabled:opacity-50 transition-colors ml-auto"
+                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 disabled:opacity-50"
               >
                 <Download size={12} /> {downloadingRanking ? '조회 중...' : 'CSV 다운로드 (7일 기준)'}
               </button>
             </div>
-            {weeklyRanking.length === 0 ? (
-              <p className="text-sm text-zinc-400 text-center py-8">아직 조회 데이터가 없습니다. 유저 방문이 쌓이면 표시됩니다.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {weeklyRanking.map((item, idx) => (
-                  <div key={item.id} className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
-                    <span className="text-lg font-black text-zinc-300 w-6 text-center">{idx + 1}</span>
-                    {item.image_url ? (
-                      <img
-                        src={item.image_url.startsWith('http') ? item.image_url : `https://now.nemoneai.com${item.image_url}`}
-                        alt=""
-                        className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-zinc-200 flex-shrink-0" />
-                    )}
-                    <div className="flex-grow min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-sm font-bold text-zinc-800 truncate">{item.title}</p>
-                        {item.blog_reviews != null ? (
-                          <span className="flex-shrink-0 text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                            갱신됨
-                          </span>
-                        ) : (
-                          <span className="flex-shrink-0 text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">
-                            미갱신
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-zinc-400">{item.region} · ID {item.id} · {item.view_count}회 · {item.date_range || '상시 운영'}</p>
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto pl-8 sm:pl-0">
-                      <button
-                        onClick={async () => {
-                          setRegion(item.region as Region);
-                          setViewMode('spots');
-                          // 해당 리전 로드 후 편집 폼 열기
-                          const res = await authFetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            setPlaces(data);
-                            const found = data.find((p: Place) => p.id === item.id);
-                            if (found) {
-                              setEditingId(found.id);
-                              setEditForm({ ...found });
-                              setEnriched(found.blog_reviews && found.blog_reviews.length > 0 ? { placeId: found.id, reviews: found.blog_reviews } : null);
-                            }
-                          }
-                        }}
-                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-zinc-100 text-zinc-600 border border-zinc-200 rounded-xl hover:bg-zinc-200 flex-shrink-0 transition-colors"
-                      >
-                        <Edit size={11} /> 편집
-                      </button>
-                      <button
-                        onClick={() => handleEnrichRanking(item.id)}
-                        disabled={enrichingRankId === item.id}
-                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-bold bg-pace-50 text-pace-700 border border-pace-200 rounded-xl hover:bg-pace-100 disabled:opacity-50 flex-shrink-0 transition-colors"
-                      >
-                        {enrichingRankId === item.id ? <Loader2 size={11} className="animate-spin" /> : <MapPin size={11} />}
-                        {enrichingRankId === item.id ? '수집 중...' : '블로그 갱신'}
-                      </button>
-                      <a href={`/posts/${item.id}`} target="_blank" className="text-zinc-300 hover:text-zinc-600 transition-colors flex-shrink-0 ml-auto sm:ml-0">
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
