@@ -14,8 +14,9 @@ import HeaderActions from '@/components/HeaderActions'
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081'
 const SITE = 'https://now.nemoneai.com'
-const TITLE = '서울 NEW 팝업스토어 목록'
-const DESCRIPTION = '성수·홍대·강남·강북 등 서울에서 지금 열리는 새 팝업스토어를 최신순으로 모아 보세요.'
+const TITLE = 'NEW 팝업스토어 목록'
+const DESCRIPTION = '성수·홍대·강남·강북·부산·제주 등 지금 열리는 새 팝업스토어를 최신순으로 모아 보세요.'
+const OG_IMAGE = `${SITE}/og-image.jpg`   // 페이지에 openGraph를 따로 주면 루트 레이아웃의 이미지가 상속되지 않아, 미리보기에 본문 첫 이미지(예: 닭강정)가 잡혔다
 
 export const revalidate = 600
 
@@ -23,8 +24,8 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: `${SITE}/new-popup` },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE}/new-popup`, type: 'website', siteName: 'NEMONE PACE' },
-  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE}/new-popup`, type: 'website', siteName: 'NEMONE PACE', images: [OG_IMAGE] },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [OG_IMAGE] },
 }
 
 type Item = { id: number; title: string; region?: string | null; date_range?: string | null; location?: string | null; image_url?: string | null }
@@ -45,7 +46,7 @@ export default async function NewPopupPage() {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: '서울 NEW 팝업스토어',
+    name: 'NEW 팝업스토어',
     itemListElement: items.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}/posts/${p.id}`, name: p.title })),
   }
   return (
@@ -63,7 +64,7 @@ export default async function NewPopupPage() {
       <main>
         <SideCardLayout lang="ko">
           <div className="px-6 pt-6 space-y-3">
-            <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">서울 NEW 팝업스토어</h1>
+            <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900">NEW 팝업스토어</h1>
             {items.length === 0 ? (
               <p className="text-center text-zinc-400 text-sm py-20">표시할 팝업이 없어요.</p>
             ) : (

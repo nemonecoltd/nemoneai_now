@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye } from 'lucide-react';
+import { Eye, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { HomeRegion, placeHref, placeTitle, regionLabel, REGION_DOT_CLASS, placeMoodTag, placeCategoryTag } from './homeUtils';
 
@@ -23,8 +23,9 @@ export default function HotNowSection({
   onSeeAll: () => void;
 }) {
   const t = dict[lang as keyof typeof dict] || dict.ko;
-  const filtered = (region === '전체' ? places : places.filter((p) => p.region === region)).slice(0, 5);
+  const filtered = (region === '전체' ? places : places.filter((p) => p.region === region)).slice(0, 10);
   const [first, ...rest] = filtered;
+  // 1위는 큰 카드, 2~4위는 썸네일 타일, 5~10위는 텍스트 리스트(순위·이름·위치·순위변화) — 모바일에서 썸네일 없이도 한눈에 보이게
 
   if (!first) {
     return (
@@ -105,7 +106,7 @@ export default function HotNowSection({
         </Link>
 
         <div className="grid grid-cols-2 gap-3 md:gap-4">
-          {rest.slice(0, 4).map((p, idx) => (
+          {rest.slice(0, 3).map((p, idx) => (
             <Link key={p.id} href={placeHref(p, lang)} className="group relative rounded-xl overflow-hidden aspect-square bg-zinc-100 block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -120,6 +121,41 @@ export default function HotNowSection({
               </div>
             </Link>
           ))}
+          {/* 5위 썸네일이 있던 자리 — 5~10위를 텍스트로(순위·이름·위치·순위변화). 썸네일이 없어 좁은 모바일에서도 읽힌다 */}
+          {rest.length > 3 && (
+            <div className="rounded-xl bg-white border border-zinc-100 overflow-hidden flex flex-col min-w-0">
+              <ul className="flex-1 flex flex-col justify-center divide-y divide-zinc-50 py-1">
+                {rest.slice(3, 9).map((p, i) => {
+                  const rank = i + 5;
+                  const isNew = p.rank_delta === 'new' || p.is_new;
+                  const delta = typeof p.rank_delta === 'number' ? p.rank_delta : 0;
+                  return (
+                    <li key={p.id} className={rank === 10 ? 'hidden md:block' : undefined}>
+                      <Link href={placeHref(p, lang)} className="flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-zinc-50 transition-colors">
+                        <span className="w-3.5 text-center text-[11px] font-black text-zinc-900 flex-shrink-0">{rank}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-zinc-900 truncate leading-tight">{placeTitle(p, lang)}</p>
+                          <p className="text-[9px] text-zinc-400 truncate leading-tight">
+                            <span className={`inline-block w-1 h-1 rounded-full mr-1 align-middle ${REGION_DOT_CLASS[p.region as keyof typeof REGION_DOT_CLASS] || 'bg-emerald-500'}`} />
+                            {regionLabel(p.region, lang)}{p.location ? ` · ${p.location}` : ''}
+                          </p>
+                        </div>
+                        {isNew ? (
+                          <span className="flex-shrink-0 text-[8px] font-black px-1 py-0.5 rounded-full bg-rose-500 text-white leading-none">NEW</span>
+                        ) : delta > 0 ? (
+                          <span className="flex-shrink-0 flex items-center gap-0.5 text-[9px] font-black text-emerald-600"><TrendingUp size={10} strokeWidth={3} />{delta}</span>
+                        ) : delta < 0 ? (
+                          <span className="flex-shrink-0 flex items-center gap-0.5 text-[9px] font-black text-rose-500"><TrendingDown size={10} strokeWidth={3} />{Math.abs(delta)}</span>
+                        ) : (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-zinc-300">–</span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </section>

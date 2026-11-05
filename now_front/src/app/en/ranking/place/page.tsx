@@ -1,13 +1,14 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import Logo from '@/components/Logo';
 import BottomNav from '@/components/BottomNav';
 import SiteFooter from '@/components/SiteFooter';
 import SideCardLayout from '@/components/sidecards/SideCardLayout';
 import { WIDE_FRAME, WIDE_FRAME_BORDER } from '@/components/sidecards/frame';
 import { cn } from '@/lib/utils';
-import AdUnit from '@/components/AdUnit';
+import PopularRankingCards from '@/components/PopularRankingCards';
+import RankingHeaderActions from '@/components/RankingHeaderActions';
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8081';
 
@@ -16,6 +17,9 @@ export const revalidate = 3600;
 interface PopularPlace {
   id: number;
   title: string;
+  image_url?: string | null;
+  title_zh?: string | null;
+  title_ja?: string | null;
   title_en?: string | null;
   region: string;
   location?: string;
@@ -68,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
         'x-default': 'https://now.nemoneai.com/ranking/place',
       },
     },
-    openGraph: { title, description, url: 'https://now.nemoneai.com/en/ranking/place', type: 'website' },
+    openGraph: { title, description, url: 'https://now.nemoneai.com/en/ranking/place', images: ['https://now.nemoneai.com/og-image.jpg'], type: 'website' },
   };
 }
 
@@ -83,11 +87,7 @@ export default async function PlaceRankingPageEn() {
             <ChevronLeft size={20} />
           </Link>
           <Logo href="/" className="h-6" />
-          <div className="ml-auto flex gap-2 text-[10px] font-bold text-zinc-400 flex-shrink-0">
-            <Link href="/ranking/place" className="hover:text-zinc-700">KO</Link>
-            <Link href="/zh/ranking/place" className="hover:text-zinc-700">中文</Link>
-            <Link href="/ja/ranking/place" className="hover:text-zinc-700">日本語</Link>
-          </div>
+          <RankingHeaderActions lang="en" path="/ranking/place" />
         </div>
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">Popular Hot Spots</h1>
       </header>
@@ -99,40 +99,7 @@ export default async function PlaceRankingPageEn() {
           <p className="text-center text-zinc-400 text-sm py-20">Data is being prepared.</p>
         )}
 
-        {places.map((place, idx) => (
-          <div key={place.id}>
-          <Link
-            href={`/posts/${place.id}?lang=en`}
-            className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-zinc-100 shadow-sm"
-          >
-            <span className="w-7 h-7 rounded-lg bg-zinc-900 text-white text-xs font-black flex items-center justify-center flex-shrink-0">
-              {idx + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h2 className="font-bold text-zinc-900 text-sm truncate">{place.title_en || place.title}</h2>
-                {place.category === 'class' && (
-                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-indigo-50 text-indigo-600 border-indigo-100">Class</span>
-                )}
-                {place.is_new && (
-                  <span className="flex-shrink-0 text-[8px] font-black px-1.5 py-0.5 rounded uppercase border bg-rose-500 text-white border-rose-400">NEW</span>
-                )}
-              </div>
-              <p className="text-[10px] text-zinc-400">{REGION_LABEL_EN[place.region] || place.region}{place.date_range ? ` · ${place.date_range}` : ''}</p>
-            </div>
-            <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500 flex-shrink-0">
-              <Flame size={11} fill="currentColor" /> {place.score ?? place.like_count ?? 0}
-            </span>
-            <ChevronRight size={16} className="text-zinc-300 flex-shrink-0" />
-          </Link>
-          {idx === 1 && (
-            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
-          )}
-          {idx === 14 && (
-            <AdUnit slotId="5769413560" layoutKey="-hp+7-l-2n+6x" />
-          )}
-          </div>
-        ))}
+        <PopularRankingCards places={places} lang="en" />
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">
           Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Jeju, concerts, and festivals.

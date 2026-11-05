@@ -52,6 +52,7 @@ const baseMetadata: Metadata = {
     title: 'NEMONE PACE 매거진',
     description: '서울·부산·제주 팝업스토어 주간 랭킹과 핫플레이스 이야기.',
     url: 'https://now.nemoneai.com/magazine',
+    images: ['https://now.nemoneai.com/og-image.jpg'],
     type: 'website',
     locale: 'ko_KR',
   },

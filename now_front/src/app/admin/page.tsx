@@ -102,6 +102,10 @@ type ViewMode = 'spots' | 'themes' | 'ranking';
 export default function AdminPage() {
   const { user, session, signInWithGoogle, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  // 어드민 API는 서버가 로그인 토큰(관리자 이메일)을 검사한다(보안 점검 C1) — 모든 어드민 호출에 Bearer를 붙인다
+  const authFetch = (url: string, init: RequestInit = {}) =>
+    fetch(url, { ...init, headers: { ...(init.headers || {}), Authorization: `Bearer ${session?.access_token || ''}` } });
   
   const [viewMode, setViewMode] = useState<ViewMode>('ranking');
   const [rankingSubTab, setRankingSubTab] = useState<'stats' | 'banner' | 'top25'>('stats');
@@ -155,7 +159,7 @@ export default function AdminPage() {
       const compressedBlob = await compressPlaceImage(file);
       const formData = new FormData();
       formData.append('file', compressedBlob, 'upload.webp');
-      const res = await fetch('/api-now/places/upload-image', { method: 'POST', body: formData });
+      const res = await authFetch('/api-now/places/upload-image', { method: 'POST', body: formData });
       if (!res.ok) {
         alert('이미지 업로드에 실패했습니다.');
         return;
@@ -167,26 +171,17 @@ export default function AdminPage() {
     }
   };
 
-  // localhost뿐 아니라 Tailscale(사설망, 100.64.0.0/10)/루프백으로 접속한 경우도
-  // 로컬 신뢰 접속으로 보고 로그인 검사를 건너뜀 — 어차피 외부에 노출 안 되는 사설 접속
-  const [isLocalDev, setIsLocalDev] = useState(false);
   useEffect(() => {
-    const host = window.location.hostname;
-    setIsLocalDev(host === 'localhost' || host === '127.0.0.1' || /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host));
-  }, []);
-
-  useEffect(() => {
-    if (isLocalDev) return;
     if (!authLoading && !user) {
       signInWithGoogle();
     } else if (user && user.email !== 'nemonecoltd@gmail.com') {
       alert('관리자 권한이 없습니다.');
       router.push('/');
     }
-  }, [authLoading, user, router, isLocalDev]);
+  }, [authLoading, user, router]);
 
   useEffect(() => {
-    if (isLocalDev || user?.email === 'nemonecoltd@gmail.com') {
+    if (session?.access_token && user?.email === 'nemonecoltd@gmail.com') {
       fetchAdminStats();
       fetchWeeklyRanking();
       fetchBanner();
@@ -199,7 +194,7 @@ export default function AdminPage() {
         fetchThemes();
       }
     }
-  }, [user, region, viewMode, isLocalDev]);
+  }, [user, session?.access_token, region, viewMode]);
 
   const fetchBanner = async () => {
     const res = await fetch('/api-now/banner');
@@ -213,7 +208,7 @@ export default function AdminPage() {
   const handleSaveBanner = async () => {
     setSavingBanner(true);
     try {
-      const res = await fetch('/api-now/admin/banner', {
+      const res = await authFetch('/api-now/admin/banner', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: bannerText, url: bannerUrl }),
@@ -232,7 +227,7 @@ export default function AdminPage() {
   };
 
   const fetchAdminStats = async () => {
-    const res = await fetch('/api-now/admin/stats');
+    const res = await authFetch('/api-now/admin/stats');
     if (res.ok) {
       const data = await res.json();
       setStats(data);
@@ -240,19 +235,19 @@ export default function AdminPage() {
   };
 
   const fetchWeeklyRanking = async () => {
-    const res = await fetch('/api-now/admin/ranking/weekly');
+    const res = await authFetch('/api-now/admin/ranking/weekly');
     if (res.ok) setWeeklyRanking(await res.json());
   };
 
   const fetchRegionStats = async () => {
-    const res = await fetch('/api-now/admin/region-stats');
+    const res = await authFetch('/api-now/admin/region-stats');
     if (res.ok) setRegionStats(await res.json());
   };
 
   const handleDownloadRanking = async () => {
     setDownloadingRanking(true);
     try {
-      const res = await fetch('/api-now/admin/ranking/weekly7d');
+      const res = await authFetch('/api-now/admin/ranking/weekly7d');
       if (!res.ok) { alert('7일 랭킹 조회 실패'); return; }
       const data: typeof weeklyRanking = await res.json();
 
@@ -284,7 +279,7 @@ export default function AdminPage() {
   const handleEnrichRanking = async (placeId: number) => {
     setEnrichingRankId(placeId);
     try {
-      const res = await fetch(`/api-now/places/${placeId}/enrich`, { method: 'POST' });
+      const res = await authFetch(`/api-now/places/${placeId}/enrich`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         alert(`✅ ${data.blog_reviews?.length ?? 0}개 블로그 후기 업데이트 완료`);
@@ -300,7 +295,7 @@ export default function AdminPage() {
   };
 
   const fetchThemes = async () => {
-    const res = await fetch('/api-now/admin/themes');
+    const res = await authFetch('/api-now/admin/themes');
     if (res.ok) setThemes(await res.json());
   };
 
@@ -308,7 +303,7 @@ export default function AdminPage() {
     if (!confirm('최근 7일 인기 팝업 TOP10으로 "이번주 TOP10" 테마를 생성/갱신할까요? (있으면 덮어씀)')) return;
     setIsGeneratingTheme(true);
     try {
-      const res = await fetch('/api-now/admin/themes/generate-weekly', { method: 'POST' });
+      const res = await authFetch('/api-now/admin/themes/generate-weekly', { method: 'POST' });
       if (res.ok) {
         await fetchThemes();
       } else {
@@ -341,7 +336,7 @@ export default function AdminPage() {
     updated[editingPlace!.index] = updatedPlace;
 
     setIsLoading(true);
-    await fetch(`/api-now/admin/themes/${theme.id}`, {
+    await authFetch(`/api-now/admin/themes/${theme.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ places: updated }),
@@ -367,7 +362,7 @@ export default function AdminPage() {
 
     const updatedPlaces = [...(Array.isArray(theme.places) ? theme.places : []), newPlace];
     setIsLoading(true);
-    await fetch(`/api-now/admin/themes/${theme.id}`, {
+    await authFetch(`/api-now/admin/themes/${theme.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ places: updatedPlaces }),
@@ -378,7 +373,7 @@ export default function AdminPage() {
   };
 
   const fetchPlaces = async () => {
-    const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(region)}`);
+    const res = await authFetch(`/api-now/admin/places?region=${encodeURIComponent(region)}`);
     if (res.ok) {
       const data = await res.json();
       setPlaces(data);
@@ -399,7 +394,7 @@ export default function AdminPage() {
     if (!editingId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api-now/places/${editingId}`, {
+      const res = await authFetch(`/api-now/places/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -418,7 +413,7 @@ export default function AdminPage() {
     setIsEnriching(true);
     setEnriched(null);
     try {
-      const res = await fetch(`/api-now/places/${editingId}/enrich`, { method: 'POST' });
+      const res = await authFetch(`/api-now/places/${editingId}/enrich`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         setEditForm(prev => ({ ...prev, content: data.content }));
@@ -439,7 +434,7 @@ export default function AdminPage() {
   const handleCreate = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api-now/places`, {
+      const res = await authFetch(`/api-now/places`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...editForm, region: editForm.region || region }),
@@ -461,7 +456,7 @@ export default function AdminPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
-    const res = await fetch(`/api-now/places/${id}`, {
+    const res = await authFetch(`/api-now/places/${id}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${session?.access_token || ''}` },
     });
@@ -470,8 +465,8 @@ export default function AdminPage() {
   };
 
 
-  if (!isLocalDev && authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-pace-500" /></div>;
-  if (!isLocalDev && user?.email !== 'nemonecoltd@gmail.com') return null;
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50"><Loader2 className="animate-spin text-pace-500" /></div>;
+  if (user?.email !== 'nemonecoltd@gmail.com') return null;
 
   return (
     <div className="min-h-screen bg-zinc-50 p-4 md:p-8 font-sans">
@@ -792,7 +787,7 @@ export default function AdminPage() {
                           setRegion(item.region as Region);
                           setViewMode('spots');
                           // 해당 리전 로드 후 편집 폼 열기
-                          const res = await fetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
+                          const res = await authFetch(`/api-now/admin/places?region=${encodeURIComponent(item.region)}`);
                           if (res.ok) {
                             const data = await res.json();
                             setPlaces(data);
@@ -1224,7 +1219,7 @@ export default function AdminPage() {
                             <button
                               onClick={async () => {
                                 setIsLoading(true);
-                                const res = await fetch(`/api-now/admin/themes/${theme.id}`, {
+                                const res = await authFetch(`/api-now/admin/themes/${theme.id}`, {
                                   method: 'PUT',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify(themeEditForm),
@@ -1271,7 +1266,7 @@ export default function AdminPage() {
                       <button
                         onClick={async () => {
                           if (!confirm(`"${theme.title}" 테마를 삭제하시겠습니까?`)) return;
-                          await fetch(`/api-now/admin/themes/${theme.id}`, { method: 'DELETE' });
+                          await authFetch(`/api-now/admin/themes/${theme.id}`, { method: 'DELETE' });
                           fetchThemes();
                         }}
                         className="p-2 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
@@ -1440,7 +1435,7 @@ export default function AdminPage() {
                                     onClick={async () => {
                                       if (!confirm(`"${p.title}" 장소를 이 테마에서 삭제하시겠습니까?`)) return;
                                       const newPlaces = places.filter((_: any, idx: number) => idx !== i);
-                                      await fetch(`/api-now/admin/themes/${theme.id}`, {
+                                      await authFetch(`/api-now/admin/themes/${theme.id}`, {
                                         method: 'PUT',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ places: newPlaces }),

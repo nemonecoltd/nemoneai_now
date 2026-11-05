@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import Logo from '@/components/Logo';
+import AuthButton from '@/components/AuthButton';
 import BottomNav from '@/components/BottomNav';
 import SiteFooter from '@/components/SiteFooter';
 import SideCardLayout from '@/components/sidecards/SideCardLayout';
@@ -158,7 +159,7 @@ export async function generateRegionMetadata(slug: string, lang: Lang): Promise<
         'x-default': `https://now.nemoneai.com/ranking/place/${slug}`,
       },
     },
-    openGraph: { title, description, url: canonical, type: 'website' },
+    openGraph: { title, description, url: canonical, images: ['https://now.nemoneai.com/og-image.jpg'], type: 'website' },
   };
 }
 
@@ -192,6 +193,7 @@ export async function RegionPopularHubPage({ slug, lang }: { slug: string; lang:
               </Link>
             ))}
           </div>
+          <AuthButton />
         </div>
         <h1 className="text-lg font-bold font-display tracking-tight text-zinc-900 mt-2">{c.heading(region)}</h1>
       </header>

@@ -48,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: 'https://now.nemoneai.com/ranking/course' },
-    openGraph: { title, description, url: 'https://now.nemoneai.com/ranking/course', type: 'website' },
+    openGraph: { title, description, url: 'https://now.nemoneai.com/ranking/course', images: ['https://now.nemoneai.com/og-image.jpg'], type: 'website' },
   };
 }
 
