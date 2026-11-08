@@ -20,14 +20,17 @@ def _send_text(text: str) -> None:
         print(f"[ig_studio.approval] 텍스트 전송 실패: {e}")
 
 
-def send_for_approval(post_id: int, fmt: str, target_date: str, caption: str, needs_review: bool, review_reason: str, png_paths: list[Path], share_url: str | None = None) -> None:
+def send_for_approval(post_id: int, fmt: str, target_date: str, caption: str, needs_review: bool, review_reason: str, png_paths: list[Path], share_url: str | None = None, reply: dict | None = None) -> None:
     warn = f" ⚠ 확인 필요: {review_reason}" if needs_review else ""
     header = f"[IG #{post_id}] {fmt} {target_date}{warn}"
     # course(3시간코스)만 실제 코스 URL이 있음 — 인스타 캡션 자체엔 안 넣는다(어차피 클릭이
     # 안 먹혀서 캡션은 "댓글 남기면 링크 전달" 방식을 그대로 씀), 대신 관리자가 댓글에
     # 답할 때 바로 쓸 수 있게 텔레그램 메시지에만 실어 보낸다(2026-09-20).
     url_line = f"\n코스 링크: {share_url}" if share_url else ""
-    message = f"{header}{url_line}\n---\n{caption}\n---\n/ok {post_id}   /redo {post_id}   /skip {post_id}"
+    if reply:                                     # 댓글 "{keyword}"에 보낼 이름·링크(ig_studio/links.py 규칙)
+        from . import links
+        url_line = f"\n[댓글 '{reply['keyword']}' 응답]\n{links.format_reply(reply)}"
+    message = f"{header}{url_line}\n---\n{caption}\n---\n/ok {post_id}  →  /publish {post_id}   /redo {post_id}   /skip {post_id}"
 
     if not png_paths:
         _send_text(message)
@@ -114,3 +117,14 @@ def handle_redo(post_id: int) -> str:
     ig_db.set_status(post_id, "skipped")
     ig_cli.run_format(fmt, target_date, dry_run=False)
     return f"#{post_id} 재생성 요청 — 새 카드로 다시 발송됨"
+
+
+def handle_publish(post_id: int) -> str:
+    """/publish {id} — 승인(/ok)된 글을 인스타 API로 게시. `/publish {id} dry`는 점검만(게시 안 함)."""
+    from . import publish
+    return publish.publish_post(post_id, dry_run=False)["message"]
+
+
+def handle_publish_dry(post_id: int) -> str:
+    from . import publish
+    return publish.publish_post(post_id, dry_run=True)["message"]

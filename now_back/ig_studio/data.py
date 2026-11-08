@@ -330,39 +330,3 @@ def get_closing_payload(target_date: date) -> dict:
         "date_label": f"{target_date.month:02d}.{target_date.day:02d} {['MON','TUE','WED','THU','FRI','SAT','SUN'][target_date.weekday()]}",
         "headline": headline, "items": items, "needs_review": needs_review,
     }
-
-
-# ── 매일 스토리: 혼잡도 ──────────────────────────────────────
-
-_LEVEL_DOTS = {"여유": 1, "보통": 2, "약간 붐빔": 3, "붐빔": 4}
-_STALE_THRESHOLD_MIN = 30  # 지시서 4절 그대로 — 아래 타임존 버그를 30분 부족 문제로 오진단했다가 바로잡음
-
-
-def get_crowd_payload(now_kst: datetime) -> dict:
-    with engine.connect() as conn:
-        rows = conn.execute(text("SELECT area_nm, congest_lvl, updated_at FROM crowd_status ORDER BY area_nm")).fetchall()
-
-    if not rows:
-        return {"format": "crowd", "target_date": now_kst.date().isoformat(), "spots": [], "needs_review": True, "reason": "crowd_status 데이터 없음"}
-
-    latest_updated = max(r.updated_at for r in rows)
-    # .replace(tzinfo=...)는 시각은 그대로 두고 라벨만 바꿔서(KST 16:11 → "UTC" 16:11로
-    # 오인) 항상 9시간 어긋난 값으로 비교하는 버그가 있었다(2026-09-17 — 실제론 27분 전
-    # 데이터인데 매번 stale=True로 나옴) — .astimezone(UTC)로 실제 시각 변환해서 비교.
-    stale = (now_kst.astimezone(timezone.utc) - latest_updated) > timedelta(minutes=_STALE_THRESHOLD_MIN)
-
-    needs_review = stale
-    spots = []
-    for r in rows:
-        dots = _LEVEL_DOTS.get(r.congest_lvl)
-        if dots is None:
-            needs_review = True
-            dots = 0
-        spots.append({"name": r.area_nm, "level": r.congest_lvl, "dot_count": dots})
-
-    hh, mm = now_kst.strftime("%H"), now_kst.strftime("%M")
-    return {
-        "format": "crowd", "target_date": now_kst.date().isoformat(),
-        "time_digits": [hh[0], hh[1], ":", mm[0], mm[1]],
-        "spots": spots, "stale": stale, "needs_review": needs_review,
-    }

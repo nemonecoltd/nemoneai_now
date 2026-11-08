@@ -90,7 +90,10 @@ def _handle_ig_command(chat_id: str, cmd: str, text: str) -> None:
         "/redo": approval.handle_redo,
         "/skip": approval.handle_skip,
         "/posted": approval.handle_posted,
+        "/publish": approval.handle_publish,
     }[cmd]
+    if cmd == "/publish" and len(parts) > 2 and parts[2] == "dry":
+        handler = approval.handle_publish_dry
     try:
         result = handler(post_id)
         _reply(chat_id, result)
@@ -117,7 +120,7 @@ def _poll_loop(enrich_place_sync, run_favorite_sync, run_kakao_sync) -> None:
                     continue  # 등록된 chat_id 아니면 무시 (인증되지 않은 사용자가 봇을 알아도 트리거 불가)
                 if text.lstrip("#").isdigit():
                     _handle_place_id(chat_id, int(text.lstrip("#")), enrich_place_sync)
-                elif text.split(" ")[0] in ("/ok", "/redo", "/skip", "/posted"):
+                elif text.split(" ")[0] in ("/ok", "/redo", "/skip", "/posted", "/publish"):
                     _handle_ig_command(chat_id, text.split(" ")[0], text)
                 elif text.startswith("/fav"):
                     parts = text[len("/fav"):].strip().split()
@@ -154,7 +157,7 @@ def _poll_loop(enrich_place_sync, run_favorite_sync, run_kakao_sync) -> None:
                         "플레이스 ID(숫자)를 보내면 블로그갱신을 실행합니다.\n"
                         "/fav <즐겨찾기폴더URL> <지역> [카테고리] 로 즐겨찾기 폴더를 수집할 수 있습니다.\n"
                         "/kakao <키워드> <카테고리> [지역] 로 카카오맵 키워드 검색을 수집할 수 있습니다(지역 생략 시 구 자동매핑).\n"
-                        "/ok /redo /skip /posted <ig_posts id> 로 인스타그램 카드 승인/재생성/스킵/게시완료 처리를 합니다.",
+                        "/ok /redo /skip /posted /publish <ig_posts id> 로 인스타그램 카드 승인/재생성/스킵/게시완료/API게시 처리를 합니다. (/publish <id> dry = 점검만)",
                     )
         except Exception as e:
             print(f"[telegram_admin_bot] 폴링 오류: {e}")

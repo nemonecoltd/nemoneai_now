@@ -77,6 +77,16 @@ def upload_popup_image(raw_bytes: bytes, name_hint: str = "popup", precompressed
     return f"https://storage.googleapis.com/{BUCKET}/{path}"
 
 
+def upload_ig_image(raw_jpeg: bytes) -> str:
+    """인스타 게시용 JPEG 업로드(ig/ 프리픽스, 변환·재압축 없음 — 인스타 API는 WebP를 못 받는다). 공개 URL 반환."""
+    import secrets
+    path = f"ig/{int(time.time())}-{secrets.token_hex(6)}.jpg"
+    blob = _get_bucket().blob(path)
+    blob.cache_control = "public, max-age=86400"
+    blob.upload_from_string(raw_jpeg, content_type="image/jpeg", timeout=60)
+    return f"https://storage.googleapis.com/{BUCKET}/{path}"
+
+
 def delete_popup_image(url: Optional[str]) -> str:
     """우리 GCS 경로의 이미지면 삭제. 외부/Supabase URL이면 skip."""
     prefix_url = f"https://storage.googleapis.com/{BUCKET}/{PREFIX}"

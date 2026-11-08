@@ -3,30 +3,22 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>com.nemoneai.now.ig-crowd</string>
+	<string>com.nemoneai.now.ig-comments</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/Users/hansjung/Desktop/matmatch/backend/venv/bin/python3</string>
 		<string>-u</string>
 		<string>-m</string>
-		<string>ig_studio.cli</string>
-		<string>crowd</string>
+		<string>ig_studio.comments</string>
 	</array>
 	<key>RunAtLoad</key>
 	<false/>
-	<key>StandardErrorPath</key>
-	<string>/Users/hansjung/Desktop/now/now_back/logs/ig-crowd.error.log</string>
+	<key>StartInterval</key>
+	<integer>600</integer>
 	<key>StandardOutPath</key>
-	<string>/Users/hansjung/Desktop/now/now_back/logs/ig-crowd.log</string>
-	<key>StartCalendarInterval</key>
-	<dict>
-		<key>Hour</key>
-		<integer>14</integer>
-		<key>Minute</key>
-		<integer>0</integer>
-		<key>Weekday</key>
-		<integer>6</integer>
-	</dict>
+	<string>/Users/hansjung/Desktop/now/now_back/logs/ig-comments.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/hansjung/Desktop/now/now_back/logs/ig-comments.error.log</string>
 	<key>WorkingDirectory</key>
 	<string>/Users/hansjung/Desktop/now/now_back</string>
 </dict>

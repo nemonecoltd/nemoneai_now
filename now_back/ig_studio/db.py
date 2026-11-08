@@ -25,9 +25,22 @@ CREATE TABLE IF NOT EXISTS ig_posts (
 """
 
 
+_MIGRATE_SQL = [
+    # 2026-11-09 API 게시 — 게시 결과 기록(전부 nullable, 기존 행 영향 없음)
+    "ALTER TABLE ig_posts ADD COLUMN IF NOT EXISTS media_id TEXT",
+    "ALTER TABLE ig_posts ADD COLUMN IF NOT EXISTS permalink TEXT",
+    "ALTER TABLE ig_posts ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ",
+    "ALTER TABLE ig_posts ADD COLUMN IF NOT EXISTS publish_error TEXT",
+    # 댓글 알림 중복 방지(이미 본 댓글)
+    "CREATE TABLE IF NOT EXISTS ig_comment_seen (comment_id TEXT PRIMARY KEY, post_id INT, seen_at TIMESTAMPTZ DEFAULT NOW())",
+]
+
+
 def ensure_schema() -> None:
     with engine.connect() as conn:
         conn.execute(text(_SCHEMA_SQL))
+        for sql in _MIGRATE_SQL:
+            conn.execute(text(sql))
         conn.commit()
 
 
@@ -100,4 +113,52 @@ def course_already_used(place_ids_key: str) -> bool:
             text("SELECT 1 FROM ig_posts WHERE format = 'course' AND payload->>'course_key' = :k LIMIT 1"),
             {"k": place_ids_key},
         ).fetchone()
+    return row is not None
+
+
+def claim_for_publish(post_id: int) -> bool:
+    """approved → publishing 을 한 번의 UPDATE로 선점. 이미 누가 가져갔거나 상태가 다르면 False(동시 /publish 방지)."""
+    ensure_schema()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("UPDATE ig_posts SET status = 'publishing', publish_error = NULL WHERE id = :id AND status = 'approved' AND media_id IS NULL RETURNING id"),
+            {"id": post_id},
+        ).fetchone()
+        conn.commit()
+    return row is not None
+
+
+def finish_publish(post_id: int, status: str, media_id: str | None = None, permalink: str | None = None, error: str | None = None) -> None:
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                "UPDATE ig_posts SET status = :s, media_id = COALESCE(:m, media_id), permalink = COALESCE(:p, permalink), "
+                "published_at = CASE WHEN :s = 'posted' THEN NOW() ELSE published_at END, "
+                "publish_error = :e, decided_at = NOW() WHERE id = :id"
+            ),
+            {"s": status, "m": media_id, "p": permalink, "e": error, "id": post_id},
+        )
+        conn.commit()
+
+
+def recent_published(days: int = 7) -> list[dict]:
+    """댓글 감시 대상 — API로 게시돼 media_id가 있는 최근 글."""
+    ensure_schema()
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT id, format, payload, media_id, permalink FROM ig_posts WHERE media_id IS NOT NULL AND published_at > NOW() - make_interval(days => :d)"),
+            {"d": days},
+        ).fetchall()
+    return [dict(r._mapping) for r in rows]
+
+
+def mark_comment_seen(comment_id: str, post_id: int) -> bool:
+    """처음 본 댓글이면 True(기록), 이미 본 댓글이면 False."""
+    ensure_schema()
+    with engine.connect() as conn:
+        row = conn.execute(
+            text("INSERT INTO ig_comment_seen (comment_id, post_id) VALUES (:c, :p) ON CONFLICT DO NOTHING RETURNING comment_id"),
+            {"c": comment_id, "p": post_id},
+        ).fetchone()
+        conn.commit()
     return row is not None

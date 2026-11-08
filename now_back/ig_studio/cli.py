@@ -1,4 +1,5 @@
-"""진입점: python -m ig_studio.cli <ranking|course|closing|crowd> [--date YYYY-MM-DD] [--dry-run]"""
+"""진입점: python -m ig_studio.cli <ranking|course|closing> [--date YYYY-MM-DD] [--dry-run]
+(혼잡도 스토리 포맷은 2026-11-09 삭제 — 사용자 결정)"""
 from __future__ import annotations
 import argparse
 import signal
@@ -10,9 +11,10 @@ from zoneinfo import ZoneInfo
 
 from . import approval
 from . import caption as caption_mod
+from . import links as ig_links
 from . import data
 from . import db as ig_db
-from .render import FEED_VIEWPORT, STORY_VIEWPORT, render_card_sync
+from .render import FEED_VIEWPORT, render_card_sync
 
 OUTPUT_ROOT = Path(__file__).with_name("output")
 KST = ZoneInfo("Asia/Seoul")
@@ -145,32 +147,6 @@ def _run_closing(target_date: date, dry_run: bool):
     return _finalize("closing", target_date, payload, cap, png_paths, overflow, dry_run, outdir)
 
 
-def _run_crowd(now_kst: datetime, dry_run: bool):
-    payload = data.get_crowd_payload(now_kst)
-    outdir = _outdir("crowd", now_kst.date())
-
-    if not payload["spots"]:
-        if not dry_run:
-            approval.send_no_candidate("crowd", now_kst.date().isoformat(), payload.get("reason", "데이터 없음"))
-        return {"created": False, "payload": payload}
-    if payload.get("stale"):
-        if not dry_run:
-            approval.send_no_candidate("crowd", now_kst.date().isoformat(), "혼잡도 데이터가 30분 이상 오래됨")
-        return {"created": False, "payload": payload}
-
-    p = outdir / "01_crowd.png"
-    overflow = render_card_sync("crowd_story.html", payload, p, STORY_VIEWPORT)
-    if overflow:
-        payload["needs_review"] = True
-
-    if dry_run:
-        return {"created": True, "payload": payload, "png_paths": [p]}
-
-    post_id = ig_db.create_pending("crowd", now_kst.date(), payload, payload["needs_review"], str(outdir), None)
-    approval.send_for_approval(post_id, "crowd", now_kst.date().isoformat(), "(스토리 — 캡션 없음)", payload["needs_review"], ", ".join(overflow) if overflow else "-", [p])
-    return {"created": True, "post_id": post_id, "payload": payload}
-
-
 def _finalize(fmt: str, target_date: date, payload: dict, cap: dict, png_paths: list[Path], overflow: list[str], dry_run: bool, outdir: Path) -> dict:
     needs_review = payload.get("needs_review", False) or cap.get("needs_review", False)
     reason_parts = []
@@ -180,6 +156,11 @@ def _finalize(fmt: str, target_date: date, payload: dict, cap: dict, png_paths: 
         reason_parts.append(f"캡션: {', '.join(cap['problems'])}")
     reason = " / ".join(reason_parts) if reason_parts else "-"
 
+    # 게시용 최종 캡션 = 본문 + 해시태그(예전엔 해시태그가 버려져서 사람이 손으로 붙였다 — API 게시는 이 문자열이 그대로 나간다)
+    tags = " ".join(t if t.startswith("#") else f"#{t}" for t in cap.get("hashtags", []) if t)
+    if cap.get("caption") and tags:
+        cap = {**cap, "caption": f"{cap['caption'].rstrip()}\n\n{tags}"}
+    payload["reply"] = ig_links.reply_spec(fmt, payload)           # 댓글 응답 규칙(키워드 + 이름·링크) — ig_posts.payload에 함께 저장
     (outdir / "payload.json").write_text(__import__("json").dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     (outdir / "caption.txt").write_text(cap.get("caption", ""), encoding="utf-8")
 
@@ -187,7 +168,7 @@ def _finalize(fmt: str, target_date: date, payload: dict, cap: dict, png_paths: 
         return {"created": True, "payload": payload, "caption": cap, "png_paths": png_paths, "needs_review": needs_review}
 
     post_id = ig_db.create_pending(fmt, target_date, payload, needs_review, str(outdir), cap.get("caption", ""))
-    approval.send_for_approval(post_id, fmt, target_date.isoformat(), cap.get("caption", ""), needs_review, reason, png_paths, share_url=payload.get("share_url"))
+    approval.send_for_approval(post_id, fmt, target_date.isoformat(), cap.get("caption", ""), needs_review, reason, png_paths, share_url=payload.get("share_url"), reply=payload.get("reply"))
     return {"created": True, "post_id": post_id, "payload": payload}
 
 
@@ -213,8 +194,6 @@ def run_format(fmt: str, target_date: date, dry_run: bool = False, region_overri
             return _run_course(target_date, dry_run, region_override=region_override)
         if fmt == "closing":
             return _run_closing(target_date, dry_run)
-        if fmt == "crowd":
-            return _run_crowd(datetime.now(KST), dry_run)
         raise ValueError(f"알 수 없는 포맷: {fmt}")
     except Exception as e:
         if not dry_run:
@@ -228,7 +207,7 @@ def run_format(fmt: str, target_date: date, dry_run: bool = False, region_overri
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("format", choices=["ranking", "course", "closing", "crowd"])
+    parser.add_argument("format", choices=["ranking", "course", "closing"])
     parser.add_argument("--date", type=str, default=None)
     parser.add_argument("--region", type=str, default=None, help="course 포맷 지역 강제 지정(로테이션 무시)")
     parser.add_argument("--dry-run", action="store_true")

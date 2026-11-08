@@ -40,3 +40,19 @@ async def gcs_delete(url: str, x_admin_secret: Optional[str] = Header(default=No
     _verify(x_admin_secret)
     result = gcs_storage.delete_popup_image(url)
     return {"result": result}
+
+
+@router.post("/ig-image-upload")
+async def ig_image_upload(request: Request, x_admin_secret: Optional[str] = Header(default=None)):
+    """ig_studio 인스타 API 게시용 — JPEG raw body를 GCS ig/ 에 올리고 공개 URL 반환(인스타가 이 URL에서 이미지를 가져간다)."""
+    _verify(x_admin_secret)
+    raw = await request.body()
+    if not raw.startswith(b"\xff\xd8\xff"):
+        raise HTTPException(status_code=400, detail="JPEG만 허용")
+    if len(raw) > 8 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="8MB 초과")
+    try:
+        url = gcs_storage.upload_ig_image(raw)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"gcs upload failed: {e}")
+    return {"url": url}
