@@ -1,6 +1,6 @@
 """API로 게시한 글의 새 댓글을 보고, 응답 키워드("코스"/"링크")가 든 댓글을 텔레그램으로 알린다(2026-11-09, 1단계 = 알림만).
 자동 답글·DM은 하지 않는다 — 알림에 "누가 / 어떤 글 / 보낼 이름·링크"가 들어 있어 사람이 인스타에서 답한다.
-launchd(StartInterval 600초)로 실행: python -m ig_studio.comments. 게시된 글이 없거나 IG_ACCESS_TOKEN이 없으면 조용히 끝난다."""
+launchd(StartInterval 10800초 = 3시간, 2026-11-09 사용자 결정 — 댓글이 거의 없어 잦은 확인 불필요)로 실행: python -m ig_studio.comments. 게시된 글이 없거나 IG_ACCESS_TOKEN이 없으면 조용히 끝난다."""
 from __future__ import annotations
 
 import os
@@ -51,7 +51,7 @@ def main() -> None:
         print(f"[ig_comments] 글 {r['posts']}개 확인, 알림 {r['alerts']}건")
     except IGError as e:
         print(f"[ig_comments] 실패: {e}")
-        if not _ERR_FLAG.exists():                     # 첫 실패에만 알림(10분마다 반복 방지)
+        if not _ERR_FLAG.exists():                     # 첫 실패에만 알림(3시간마다 반복 방지)
             _ERR_FLAG.parent.mkdir(exist_ok=True)
             _ERR_FLAG.write_text("1")
             _notify(f"[ig_studio] 댓글 확인 실패: {e}\n(토큰 만료·권한 확인. 복구되면 자동으로 다시 동작)")

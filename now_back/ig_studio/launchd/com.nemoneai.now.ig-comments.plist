@@ -14,7 +14,7 @@
 	<key>RunAtLoad</key>
 	<false/>
 	<key>StartInterval</key>
-	<integer>600</integer>
+	<integer>10800</integer>
 	<key>StandardOutPath</key>
 	<string>/Users/hansjung/Desktop/now/now_back/logs/ig-comments.log</string>
 	<key>StandardErrorPath</key>
