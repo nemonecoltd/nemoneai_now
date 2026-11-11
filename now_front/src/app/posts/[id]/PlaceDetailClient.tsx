@@ -729,13 +729,13 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
               <h1 className="flex-1 text-3xl font-black text-white tracking-tighter leading-tight">{displayTitle}</h1>
               <div className="flex items-center gap-1.5 flex-shrink-0 mb-1">
                 <a
-                  href="https://nemoneai.com"
+                  href="https://santa.nemoneai.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="네모네AIM (맛매치)"
+                  aria-label="산타의 칭찬카드"
                   className="w-9 h-9 rounded-full overflow-hidden border border-white/40 shadow-lg active:scale-95 transition-transform"
                 >
-                  <img src="/matmatch-icon.png" alt="네모네AIM" className="w-full h-full object-cover" />
+                  <img src="/santa-icon.png" alt="산타의 칭찬카드" className="w-full h-full object-cover" />
                 </a>
                 <button
                   onClick={toggleLike}
