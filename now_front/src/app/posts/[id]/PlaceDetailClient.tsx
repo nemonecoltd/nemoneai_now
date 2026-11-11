@@ -733,9 +733,10 @@ export default function PlaceDetailClient({ place, lang: initialLang, suggestion
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="산타의 칭찬카드"
-                  className="w-9 h-9 rounded-full overflow-hidden border border-white/40 shadow-lg active:scale-95 transition-transform"
+                  className="w-9 h-9 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 shadow-lg active:scale-95 transition-transform"
                 >
-                  <img src="/santa-icon.png" alt="산타의 칭찬카드" className="w-full h-full object-cover" />
+                  {/* 찜·공유 버튼과 같은 유리 느낌의 어두운 원 위에 투명 배경 편지 아이콘(흰 배경 아이콘은 어두운 이미지 위에서 튀었다) */}
+                  <img src="/santa-icon.png" alt="산타의 칭찬카드" className="w-6 h-6 object-contain" />
                 </a>
                 <button
                   onClick={toggleLike}
