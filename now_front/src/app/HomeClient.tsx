@@ -800,6 +800,11 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
               { name: 'INSTAGRAM', href: 'https://www.instagram.com/nemone_pace/' },
               { name: '네모네AIM', href: 'https://nemoneai.com' },
+              // 핫플 목록 페이지로 가는 크롤 가능한 링크(홈 HTML에 항상 포함, 2026-11-13)
+              { name: 'NEW팝업', href: '/new-popup' },
+              { name: '인기팝업', href: '/ranking/place/seongsu' },
+              { name: '크리스마스', href: '/christmas' },
+              { name: 'MAGAZINE', href: '/magazine' },
               { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
             ].map((item) => (
               <Link

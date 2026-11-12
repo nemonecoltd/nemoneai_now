@@ -27,6 +27,9 @@ export default function SiteFooter({ lang = 'ko' }: { lang?: string }) {
           { name: 'INSTAGRAM', href: 'https://www.instagram.com/nemone_pace/' },
           { name: '네모네AIM', href: 'https://nemoneai.com' },
           { name: 'MAGAZINE', href: '/magazine' },
+          { name: 'NEW팝업', href: '/new-popup' },
+          { name: '인기팝업', href: '/ranking/place/seongsu' },
+          { name: '크리스마스', href: '/christmas' },
           { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
         ].map((item) => (
           <a
