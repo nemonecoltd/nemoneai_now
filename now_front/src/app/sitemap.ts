@@ -104,5 +104,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const magazineIndex = { url: `${baseUrl}/magazine`, lastModified: new Date(), changeFrequency: 'weekly' as const, priority: 0.6 }
 
-  return [...staticUrls, ...placeRegionUrls, magazineIndex, ...magazineUrls, ...placeUrls]
+  // 핫플 목록 페이지(서버 렌더링) — 2026-11-13 NEW팝업·크리스마스 추가
+  const hotListUrls = [
+    { url: `${baseUrl}/new-popup`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.7 },
+    { url: `${baseUrl}/christmas`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.7 },
+  ]
+
+  return [...staticUrls, ...placeRegionUrls, magazineIndex, ...hotListUrls, ...magazineUrls, ...placeUrls]
 }

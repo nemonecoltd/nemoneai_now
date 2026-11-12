@@ -103,6 +103,25 @@ export default function MagazineDetailClient({ post, lang = 'ko' }: { post: Maga
             )}
           </div>
         </div>
+        {/* 핫플 탭 서브메뉴(홈 HomeClient의 핫플 헤더와 같은 항목) — 본문에서도 핫플 > 매거진 > 본문 흐름이 이어지게 '매거진'을 현재 위치로 표시 */}
+        <nav className="flex items-center gap-3 overflow-x-auto no-scrollbar flex-nowrap" aria-label="핫플 메뉴">
+          {([
+            [`/?tab=magazine&lang=${lang}`, 'magazine', lang === 'en' ? 'Magazine' : lang === 'zh' ? '杂志' : lang === 'ja' ? 'マガジン' : '매거진'],
+            ['/new-popup', 'new', 'NEW팝업'],
+            ['/ranking/place/seongsu', 'rank', '인기팝업'],
+            ['/christmas', 'xmas', '크리스마스'],
+            [`/?tab=magazine&sub=mood&lang=${lang}`, 'mood', lang === 'en' ? 'Mood' : lang === 'zh' ? '氛围' : lang === 'ja' ? 'ムード' : '무드'],
+            [`/?tab=magazine&sub=category&lang=${lang}`, 'category', lang === 'en' ? 'Category' : lang === 'zh' ? '分类' : lang === 'ja' ? 'カテゴリ' : '카테고리'],
+          ] as const).map(([href, key, label]) => (
+            <a
+              key={key}
+              href={href}
+              className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", key === 'magazine' ? "text-pace-600 border-pace-600" : "text-zinc-400 border-transparent hover:text-pace-600")}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
       </header>
 
       <main>

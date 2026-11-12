@@ -513,8 +513,23 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
               ) : activeTab === 'magazine' ? (
                 /* 핫플 탭 서브메뉴 — 마찬가지로 헤더에 고정(2026-09-07, MagazineList.tsx에서 이동) */
                 <div className="flex items-center gap-3 overflow-x-auto no-scrollbar flex-nowrap">
+                  {/* 순서: 매거진 | NEW팝업 | 인기팝업 | 크리스마스 | 무드 | 카테고리 (2026-11-13 요청).
+                      NEW팝업·인기팝업·크리스마스는 <Link>(실제 href)라 크롤러가 목록 페이지를 발견한다. */}
                   {([
                     ['article', lang === 'en' ? 'Magazine' : lang === 'zh' ? '杂志' : lang === 'ja' ? 'マガジン' : '매거진'],
+                  ] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setMagazineSub(key)}
+                      className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", magazineSub === key ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <Link href="/new-popup" className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600">NEW팝업</Link>
+                  <Link href="/ranking/place/seongsu" className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600">인기팝업</Link>
+                  <Link href="/christmas" className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600">크리스마스</Link>
+                  {([
                     ['mood', lang === 'en' ? 'Mood' : lang === 'zh' ? '氛围' : lang === 'ja' ? 'ムード' : '무드'],
                     ['category', lang === 'en' ? 'Category' : lang === 'zh' ? '分类' : lang === 'ja' ? 'カテゴリ' : '카테고리'],
                   ] as const).map(([key, label]) => (
@@ -526,18 +541,6 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
                       {label}
                     </button>
                   ))}
-                  <button
-                    onClick={() => router.push('/new-popup')}
-                    className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600"
-                  >
-                    NEW팝업
-                  </button>
-                  <Link
-                    href="/ranking/place/seongsu"
-                    className="text-sm font-bold transition-all px-1 pb-1 border-b-2 border-transparent text-zinc-400 shrink-0 whitespace-nowrap hover:text-pace-600"
-                  >
-                    인기팝업
-                  </Link>
                 </div>
               ) : (
                 <>
