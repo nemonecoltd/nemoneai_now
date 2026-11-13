@@ -782,8 +782,27 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
           )}
         </AnimatePresence>
 
+        {/* 이런 곳을 찾고 있다면 — 핫플 목록 페이지로 가는 크롤 가능한 링크(홈 HTML에 항상 포함, 2026-11-13). 푸터(회사·SNS 링크)와 성격이 달라 푸터 위에 따로 둔다. */}
+        {lang === 'ko' && (
+          <section className="mt-10 px-6" aria-label="이런 곳을 찾고 있다면">
+            <h2 className="text-xs font-bold text-zinc-500 mb-2">이런 곳을 찾고 있다면</h2>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { name: 'NEW 팝업', href: '/new-popup' },
+                { name: '인기 팝업', href: '/ranking/place/seongsu' },
+                { name: '크리스마스 팝업', href: '/christmas' },
+                { name: '매거진', href: '/magazine' },
+              ].map((item) => (
+                <Link key={item.href} href={item.href} className="px-3 py-1.5 rounded-full border border-zinc-200 bg-white text-xs font-bold text-zinc-600 hover:text-pace-600 hover:border-pace-600 transition-colors">
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Global Footer */}
-        <footer className="mt-10 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-4">
+        <footer className="mt-8 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-4">
           <div className="flex flex-col items-center text-center gap-1">
             <span className="text-[11px] font-black text-zinc-700 tracking-[0.2em] uppercase">
               NEMONE PACE
@@ -800,11 +819,6 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
               { name: 'ABOUT', href: 'https://home.nemoneai.com' },
               { name: 'INSTAGRAM', href: 'https://www.instagram.com/nemone_pace/' },
               { name: '네모네AIM', href: 'https://nemoneai.com' },
-              // 핫플 목록 페이지로 가는 크롤 가능한 링크(홈 HTML에 항상 포함, 2026-11-13)
-              { name: 'NEW팝업', href: '/new-popup' },
-              { name: '인기팝업', href: '/ranking/place/seongsu' },
-              { name: '크리스마스', href: '/christmas' },
-              { name: 'MAGAZINE', href: '/magazine' },
               { name: 'FEEDBACK', href: `/feedback?lang=${lang}` },
             ].map((item) => (
               <Link
