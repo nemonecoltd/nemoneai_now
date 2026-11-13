@@ -15,7 +15,10 @@ _BASE = f"https://api.telegram.org/bot{_TOKEN}"
 
 def _send_text(text: str) -> None:
     try:
-        requests.post(f"{_BASE}/sendMessage", json={"chat_id": _CHAT_ID, "text": text}, timeout=10)
+        for chunk in [text[k:k + 3900] for k in range(0, len(text), 3900)] or [""]:     # 텔레그램 글 한도 4096자
+            r = requests.post(f"{_BASE}/sendMessage", json={"chat_id": _CHAT_ID, "text": chunk}, timeout=10)
+            if not r.ok:
+                print(f"[ig_studio.approval] 텍스트 전송 거부: HTTP {r.status_code} {r.text[:200]}")
     except Exception as e:
         print(f"[ig_studio.approval] 텍스트 전송 실패: {e}")
 
@@ -36,25 +39,33 @@ def send_for_approval(post_id: int, fmt: str, target_date: str, caption: str, ne
         _send_text(message)
         return
 
+    # 텔레그램 이미지 묶음의 설명(caption)은 1024자까지다 — 넘으면 요청이 400으로 거부되는데, 예전엔 응답을 확인하지 않아
+    # 승인 메시지가 아예 안 온 채로 조용히 지나갔다(2026-11-13 마감 임박 #58). 길면 이미지엔 머리말만 붙이고 전체 글은 따로 보낸다.
+    long_message = len(message) > 1000
+    media_caption = header if long_message else message
+    files = {}
     try:
-        files = {}
         media = []
         for i, p in enumerate(png_paths):
             key = f"photo{i}"
             files[key] = (p.name, open(p, "rb"), "image/png")
             item = {"type": "photo", "media": f"attach://{key}"}
             if i == 0:
-                item["caption"] = message
+                item["caption"] = media_caption
             media.append(item)
-        requests.post(
+        resp = requests.post(
             f"{_BASE}/sendMediaGroup",
             data={"chat_id": _CHAT_ID, "media": __import__("json").dumps(media, ensure_ascii=False)},
             files=files,
             timeout=30,
         )
+        if not resp.ok:                              # 텔레그램이 거부(400/429 등) — 조용히 넘기지 말고 글이라도 보낸다
+            raise RuntimeError(f"HTTP {resp.status_code} {resp.text[:200]}")
+        if long_message:
+            _send_text(message)
     except Exception as e:
         print(f"[ig_studio.approval] 미디어그룹 전송 실패: {e}")
-        _send_text(message)
+        _send_text(f"{message}\n\n(이미지 전송에 실패했어요: {e}) — 이미지는 ig_studio/output 폴더에 있어요.")
     finally:
         for f in files.values():
             try:
