@@ -32,7 +32,7 @@ ENV_PATH = "/home/ubuntu/apps/now_back/.env"
 NOW_HOST = "now.nemoneai.com"
 OWN = {"now.nemoneai.com": "now", "nemoneai.com": "matmatch", "www.nemoneai.com": "matmatch",
        "plants.nemoneai.com": "plants", "msm.nemoneai.com": "msm", "admin.nemoneai.com": "admin",
-       "auth.nemoneai.com": "auth", "home.nemoneai.com": "home"}
+       "auth.nemoneai.com": "auth", "home.nemoneai.com": "home", "santa.nemoneai.com": "santa"}
 
 LINE = re.compile(r'^(\S+) - \S+ \[(\d+/\w+/\d+:\d+:\d+:\d+) ([+-]\d{4})\] "(\w+) (\S+)[^"]*" (\d+) (\d+) '
                   r'"([^"]*)" "([^"]*)"(?: "([^"]*)")?')

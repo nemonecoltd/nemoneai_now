@@ -30,6 +30,15 @@ const NEMONE_SERVICES = [
     ja: 'エディトリアルマガジン',
   },
   {
+    name: '산타의 칭찬카드',
+    href: 'https://santa.nemoneai.com',
+    icon: '🎅',
+    ko: 'MBTI·혈액형으로 받는 칭찬카드',
+    en: 'Praise cards from Santa',
+    zh: '圣诞老人的夸夸卡',
+    ja: 'サンタのほめカード',
+  },
+  {
     name: 'NEMONE PLANTS',
     href: 'https://plants.nemoneai.com',
     icon: '🪴',
