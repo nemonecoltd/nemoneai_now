@@ -173,15 +173,63 @@ async function getRegionTopPlaces() {
   return results.filter((r) => r !== null) as { region: string; place: any }[];
 }
 
+// 히어로 오른쪽 바로가기 타일 4개(NEW·인기·크리스마스·매거진)의 대표 사진과 한 줄 설명 — 각 목적지 페이지의
+// 실제 최신 데이터를 그대로 쓴다(2026-11-19). 어느 하나 실패해도 그 타일만 사진 없이 단색으로 나온다.
+export interface HeroTile {
+  key: 'new' | 'pop' | 'xmas' | 'mag';
+  href: string;
+  image: string | null;
+  caption: string | null;
+}
+
+async function getJson(path: string): Promise<any[]> {
+  try {
+    const res = await fetch(`${BACKEND}${path}`, { next: { revalidate: 600 } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+async function getHeroTiles(popular: any[]): Promise<HeroTile[]> {
+  const [fresh, latest, magazine] = await Promise.all([
+    getJson('/places?sort=new&category=popup&limit=10'),
+    getJson('/places?sort=latest&category=popup&limit=500'),
+    getJson('/magazine'),
+  ]);
+  const withImage = (list: any[]) => list.find((p) => p?.image_url);
+  // 크리스마스 페이지(/christmas)와 같은 규칙 — 제목에 크리스마스가 들어간 진행 중 팝업
+  const xmasRe = /크리스마스|christmas|xmas/i;
+  const xmas = withImage(latest.filter((p) => xmasRe.test(p.title || '')));
+  const mag = withImage(magazine);
+  const toTile = (key: HeroTile['key'], href: string, item: any, caption?: (i: any) => string): HeroTile => ({
+    key,
+    href,
+    image: item?.image_url ?? null,
+    caption: item ? (caption ? caption(item) : item.title ?? null) : null,
+  });
+  const magCaption = (m: any) => String(m.title || '').split('|')[0].trim();
+  return [
+    toTile('new', '/new-popup', withImage(fresh)),
+    toTile('pop', '/ranking/place/seongsu', withImage(popular)),
+    toTile('xmas', '/christmas', xmas),
+    toTile('mag', '/magazine', mag, magCaption),
+  ];
+}
+
 export default async function HomePage() {
   const [initialAllPlaces, regionTopPlaces] = await Promise.all([
     getInitialPlaces(),
     getRegionTopPlaces(),
   ]);
+  const heroTiles = await getHeroTiles(initialAllPlaces);
   return (
     <HomeClient
       initialAllPlaces={initialAllPlaces}
       regionTopPlaces={regionTopPlaces}
+      heroTiles={heroTiles}
     />
   );
 }

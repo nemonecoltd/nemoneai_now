@@ -9,6 +9,7 @@ import ThemeChipsSection from './ThemeChipsSection';
 import CourseCtaBanner from './CourseCtaBanner';
 import AdBanner from '@/components/AdBanner';
 import { HomeRegion } from './homeUtils';
+import type { HeroTile } from '@/app/page';
 
 // PACE 메인(홈) 개편 — 기존 <Recommendation>을 대체하는 6개 섹션 조립부(2026-09-06).
 // 히어로의 지역 칩은 앱 전체 region 상태(HomeClient의 지도/장소 탭용)와는 별개로, 이 홈 섹션들만
@@ -18,18 +19,20 @@ export default function HomeSections({
   lang,
   allPlaces,
   regionTopPlaces,
+  heroTiles,
   onSeeAllRanking,
 }: {
   lang: string;
   allPlaces: any[];
   regionTopPlaces: { region: string; place: any }[];
+  heroTiles: HeroTile[];
   onSeeAllRanking: (region: HomeRegion) => void;
 }) {
   const [region, setRegion] = useState<HomeRegion>('전체');
 
   return (
     <div>
-      <HeroSection lang={lang} region={region} onRegionChange={setRegion} />
+      <HeroSection lang={lang} region={region} onRegionChange={setRegion} tiles={heroTiles} />
       <HotNowSection lang={lang} places={allPlaces} region={region} onSeeAll={() => onSeeAllRanking(region)} />
       {/* 가로 배너 — 원래 맛매치 메인 페이지와 슬롯을 공유했으나(2026-09-06) PACE 전용 슬롯으로
           분리(2026-09-13, 사용자 지정). 원래 variant="horizontal-slim"으로 리더보드(90px)

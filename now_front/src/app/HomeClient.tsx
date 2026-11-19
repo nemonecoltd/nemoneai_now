@@ -29,6 +29,7 @@ import Logo from '@/components/Logo';
 import Recommendation, { Tab as RecTab, PlaceRankingRegion } from '@/components/Recommendation';
 import CrowdTicker from '@/components/CrowdTicker';
 import AiCourseModal from '@/components/AiCourseModal';
+import type { HeroTile } from './page';
 import SideCardLayout, { WIDE_FRAME, WIDE_FRAME_BORDER, useElementHeight } from '@/components/sidecards/SideCardLayout';
 import HomeSections from '@/components/home/HomeSections';
 import { HomeRegion } from '@/components/home/homeUtils';
@@ -163,7 +164,7 @@ const dict = {
   }
 };
 
-function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; regionTopPlaces: { region: string; place: any }[] }) {
+function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlaces: any[]; regionTopPlaces: { region: string; place: any }[]; heroTiles: HeroTile[] }) {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
   const mainRef = useRef<HTMLElement>(null);
@@ -665,7 +666,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
           {activeTab === 'home' && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <PullToRefresh enabled onRefresh={refreshHome}>
-                <HomeSections lang={lang} allPlaces={allPlaces} regionTopPlaces={regionTopPlaces} onSeeAllRanking={goToRanking} />
+                <HomeSections lang={lang} allPlaces={allPlaces} regionTopPlaces={regionTopPlaces} heroTiles={heroTiles} onSeeAllRanking={goToRanking} />
               </PullToRefresh>
             </motion.div>
           )}
@@ -782,24 +783,7 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
           )}
         </AnimatePresence>
 
-        {/* 이런 곳을 찾고 있다면 — 핫플 목록 페이지로 가는 크롤 가능한 링크(홈 HTML에 항상 포함, 2026-11-13). 푸터(회사·SNS 링크)와 성격이 달라 푸터 위에 따로 둔다. */}
-        {lang === 'ko' && (
-          <section className="mt-10 px-6" aria-label="이런 곳을 찾고 있다면">
-            <h2 className="text-xs font-bold text-zinc-500 mb-2">이런 곳을 찾고 있다면</h2>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { name: 'NEW 팝업', href: '/new-popup' },
-                { name: '인기 팝업', href: '/ranking/place/seongsu' },
-                { name: '크리스마스 팝업', href: '/christmas' },
-                { name: '매거진', href: '/magazine' },
-              ].map((item) => (
-                <Link key={item.href} href={item.href} className="px-3 py-1.5 rounded-full border border-zinc-200 bg-white text-xs font-bold text-zinc-600 hover:text-pace-600 hover:border-pace-600 transition-colors">
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* '이런 곳을 찾고 있다면'(NEW·인기·크리스마스 팝업·매거진 링크)는 히어로 오른쪽 바로가기 타일로 올렸다(2026-11-19) — 크롤 가능한 <a>는 홈 HTML에 그대로 있다. */}
 
         {/* Global Footer */}
         <footer className="mt-8 mb-20 px-6 pt-6 border-t border-zinc-100 space-y-4">
@@ -917,8 +901,8 @@ function Home({ initialAllPlaces, regionTopPlaces }: { initialAllPlaces: any[]; 
   return content;
 }
 
-export default function HomeClient({ initialAllPlaces, regionTopPlaces = [] }: { initialAllPlaces: any[]; regionTopPlaces?: { region: string; place: any }[] }) {
-  return <Home initialAllPlaces={initialAllPlaces} regionTopPlaces={regionTopPlaces} />;
+export default function HomeClient({ initialAllPlaces, regionTopPlaces = [], heroTiles = [] }: { initialAllPlaces: any[]; regionTopPlaces?: { region: string; place: any }[]; heroTiles?: HeroTile[] }) {
+  return <Home initialAllPlaces={initialAllPlaces} regionTopPlaces={regionTopPlaces} heroTiles={heroTiles} />;
 }
 
 function NavButton({ active, onClick, icon, label, disabled }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string, disabled?: boolean }) {
