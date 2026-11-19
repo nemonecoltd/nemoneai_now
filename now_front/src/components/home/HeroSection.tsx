@@ -25,7 +25,7 @@ const TILE_LABEL: Record<HeroTile['key'], { b: string; i: string }> = {
 let introPlayed = false;
 const INTRO_MS = 1700;
 
-function Tiles({ tiles, hidden, big }: { tiles: HeroTile[]; hidden?: boolean; big?: boolean }) {
+function Tiles({ tiles }: { tiles: HeroTile[] }) {
   return (
     <>
       {tiles.map((tile, idx) => {
@@ -35,15 +35,12 @@ function Tiles({ tiles, hidden, big }: { tiles: HeroTile[]; hidden?: boolean; bi
             key={tile.key}
             href={tile.href}
             className={cn('ph-tile', `ph-t${idx + 1}`)}
-            tabIndex={hidden ? -1 : undefined}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {tile.image && <img src={tile.image} alt="" loading="eager" decoding="async" />}
-            {big && tile.key === 'pop' && <span className="ph-rank">1위</span>}
             <span className="ph-tx">
               <b>{l.b}</b>
               {l.i && <i>{l.i}</i>}
-              {big && tile.caption && <small>{tile.caption}</small>}
             </span>
           </a>
         );
@@ -102,15 +99,12 @@ export default function HeroSection({
           <Tiles tiles={tiles} />
         </div>
 
-        {/* 큰 덮개 — 첫 화면에서만 위에 겹쳐 있다가 접힌다. 장식 복제본이라 보조기기에는 숨기고 링크는 키보드 포커스에서 뺀다. */}
+        {/* 큰 덮개 — 첫 화면에서만 위에 겹쳐 있다가 접힌다. 제목만 있는 장식 복제본이라 보조기기에는 숨긴다. 바로가기 타일은 접힌 뒤에만 나온다(큰 상태는 이미지가 복잡해 보여 뺌). */}
         <div className={cn('ph-big', collapsed && 'is-collapsed')} aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/hero/pace-hero.jpg" alt="" className="ph-bgimg" />
           <div className="ph-shade-big" />
           <p className="ph-title ph-title-big ph-fade">{t.title}</p>
-          <div className="ph-fade" style={{ position: 'absolute', inset: 0 }}>
-            <Tiles tiles={tiles} hidden big />
-          </div>
         </div>
 
       {/* 지역 필터 칩 — 히어로 아래 살짝 겹치게, 아래 섹션들의 지역 필터를 함께 제어 */}

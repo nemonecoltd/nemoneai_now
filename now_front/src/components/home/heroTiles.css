@@ -13,7 +13,7 @@
 .ph-cc.is-on{opacity:1;pointer-events:auto}
 
 .ph-title{margin:0;color:#fff;font-weight:900;letter-spacing:-.02em;line-height:1.2;text-shadow:0 1px 8px rgba(0,0,0,.25)}
-.ph-title-big{position:absolute;left:24px;bottom:calc(24px + var(--tile-h-big) + 16px);font-size:28px;white-space:pre-line}
+.ph-title-big{position:absolute;left:24px;bottom:36px;font-size:28px;white-space:pre-line}
 .ph-title-c{position:absolute;left:24px;top:12px;font-size:17px;white-space:nowrap}
 
 .ph-tile{position:absolute;display:block;overflow:hidden;color:#fff;text-decoration:none;background:#223;border-radius:12px;box-shadow:0 8px 24px rgba(8,16,28,.34);outline:1px solid rgba(255,255,255,.4);outline-offset:-1px}
@@ -24,37 +24,20 @@
 .ph-tx b,.ph-tx i{display:block;font-style:normal;line-height:1.15;letter-spacing:-.01em}
 .ph-tx b{font-weight:800}
 .ph-tx i{font-weight:600;opacity:.92}
-.ph-tx small{display:none;font-weight:500;opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
-.ph-rank{position:absolute;z-index:1;top:7px;left:7px;font-size:10px;font-weight:800;background:#fff;color:#18181b;border-radius:99px;padding:2px 8px}
 
-/* 모바일: 하단에 4개 한 줄 */
-.ph-big{--tile-h-big:108px}
-.ph-big .ph-tile{bottom:24px;width:var(--tw);height:var(--tile-h-big)}
-.ph-big .ph-tx b{font-size:12.5px}
-.ph-big .ph-tx i{font-size:11px}
+/* 접힌 상태 타일 — 모바일: 제목 아래 한 줄 */
 .ph-cc .ph-tile{top:42px;width:var(--tw);height:56px;border-radius:10px;box-shadow:0 4px 12px rgba(8,16,28,.3)}
 .ph-cc .ph-tx{padding:5px 6px}
 .ph-cc .ph-tx b{font-size:11px}
 .ph-cc .ph-tx i{font-size:10px}
-.ph-cc .ph-rank{display:none}
 .ph-t1{left:24px}.ph-t2{left:calc(24px + var(--tw) + 8px)}.ph-t3{left:calc(24px + (var(--tw) + 8px) * 2)}.ph-t4{left:calc(24px + (var(--tw) + 8px) * 3)}
 
-/* PC/태블릿: 큰 상태는 오른쪽 2×2, 접힌 상태는 오른쪽 한 줄 */
+/* PC/태블릿: 접힌 상태 타일은 오른쪽 한 줄 */
 @media (min-width:768px){
   .ph{--hc:148px;--hb:410px;--ov:28px;--bw:clamp(120px,14cqw,156px);--cw:clamp(84px,11.6cqw,104px)}
   .ph-title-big{left:40px;bottom:40px;font-size:clamp(32px,4cqw,46px)}
   .ph-title-c{left:40px;top:34px;font-size:clamp(20px,2.5cqw,28px)}
-  .ph-big{--tile-h-big:calc(var(--bw) * .8)}
-  .ph-title-big{bottom:40px}
-  .ph-big .ph-tile{width:var(--bw);height:var(--tile-h-big);bottom:auto;border-radius:14px}
-  .ph-big .ph-t1,.ph-big .ph-t3{left:auto;right:calc(40px + var(--bw) + 12px)}
-  .ph-big .ph-t2,.ph-big .ph-t4{left:auto;right:40px}
-  .ph-big .ph-t1,.ph-big .ph-t2{top:calc((var(--hb) - var(--tile-h-big) * 2 - 12px) / 2 - 14px)}
-  .ph-big .ph-t3,.ph-big .ph-t4{top:calc((var(--hb) - var(--tile-h-big) * 2 - 12px) / 2 - 14px + var(--tile-h-big) + 12px)}
   .ph-tx{padding:10px 12px}
-  .ph-big .ph-tx b,.ph-big .ph-tx i{display:inline;font-size:15px}
-  .ph-big .ph-tx b{margin-right:.35ch}
-  .ph-big .ph-tx small{display:block;font-size:11px}
   .ph-cc .ph-tile{top:22px;left:auto;width:var(--cw);height:calc(var(--cw) * .85);border-radius:10px}
   .ph-cc .ph-t4{right:40px}
   .ph-cc .ph-t3{right:calc(40px + var(--cw) + 10px)}
