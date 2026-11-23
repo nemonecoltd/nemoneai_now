@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { REGION_CHIP_ACTIVE } from '@/components/home/homeUtils';
 import Link from 'next/link';
 import { Save, Trash2, Edit, ExternalLink, MapPin, Image as ImageIcon, X, Plus, Loader2, ShieldCheck, Users, Route, MapPin as MapPinIcon, Palette, ChevronDown, ChevronUp, Pin, Upload, HardDrive, Download, Sparkles } from 'lucide-react';
 
@@ -122,6 +123,9 @@ export default function AdminPage() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [enriched, setEnriched] = useState<{placeId: number; reviews: {title: string; url: string}[]} | null>(null);
   const [placeSearch, setPlaceSearch] = useState('');
+  // 장소 검색은 전체 지역 통합(서버 검색, 최대 100건) — 지역 탭 목록은 검색어가 없을 때만 쓴다(2026-11-23)
+  const [placeSearchResults, setPlaceSearchResults] = useState<Place[]>([]);
+  const [placeSearching, setPlaceSearching] = useState(false);
   const placeSamplePool = useMemo(() => {
     const shuffled = [...places].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 10);
@@ -372,13 +376,33 @@ export default function AdminPage() {
     fetchThemes();
   };
 
+  const runPlaceSearch = async (q: string) => {
+    if (!q.trim()) { setPlaceSearchResults([]); return; }
+    setPlaceSearching(true);
+    try {
+      const res = await authFetch(`/api-now/admin/places?q=${encodeURIComponent(q.trim())}`);
+      setPlaceSearchResults(res.ok ? await res.json() : []);
+    } catch {
+      setPlaceSearchResults([]);
+    } finally {
+      setPlaceSearching(false);
+    }
+  };
+
   const fetchPlaces = async () => {
     const res = await authFetch(`/api-now/admin/places?region=${encodeURIComponent(region)}`);
     if (res.ok) {
       const data = await res.json();
       setPlaces(data);
     }
+    if (placeSearch.trim()) void runPlaceSearch(placeSearch);   // 수정·삭제 뒤 검색 결과도 새로 고친다
   };
+
+  useEffect(() => {
+    const t = setTimeout(() => { void runPlaceSearch(placeSearch); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeSearch]);
 
   const handleEdit = (place: Place) => {
     setEditingId(place.id);
@@ -840,7 +864,7 @@ export default function AdminPage() {
             )}
             <div className="flex items-center justify-between px-1 text-[11px] text-zinc-400 font-bold">
               <span>
-                총 {places.length}개
+                {placeSearch.trim() ? `전체 지역 검색 결과 ${placeSearching ? '…' : placeSearchResults.length}개${placeSearchResults.length >= 100 ? '(최대 100건)' : ''}` : <>총 {places.length}개</>}
                 {placesLastUpdated && ` · 최종 업데이트 ${new Date(placesLastUpdated).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
               </span>
               {!placeSearch.trim() && places.length > 10 && <span>랜덤 10개만 표시 중 · 검색으로 찾아보세요</span>}
@@ -860,16 +884,7 @@ export default function AdminPage() {
                 </button>
               )}
             </div>
-            {(placeSearch.trim() ? places : placeSamplePool).filter(p => {
-              if (!placeSearch.trim()) return true;
-              const q = placeSearch.trim().toLowerCase().replace(/^#/, '');
-              if (/^\d+$/.test(q)) return String(p.id) === q;
-              return (
-                p.title.toLowerCase().includes(q) ||
-                (p.content || '').toLowerCase().includes(q) ||
-                (p.naver_place_id || '').toLowerCase().includes(q)
-              );
-            }).map((place) => (
+            {(placeSearch.trim() ? placeSearchResults : placeSamplePool).map((place) => (
               <React.Fragment key={place.id}>
               <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-sm flex gap-6 items-start transition-all hover:border-pace-200">
                 <div className="w-32 h-32 rounded-2xl bg-zinc-100 flex-shrink-0 overflow-hidden border border-zinc-100">
@@ -1028,6 +1043,10 @@ export default function AdminPage() {
                     <>
                       <div className="flex items-center gap-3 flex-wrap">
                         <h3 className="text-lg font-bold text-zinc-900">{place.title}</h3>
+                        {placeSearch.trim() && place.region && (
+                          // 전체 지역 검색 결과에서는 어느 지역 장소인지 지역 칩과 같은 색으로 표시
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${(REGION_CHIP_ACTIVE as Record<string, string>)[place.region] ?? 'bg-zinc-700 text-white border-zinc-700'}`}>{place.region}</span>
+                        )}
                         <span className="text-[10px] font-medium text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-md">ID: {place.id}</span>
                         {place.pinned_at && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-pace-600 bg-pace-50 px-2 py-0.5 rounded-md">

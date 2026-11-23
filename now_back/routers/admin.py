@@ -148,14 +148,29 @@ async def admin_weekly_ranking_7d():
         return top25
 
 @router.get("/admin/places", dependencies=[Depends(_require_admin)])
-async def admin_list_all_places(region: Optional[str] = None):
-    """어드민 전용 — 만료 포함 전체 장소 조회"""
-    where_clause = "WHERE region = :region" if region else ""
-    params: dict = {"region": region} if region else {}
+async def admin_list_all_places(region: Optional[str] = None, q: Optional[str] = None):
+    """어드민 전용 — 만료 포함 장소 조회. region이면 그 지역 전체, q(검색어)면 **전체 지역**에서 장소명·내용·네이버 플레이스 ID(숫자면 번호)로 최대 100건(2026-11-23 통합검색).
+    q 없이 region도 없으면 전체(무거워서 화면은 이렇게 부르지 않는다)."""
+    clauses = []
+    params: dict = {}
+    if region:
+        clauses.append("region = :region")
+        params["region"] = region
+    q = (q or "").strip().lstrip("#")
+    limit_clause = ""
+    if q:
+        if q.isdigit():
+            clauses.append("(id = :qid OR naver_place_id = :qraw)")
+            params.update({"qid": int(q) if len(q) < 10 else -1, "qraw": q})
+        else:
+            clauses.append("(title ILIKE :q ESCAPE '\\' OR content ILIKE :q ESCAPE '\\' OR naver_place_id ILIKE :q ESCAPE '\\')")
+            params["q"] = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        limit_clause = " LIMIT 100"
+    where_clause = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     query = text(
         f"SELECT id, title, content, image_url, location, date_range, end_date, region, category, pinned_at, naver_place_id, created_at, updated_at, link_url, link_title, blog_reviews "
         f"FROM seongsu_places {where_clause} "
-        f"ORDER BY pinned_at DESC NULLS LAST, id DESC"
+        f"ORDER BY pinned_at DESC NULLS LAST, id DESC{limit_clause}"
     )
     with engine.connect() as conn:
         result = conn.execute(query, params)
