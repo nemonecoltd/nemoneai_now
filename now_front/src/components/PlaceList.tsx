@@ -5,7 +5,7 @@ import { placeHref } from '@/components/home/homeUtils';
 import { Clock, ChevronRight, ChevronDown, Heart, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import AdUnit from './AdUnit';
 
@@ -40,6 +40,11 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // 홈 히어로 '팝업 검색' 타일(?tab=list&focus=search)로 들어오면 검색창에 바로 커서를 둔다
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('focus') === 'search') searchInputRef.current?.focus();
+  }, []);
   const [searchResults, setSearchResults] = useState<Place[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const isSearchMode = searchQuery.trim().length > 0;
@@ -136,6 +141,7 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 pointer-events-none" />
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

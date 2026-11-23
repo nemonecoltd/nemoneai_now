@@ -173,10 +173,11 @@ async function getRegionTopPlaces() {
   return results.filter((r) => r !== null) as { region: string; place: any }[];
 }
 
-// 히어로 오른쪽 바로가기 타일 4개(NEW·인기·크리스마스·매거진)의 대표 사진과 한 줄 설명 — 각 목적지 페이지의
+// 히어로 오른쪽 바로가기 타일 4개(NEW·크리스마스·매거진·팝업검색)의 대표 사진과 한 줄 설명 — 각 목적지 페이지의
 // 실제 최신 데이터를 그대로 쓴다(2026-11-19). 어느 하나 실패해도 그 타일만 사진 없이 단색으로 나온다.
+// 2026-11-23: '인기 팝업' 타일은 바로 아래 '지금 뜨는 곳'과 겹쳐 빼고, 마지막에 사진 없는 '팝업 검색'(검색 아이콘) 타일을 둔다.
 export interface HeroTile {
-  key: 'new' | 'pop' | 'xmas' | 'mag';
+  key: 'new' | 'xmas' | 'mag' | 'search';
   href: string;
   image: string | null;
   caption: string | null;
@@ -193,7 +194,7 @@ async function getJson(path: string): Promise<any[]> {
   }
 }
 
-async function getHeroTiles(popular: any[]): Promise<HeroTile[]> {
+async function getHeroTiles(): Promise<HeroTile[]> {
   const [fresh, latest, magazine] = await Promise.all([
     getJson('/places?sort=new&category=popup&limit=10'),
     getJson('/places?sort=latest&category=popup&limit=500'),
@@ -213,9 +214,10 @@ async function getHeroTiles(popular: any[]): Promise<HeroTile[]> {
   const magCaption = (m: any) => String(m.title || '').split('|')[0].trim();
   return [
     toTile('new', '/new-popup', withImage(fresh)),
-    toTile('pop', '/ranking/place/seongsu', withImage(popular)),
     toTile('xmas', '/christmas', xmas),
     toTile('mag', '/magazine', mag, magCaption),
+    // 장소 메뉴(?tab=list)를 열고 검색창에 바로 커서를 둔다(focus=search). 사진 없는 아이콘 타일.
+    { key: 'search', href: '/?tab=list&focus=search', image: null, caption: null },
   ];
 }
 
@@ -224,7 +226,7 @@ export default async function HomePage() {
     getInitialPlaces(),
     getRegionTopPlaces(),
   ]);
-  const heroTiles = await getHeroTiles(initialAllPlaces);
+  const heroTiles = await getHeroTiles();
   return (
     <HomeClient
       initialAllPlaces={initialAllPlaces}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DISCOVERY_REGIONS, HomeRegion, REGION_CHIP_ACTIVE, regionLabel } from './homeUtils';
 import type { HeroTile } from '@/app/page';
@@ -16,9 +17,9 @@ const dict = {
 // 타일 문구: 한 줄 강조어(b) + 보조어(i). 매거진은 보조어가 없다.
 const TILE_LABEL: Record<HeroTile['key'], { b: string; i: string }> = {
   new: { b: 'NEW', i: '팝업' },
-  pop: { b: '인기', i: '팝업' },
   xmas: { b: '크리스마스', i: '팝업' },
   mag: { b: '매거진', i: '' },
+  search: { b: '팝업', i: '검색' },
 };
 
 // 큰 히어로가 접히는 연출은 페이지를 새로 불러올 때 한 번만 보여준다(탭 이동 후 돌아왔을 때 다시 재생하지 않음).
@@ -34,10 +35,13 @@ function Tiles({ tiles }: { tiles: HeroTile[] }) {
           <a
             key={tile.key}
             href={tile.href}
-            className={cn('ph-tile', `ph-t${idx + 1}`)}
+            // 검색 타일은 홈과 같은 주소(쿼리만 다름)라 크롤러가 따라가지 않게 한다
+            {...(tile.key === 'search' ? { rel: 'nofollow' } : {})}
+            className={cn('ph-tile', `ph-t${idx + 1}`, tile.key === 'search' && 'ph-search')}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {tile.image && <img src={tile.image} alt="" loading="eager" decoding="async" />}
+            {tile.key === 'search' && <Search className="ph-search-ic" aria-hidden="true" strokeWidth={2.4} />}
             <span className="ph-tx">
               <b>{l.b}</b>
               {l.i && <i>{l.i}</i>}

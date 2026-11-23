@@ -19,6 +19,10 @@
 .ph-tile{position:absolute;display:block;overflow:hidden;color:#fff;text-decoration:none;background:#223;border-radius:12px;box-shadow:0 8px 24px rgba(8,16,28,.34);outline:1px solid rgba(255,255,255,.4);outline-offset:-1px}
 .ph-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .5s}
 .ph-tile:hover img{transform:scale(1.05)}
+/* 팝업 검색 타일 — 사진 대신 브랜드 색 바탕에 검색 아이콘(글자는 아래, 아이콘은 가운데 위쪽) */
+.ph-search{background:linear-gradient(135deg,#2f6bd8,#1b3f86)}
+.ph-search-ic{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:38%;max-width:30px;height:auto;color:#fff;z-index:1}
+.ph-search:hover .ph-search-ic{transform:translate(-50%,-50%) scale(1.08)}
 .ph-tile::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(8,16,28,.88),rgba(8,16,28,.35) 48%,rgba(8,16,28,.06))}
 .ph-tx{position:absolute;left:0;right:0;bottom:0;z-index:1;padding:8px 9px}
 .ph-tx b,.ph-tx i{display:block;font-style:normal;line-height:1.15;letter-spacing:-.01em}
