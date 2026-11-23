@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { placeHref } from '@/components/home/homeUtils';
+import { placeHref, regionLabel, REGION_CHIP_ACTIVE } from '@/components/home/homeUtils';
 import { Clock, ChevronRight, ChevronDown, Heart, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -25,6 +25,7 @@ interface Place {
   image_url?: string;
   video_url?: string;
   location?: string;
+  region?: string;
   date_range?: string;
   category?: string | null;
 }
@@ -59,14 +60,15 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
     if (!q) { setSearchResults([]); return; }
     setIsSearching(true);
     const t = setTimeout(() => {
-      fetch(`/api-now/places/search?q=${encodeURIComponent(q)}&region=${encodeURIComponent(region)}`)
+      // 통합검색(2026-11-23): 지역 칩과 상관없이 전체 지역에서 찾는다(서버는 region 없이 호출하면 전체 검색). 결과 카드에 지역 뱃지를 보인다.
+      fetch(`/api-now/places/search?q=${encodeURIComponent(q)}`)
         .then(res => (res.ok ? res.json() : []))
         .then((data: Place[]) => setSearchResults(data))
         .catch(err => { console.error('Failed to search places', err); setSearchResults([]); })
         .finally(() => setIsSearching(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [searchQuery, region]);
+  }, [searchQuery]);
 
   const loadMore = React.useCallback(async () => {
     if (isLoadingMore || !hasMore || isSearchMode) return;
@@ -217,6 +219,15 @@ export default function PlaceList({ places: initialPlaces, region, lang = 'ko', 
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   {lang === 'en' ? 'Live' : lang === 'zh' ? '营业中' : lang === 'ja' ? '営業中' : '운영 중'}
                 </span>
+                {isSearchMode && place.region && (
+                  // 지역별 색은 상단 지역 칩과 같은 색(REGION_CHIP_ACTIVE) — 지역 칩에 없는 항목(공연 등)은 짙은 회색
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold border",
+                    (REGION_CHIP_ACTIVE as Record<string, string>)[place.region] ?? 'bg-zinc-700 text-white border-zinc-700'
+                  )}>
+                    {regionLabel(place.region, lang)}
+                  </span>
+                )}
               </div>
               
               {/* Like Button */}
