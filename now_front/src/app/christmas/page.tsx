@@ -37,7 +37,11 @@ async function loadItems(): Promise<Item[]> {
     const data = await res.json()
     // 제목 또는 소개에 크리스마스가 들어간 진행 중 팝업만(공연·축제는 /places?category=popup에 포함되지 않는다)
     const re = /크리스마스|christmas|xmas/i
-    return Array.isArray(data) ? (data as Item[]).filter((p) => re.test(p.title || '') || re.test(p.content || '')) : []
+    const list = Array.isArray(data) ? (data as Item[]).filter((p) => re.test(p.title || '') || re.test(p.content || '')) : []
+    // 네모네 산타의 칭찬카드는 이 페이지에서만 맨 위에 둔다(2026-11-23). 서비스 전체 '고정'(핀)은 홈 HOT PLACE·모든 목록에 퍼져서 쓰지 않는다.
+    // 나머지는 기존 순서(최신순)를 그대로 유지한다.
+    const featured = (p: Item) => (p.title || '').includes('산타의 칭찬카드')
+    return [...list.filter(featured), ...list.filter((p) => !featured(p))]
   } catch {
     return []
   }

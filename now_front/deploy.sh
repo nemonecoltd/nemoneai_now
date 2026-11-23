@@ -39,6 +39,8 @@ for i in $(seq 1 15); do
 done
 
 echo "▶ 빌드"
+# Next가 빌드 때 받은 API 응답을 .next/cache/fetch-cache에 저장해 다음 빌드에서 재사용한다 — 지우지 않으면 새로 등록한 장소가 빠진 옛 데이터로 구워진다(2026-11-23 /christmas 확인 중 발견, home 공지 누락 사고와 같은 원인)
+rm -rf .next/cache/fetch-cache
 npm run build
 
 kill $TUNNEL_PID 2>/dev/null || true
