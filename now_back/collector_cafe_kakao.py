@@ -1,7 +1,7 @@
 """
 collector_cafe_kakao.py — 카카오맵 기반 카페(로스터리 중심) 월간 갱신 (2026-11-26)
 
-지역별 설정(AREAS)만 바꿔 같은 방식으로 쓴다. 지금은 부산만. 제주 카페(collector_naver.py cafe)와 같은 모양으로 저장한다:
+지역별 설정(AREAS)만 바꿔 같은 방식으로 쓴다. 지금은 부산(busan)과 서울 강북(gangbuk). 제주 카페(collector_naver.py cafe)와 같은 모양으로 저장한다:
 category='cafe', 상시 운영(end_date NULL), AI·번역·임베딩 없음, noindex·사이트맵 제외, naver_place_id='kakao_<카카오 장소 번호>'.
 
 매달 한 번 이렇게 맞춘다(C안, TARGET곳 유지):
@@ -14,7 +14,7 @@ category='cafe', 상시 운영(end_date NULL), AI·번역·임베딩 없음, noi
 "인기"의 기준: 카카오가 주는 리뷰 수(rating_count). 카카오맵 화면의 "인기도순"은 브라우저 전용 경로라 쓰지 않는다.
 
 실행:
-  python3 collector_cafe_kakao.py busan                # 시험 실행(계획만 출력, DB·저장소 변경 없음)
+  python3 collector_cafe_kakao.py busan|gangbuk        # 시험 실행(계획만 출력, DB·저장소 변경 없음)
   python3 collector_cafe_kakao.py busan --write        # 실제 반영 + 텔레그램 알림
   python3 collector_cafe_kakao.py busan --json 파일     # 받아 둔 카카오 결과(JSON)로 시험
 되돌리기(부산 카페 전체): DELETE FROM seongsu_places WHERE region='부산' AND category='cafe' AND naver_place_id LIKE 'kakao_%'
@@ -38,9 +38,19 @@ AREAS = {
         "query": "부산로스터리",
         "region": "부산",        # PACE 지역(DB region)
         "city": "부산",          # 카카오 주소의 시·도
-        "exclude_districts": set(),   # 서울 강북 확장 때: {"강남구", "서초구", "송파구", "마포구", "성동구"}
+        "exclude_districts": set(),
         "target": 100,
         "min_pool": 300,          # 검색 풀이 이보다 작으면 이상으로 보고 중단(정상은 약 500)
+    },
+    # 서울 '강북' 탭(PACE 지역명)에 넣는 카페 — 강남3구·마포·성동은 제외(각각 강남·홍대·성수 탭 몫이라 나중에 따로 확장)
+    "gangbuk": {
+        "label": "서울 강북",
+        "query": "서울로스터리",
+        "region": "강북",
+        "city": "서울",
+        "exclude_districts": {"강남구", "서초구", "송파구", "마포구", "성동구"},
+        "target": 100,
+        "min_pool": 300,
     },
 }
 ROASTERY_RE = re.compile(r"로스터|로스팅|roaster|roastery|roasting", re.I)
