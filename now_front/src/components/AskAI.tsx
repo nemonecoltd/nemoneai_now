@@ -40,7 +40,7 @@ const dict = {
         '"연무장길 근처 맛집 코스 짜줘"'
       ],
       '홍대': [
-        '"오늘 홍대 버스킹이나 공연 정보 있어?"',
+        '"오늘 홍대에서 줄 안 서고 갈만한 팝업 알려줘"',
         '"상수동 근처 분위기 좋은 카페 추천해줘"'
       ],
       '부산': [
@@ -69,7 +69,7 @@ const dict = {
         '"Suggest a food course near Yeonmujang-gil"'
       ],
       '홍대': [
-        '"Is there any busking or live music in Hongdae today?"',
+        '"Which Hongdae pop-ups can I visit today without a long wait?"',
         '"Recommend a cozy cafe near Sangsu-dong"'
       ],
       '부산': [
@@ -98,7 +98,7 @@ const dict = {
         '"帮我安排延茂场街附近的美食路线"'
       ],
       '홍대': [
-        '"今天弘大有街头表演或演出信息吗？"',
+        '"今天弘大有哪些不用排长队的快闪店？"',
         '"推荐上水洞附近氛围好的咖啡厅"'
       ],
       '부산': [
@@ -127,7 +127,7 @@ const dict = {
         '"ヨンムジャンギル周辺のグルメコースを組んで"'
       ],
       '홍대': [
-        '"今日ホンデでバスキングやライブ情報ある?"',
+        '"今日ホンデで並ばずに行けるポップアップを教えて"',
         '"サンス洞周辺の雰囲気の良いカフェを教えて"'
       ],
       '부산': [

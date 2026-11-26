@@ -102,7 +102,7 @@ export default async function PlaceRankingPageZh() {
         <PopularRankingCards places={places} lang="zh" />
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">
-          根据最近48小时的浏览量和点赞数统计，圣水洞、弘大、江北、济州、演出、节庆综合实时TOP 25排行榜。
+          根据最近48小时的浏览量和点赞数统计，圣水洞、弘大、江北、江南、釜山、济州综合实时TOP 25排行榜。
         </p>
 
         <SiteFooter lang="zh" />

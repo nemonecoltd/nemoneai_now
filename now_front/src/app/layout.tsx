@@ -27,14 +27,14 @@ export const metadata: Metadata = {
     default: "NEMONE PACE | 서울·부산·제주 팝업스토어 실시간 랭킹 | 지금 뜨는 핫플레이스",
     template: "NEMONE PACE | %s"
   },
-  description: "지금 이 시간 서울 팝업스토어(성수·홍대·강북·강남)와 부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다",
+  description: "지금 이 시간 서울 팝업스토어(성수·홍대·강북·강남)와 부산·제주 팝업·쇼핑·전시를 AI가 3시간 코스로 추천합니다",
   // alternates(canonical/languages)를 root layout에 두면 모든 하위 페이지에 기본값으로 cascade돼서
   // /privacy·/feedback·/signup 등이 전부 canonical=홈으로 나가 "홈의 중복본"으로 취급되던 버그가
   // 있었음(2026-08-10). canonical/hreflang은 각 페이지(page.tsx)에서 자기참조로 명시하도록 이동 —
   // 홈은 page.tsx, 상세는 posts/[id]/page.tsx, 랭킹은 각 랭킹 페이지가 담당.
   openGraph: {
     title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
-    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시를 AI가 3시간 코스로 추천합니다',
     url: 'https://now.nemoneai.com',
     images: ['/og-image.jpg'],
     type: 'website',
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'NEMONE PACE, 당신의 다음 3시간을 설계합니다',
-    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+    description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시를 AI가 3시간 코스로 추천합니다',
     images: ['/og-image.jpg'],
   },
   robots: {
@@ -81,7 +81,7 @@ const organizationJsonLd = {
   alternateName: ['네모네 페이스', '네모네페이스', 'nemone pace'],
   url: 'https://now.nemoneai.com',
   logo: 'https://now.nemoneai.com/brand/pace-icon-512.png',
-  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시를 AI가 3시간 코스로 추천합니다',
   // 우리가 실제로 소유·운영하는 공식 자산만 연결(검증됨) — 브랜드 실체의 외부 근거가 된다
   sameAs: [
     'https://play.google.com/store/apps/details?id=com.nemoneai.now',
@@ -102,7 +102,7 @@ const websiteJsonLd = {
   alternateName: ['네모네 페이스', '네모네페이스'],
   url: 'https://now.nemoneai.com',
   inLanguage: 'ko',
-  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시, 서울 공연, 전국 축제를 AI가 3시간 코스로 추천합니다',
+  description: '지금 이 시간 성수·홍대·강북·강남·부산·제주 팝업·쇼핑·전시를 AI가 3시간 코스로 추천합니다',
   publisher: { '@id': ORG_ID },
   potentialAction: {
     '@type': 'SearchAction',

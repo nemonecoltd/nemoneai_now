@@ -102,7 +102,7 @@ export default async function PlaceRankingPageEn() {
         <PopularRankingCards places={places} lang="en" />
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">
-          Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Jeju, concerts, and festivals.
+          Real-time TOP 25 ranking based on views and likes over the last 48 hours, across Seongsu, Hongdae, Gangbuk, Gangnam, Busan and Jeju.
         </p>
 
         <SiteFooter lang="en" />

@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 
 from database import engine
-from deps import _client_ip, _verify_supabase_user, _verify_supabase_user_optional
+from deps import _client_ip, _verify_supabase_user, _verify_supabase_user_optional, strip_private
 from routers.ai import check_daily_ai_limit, generate_timed_course, log_ai_usage
 from schemas import CourseDraftCreate, CoursePublish, CourseUpdate, PlaceReportCreate
 
@@ -176,7 +176,7 @@ async def get_course(course_id: int, viewer: Optional[dict] = Depends(_verify_su
     course = dict(row._mapping)
     if not course.get("is_public") and (not viewer or viewer["id"] != course.get("user_id")):
         raise HTTPException(status_code=404, detail="코스를 찾을 수 없습니다")
-    return course
+    return strip_private(course)
 
 
 @router.put("/courses/{course_id}")
@@ -248,7 +248,8 @@ async def search_places_by_text(q: str = "", region: Optional[str] = None):
     q = q.strip()
     if len(q) < 1:
         return []
-    where = ["(end_date IS NULL OR end_date >= CURRENT_DATE)", "title ILIKE :q"]
+    # 공연(2026-11-26 페이드오프)·축제(2026-11-04 삭제) 메뉴는 종료돼 검색 결과에서 뺀다 — 통합검색에서 공연 행(수집 갱신으로 최신순 상위)이 결과를 점령하지 않게
+    where = ["(end_date IS NULL OR end_date >= CURRENT_DATE)", "title ILIKE :q", "COALESCE(region, '') NOT IN ('공연', '축제')"]
     params: dict = {"q": f"%{q}%", "limit": 20}
     if region:
         where.append("region = :region")

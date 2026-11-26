@@ -3,7 +3,7 @@
 import os
 from typing import Optional
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
 
 ADMIN_EMAIL = "nemonecoltd@gmail.com"
 
@@ -63,6 +63,27 @@ def _verify_supabase_user_optional(authorization: Optional[str] = Header(None)) 
         return _verify_supabase_user(authorization)
     except HTTPException:
         return None
+
+
+def _require_admin(viewer: dict = Depends(_verify_supabase_user)) -> dict:
+    """관리자(ADMIN_EMAIL)만 통과 — 어드민·장소 변경 API용. 로그인 안 했으면 401, 관리자가 아니면 403.
+    (보안 점검 C1: 이 API들이 인증 없이 인터넷에 열려 있었다. 화면 쪽 검사만으로는 서버를 보호하지 못한다.)"""
+    if (viewer.get("email") or "").strip().lower() != ADMIN_EMAIL.lower():
+        raise HTTPException(status_code=403, detail="관리자만 사용할 수 있습니다")
+    return viewer
+
+
+# 공개 응답에서 빼야 하는 개인정보 필드 — themes/saved_courses 등이 SELECT t.* 로 user_email까지 그대로 내보내던 문제
+_PRIVATE_FIELDS = ("user_email",)
+
+
+def strip_private(obj):
+    """dict/list를 재귀로 돌며 개인정보 필드(user_email)를 제거해 돌려준다."""
+    if isinstance(obj, dict):
+        return {k: strip_private(v) for k, v in obj.items() if k not in _PRIVATE_FIELDS}
+    if isinstance(obj, list):
+        return [strip_private(i) for i in obj]
+    return obj
 
 
 def _client_ip(request: Request) -> str:

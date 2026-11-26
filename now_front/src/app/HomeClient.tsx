@@ -62,7 +62,9 @@ const CATEGORY_LABEL: Record<PlaceCategory | 'class', { en: string; zh: string; 
 // 장소형 지역(지도+AI코스+팝업/클래스/쇼핑/전시·행사 서브탭 전부 지원) / 이벤트형 지역(리스트만) — 지역탭에서 '|'로 구분 표시
 // 부산은 팝업만 수행 — 다른 장소형 지역과 동일하게 취급하되 실제 서브탭은 데이터(팝업만) 기준으로 자동 결정됨
 const PLACE_REGIONS = ['성수', '홍대', '강북', '강남', '부산', '제주'] as const;
-const EVENT_REGIONS = ['공연'] as const;   // '축제' 메뉴는 2026-11-04 삭제(수집 중단·노출 제외, 되살리려면 여기에 '축제'를 다시 추가)
+// 이벤트형 지역 탭은 비어 있다: '축제' 2026-11-04 삭제, '공연' 2026-11-26 페이드오프(수집 중단·탭 숨김·상세 페이지 유지(noindex)).
+// 되살리려면 여기에 '공연'(·'축제')을 다시 넣고, 아래 rec 서브탭 '공연' 버튼과 URL ?region= 예외도 되돌린다.
+const EVENT_REGIONS: readonly Region[] = [];
 const REGION_LABEL: Record<Region, { en: string; zh: string; ja: string }> = {
   '성수': { en: 'SEONGSU', zh: '圣水洞', ja: 'ソンス' },
   '홍대': { en: 'HONGDAE', zh: '弘大', ja: 'ホンデ' },
@@ -233,7 +235,7 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
     const t = params.get('tab');
     const l = params.get('lang') as Lang;
     const c = params.get('category');
-    if (r && r !== '축제') setRegionState(r);   // 축제 메뉴 삭제(2026-11-04) — 옛 링크(?region=축제)는 기본 지역으로
+    if (r && r !== '축제' && r !== '공연') setRegionState(r);   // 축제(2026-11-04)·공연(2026-11-26) 메뉴 종료 — 옛 링크(?region=축제|공연)는 기본 지역으로
     // 구버전 링크 호환: '테마'는 그대로 '코스' 밑 서브탭 유지, 'AI코스(tour)'는 신규 /course 페이지로 리다이렉트
     if (t === 'theme') { setActiveTab('course'); setCourseSub('theme'); }
     else if (t === 'tour') { router.push(`/course${l ? `?lang=${l}` : ''}`); return; }
@@ -474,9 +476,7 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
                     <button onClick={() => setRecSubTab('exhibition')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'exhibition' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Exhibits' : lang === 'zh' ? '展览' : lang === 'ja' ? '展示' : '전시'}
                     </button>
-                    <button onClick={() => setRecSubTab('concert')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'concert' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
-                      {lang === 'en' ? 'Concerts' : lang === 'zh' ? '演出' : lang === 'ja' ? '公演' : '공연'}
-                    </button>
+                    {/* '공연' 랭킹 서브탭은 2026-11-26 페이드오프로 숨김 — 되살리려면 setRecSubTab('concert') 버튼을 복구 */}
                     <button onClick={() => setRecSubTab('theme')} className={cn("text-sm font-bold transition-all px-1 pb-1 border-b-2 shrink-0 whitespace-nowrap", recSubTab === 'theme' ? "text-pace-600 border-pace-600" : "text-zinc-300 border-transparent hover:text-zinc-500")}>
                       {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
                     </button>
@@ -560,7 +560,7 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
                         {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
                       </button>
                     ))}
-                    {(activeTab !== 'map' && activeTab !== 'chat') && (
+                    {(activeTab !== 'map' && activeTab !== 'chat' && EVENT_REGIONS.length > 0) && (
                       <>
                         <span className="text-zinc-200 font-bold select-none shrink-0">|</span>
                         {EVENT_REGIONS.map((r) => (

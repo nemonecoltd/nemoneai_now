@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
   // "핫플"은 자체 용어라 실제 검색량이 있는 "서울 팝업스토어"로 유입이 안 되던 문제
   // (2026-09-05) — 검색어를 정면으로 쓰는 제목으로 교체
   const title = '서울 팝업스토어 실시간 인기 순위 TOP 25';
-  const description = `지금 서울에서 가장 인기있는 팝업스토어 실시간 순위. 성수·홍대·강북·강남과 부산·제주 팝업, 전시·공연·축제까지 한눈에. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
+  const description = `지금 서울에서 가장 인기있는 팝업스토어 실시간 순위. 성수·홍대·강북·강남과 부산·제주 팝업, 전시까지 한눈에. ${top || '지금 가장 인기있는 장소를 확인해보세요.'}`;
   return {
     title,
     description,
@@ -107,7 +107,7 @@ export default async function PlaceRankingPage() {
         <PopularRankingCards places={places} lang="ko" />
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">
-          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·강남·부산·제주·공연·축제 통합 실시간 TOP 25입니다.
+          최근 48시간 조회수·좋아요 기준, 성수·홍대·강북·강남·부산·제주 통합 실시간 TOP 25입니다.
         </p>
 
         <SiteFooter lang="ko" />

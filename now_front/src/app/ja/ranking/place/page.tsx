@@ -102,7 +102,7 @@ export default async function PlaceRankingPageJa() {
         <PopularRankingCards places={places} lang="ja" />
 
         <p className="text-xs text-zinc-400 leading-relaxed pt-2">
-          直近48時間の閲覧数・いいね数に基づく、ソンス・ホンデ・カンブク・済州・公演・祭りを合わせたリアルタイムTOP25です。
+          直近48時間の閲覧数・いいね数に基づく、ソンス・ホンデ・カンブク・カンナム・釜山・済州を合わせたリアルタイムTOP25です。
         </p>
 
         <SiteFooter lang="ja" />
