@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from database import engine
 from gemini_service import get_embedding, ai_translate
 from scraper_naver_map_v2 import scrape_naver_map_popups
-from collector_base import cleanup_expired
+from collector_base import cleanup_expired, _load_blocklist
 from indexnow_service import ping_indexnow
 from image_storage import rehost_image
 from notification import send_alert
@@ -118,9 +118,24 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
     updated_count = 0
     fail_count = 0
     new_urls = []  # IndexNow 핑용
+    # 관리자가 삭제한 장소(deleted_places_blocklist)는 재수집 때 되살리지 않는다 — collector_base.upsert_items는 이미 이 목록을 따르지만
+    # 이 수집기는 자체 upsert라 따르지 않아, 삭제해도 다음 화요일 수집에서 이미지까지 다시 들어올 수 있었다(2026-11-26 15317 삭제 건).
+    # 다시 열고 싶은 장소는 이 목록에서 해당 naver_place_id 행을 지우면 된다.
+    try:
+        with engine.connect() as _bc:
+            blocked_ids, blocked_titles = _load_blocklist(_bc)
+            _bc.commit()
+    except Exception as e:  # 목록을 못 읽어도 수집은 계속한다(기존 동작 유지)
+        print(f"  ⚠️ 삭제 블록리스트 조회 실패(필터 없이 진행): {e}")
+        blocked_ids, blocked_titles = set(), set()
+    blocked_count = 0
     for item in reversed(items):
         title = item["title"].strip()
         naver_place_id = item.get("naver_place_id", "")
+        if (naver_place_id and naver_place_id in blocked_ids) or title in blocked_titles:
+            blocked_count += 1
+            print(f"  🚫 [{region}] '{title}' 삭제 블록리스트에 있어 건너뜀")
+            continue
         print(f"  ✨ [{region}] '{title}' 처리 중...")
 
         existing = _existing_content(naver_place_id)
@@ -276,6 +291,8 @@ def upsert_naver_items(items: list[dict], region: str, category: Optional[str] =
             fail_count += 1
             print(f"    ❌ 저장 실패: {e}")
 
+    if blocked_count:
+        print(f"  🚫 삭제 블록리스트로 건너뜀: {blocked_count}개")
     ping_indexnow(new_urls)
 
     return new_count, updated_count, fail_count
