@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
-import { placeHref, placeCategoryTag } from '@/components/home/homeUtils';
+import { placeHref, placeCategoryTag, regionLabel, REGION_CHIP_ACTIVE } from '@/components/home/homeUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Route, Heart, ChevronRight, User, X, Share2, Copy, Save, MapPin, Calendar, Video, Flame } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -199,6 +199,7 @@ export default function Recommendation({
   placeRegion,
   setPlaceRegion,
   refreshKey = 0,
+  cafeRegion = '제주',
 }: {
   places?: any[];
   lang?: string;
@@ -208,6 +209,7 @@ export default function Recommendation({
   placeRegion: PlaceRankingRegion;
   setPlaceRegion: (r: PlaceRankingRegion) => void;
   refreshKey?: number; // 당겨서 새로고침(HomeClient) — 탭/지역이 그대로여도 이 값이 바뀌면 재fetch
+  cafeRegion?: string; // 카페 랭킹 지역 탭(제주/부산/강북, HomeClient가 소유) — 2026-11-26
 }) {
   const { user, signInWithGoogle } = useAuth();
   const router = useRouter();
@@ -291,7 +293,7 @@ export default function Recommendation({
     } else if (activeTab === 'place' && placeRegion !== '종합') {
       fetchPlacesByRegion(placeRegion);
     }
-  }, [activeTab, lang, placeRegion, refreshKey]);
+  }, [activeTab, lang, placeRegion, refreshKey, cafeRegion]);
 
   const fetchPlacesByRegion = async (region: PlaceRankingRegion) => {
     if (region === '종합') {
@@ -352,7 +354,7 @@ export default function Recommendation({
   const fetchCafes = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api-now/places/popular/cafe?t=${Date.now()}`);
+      const res = await fetch(`/api-now/places/popular/cafe?region=${encodeURIComponent(cafeRegion)}&t=${Date.now()}`);
       if (res.ok) setCafes(await res.json());
     } finally {
       setIsLoading(false);
@@ -506,7 +508,7 @@ export default function Recommendation({
     : activeTab === 'concert' ? '공연 랭킹'
     : activeTab === 'festival' ? '축제 랭킹'
     : activeTab === 'shopping' ? '쇼핑 랭킹'
-    : activeTab === 'cafe' ? '카페 랭킹'
+    : activeTab === 'cafe' ? `${cafeRegion} 카페 랭킹`
     : '전시 랭킹';
 
   const getCurrentRankingList = () =>
@@ -923,14 +925,14 @@ export default function Recommendation({
                 </p>
               )}
               {(() => {
-                // 제주 카페(번역 없음 — 이름·소개는 한국어 그대로). 보조 문구는 주소.
+                // 카페(번역 없음 — 이름·소개는 한국어 그대로). 배지는 가게의 지역 이름(제주·부산·강북), 보조 문구는 주소.
                 const toItem = (place: any): BentoItem => ({
                   id: place.id,
                   image_url: place.image_url,
-                  badgeClass: "text-[8px] font-black px-1.5 py-0.5 rounded-md border bg-[#0369a1] text-white border-[#0369a1] shadow-[0_0_10px_rgba(3,105,161,0.5)]",
-                  badgeLabel: lang === 'en' ? 'JEJU CAFE' : lang === 'zh' ? '济州咖啡' : lang === 'ja' ? '済州カフェ' : '제주 카페',
+                  badgeClass: `text-[8px] font-black px-1.5 py-0.5 rounded-md border ${REGION_CHIP_ACTIVE[place.region as keyof typeof REGION_CHIP_ACTIVE] ?? 'bg-zinc-700 text-white border-zinc-700'} shadow-[0_0_10px_rgba(0,0,0,0.2)]`,
+                  badgeLabel: lang === 'en' ? regionLabel(place.region, 'en').toUpperCase() : regionLabel(place.region, lang),
                   title: place.title,
-                  secondaryText: place.location || '제주',
+                  secondaryText: place.location || place.region,
                   score: place.score,
                   like_count: place.like_count,
                   isNew: place.is_new,

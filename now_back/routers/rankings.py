@@ -141,9 +141,12 @@ async def get_popular_shopping(limit: Optional[int] = None, offset: int = 0):
     return data
 
 @router.get("/places/popular/cafe")
-async def get_popular_cafes(limit: Optional[int] = None, offset: int = 0):
-    """카페 전용 인기 랭킹 (category='cafe', 제주 카페 — 점수 0이어도 포함, 같은 점수면 최신 수집순)."""
-    data = ranking.get_cafe()[offset:]
+async def get_popular_cafes(region: Optional[str] = None, limit: Optional[int] = None, offset: int = 0):
+    """카페 전용 인기 랭킹 (category='cafe' — 점수 0이어도 포함, 같은 점수면 최신 수집순).
+    region(제주/부산/강북) 지정 시 그 지역 상위 25, 미지정이면 지역 무관 통합(옛 클라이언트 호환)."""
+    if region is not None and region not in ranking._CAFE_RANKING_REGIONS:
+        raise HTTPException(status_code=400, detail="지원하지 않는 카페 랭킹 지역입니다")
+    data = ranking.get_cafe(region)[offset:]
     if limit is not None:
         data = data[:min(limit, 500)]
     return data

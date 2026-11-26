@@ -188,6 +188,7 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
   // Recommendation.tsx 내부 useState였던 걸 여기로 옮겼다(2026-09-07, controlled 컴포넌트화).
   const [recSubTab, setRecSubTab] = useState<RecTab>('place');
   const [recPlaceRegion, setRecPlaceRegion] = useState<PlaceRankingRegion>('종합');
+  const [recCafeRegion, setRecCafeRegion] = useState<string>('제주');   // 랭킹 > 카페 지역 탭(2026-11-26) — 지역이 늘면 서버 _CAFE_RANKING_REGIONS와 아래 목록에 함께 추가
   // 랭킹 탭 당겨서 새로고침(2026-09-10) — '종합'은 allPlaces가 그대로 내려가 fetchAllPlaces()만
   // 다시 부르면 되지만, 성수/홍대/쇼핑/전시 등은 Recommendation.tsx 내부의 독립적인 fetch라
   // activeTab/placeRegion이 그대로면 effect가 재실행되지 않음 — 키를 하나 올려 강제로 재실행시킴.
@@ -481,6 +482,22 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
                       {lang === 'en' ? 'Themes' : lang === 'zh' ? '主题' : lang === 'ja' ? 'テーマ' : '테마'}
                     </button>
                   </div>
+                  {recSubTab === 'cafe' && (
+                    <div className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar">
+                      {(['제주', '부산', '강북'] as const).map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setRecCafeRegion(r)}
+                          className={cn(
+                            "flex-shrink-0 px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border",
+                            recCafeRegion === r ? "bg-zinc-900 text-white border-zinc-900" : "bg-white text-zinc-400 border-zinc-200"
+                          )}
+                        >
+                          {lang === 'en' ? REGION_LABEL[r].en : lang === 'zh' ? REGION_LABEL[r].zh : lang === 'ja' ? REGION_LABEL[r].ja : r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {recSubTab === 'place' && (
                     <div ref={recPlacePillsRef} className="flex gap-1.5 mt-1.5 overflow-x-auto no-scrollbar">
                       {(['종합', '성수', '홍대', '강북', '강남', '부산', '제주'] as const).map((r) => (
@@ -691,6 +708,7 @@ function Home({ initialAllPlaces, regionTopPlaces, heroTiles }: { initialAllPlac
                     placeRegion={recPlaceRegion}
                     setPlaceRegion={setRecPlaceRegion}
                     refreshKey={rankingRefreshKey}
+                    cafeRegion={recCafeRegion}
                   />
                 </PullToRefresh>
               </SideCardLayout>

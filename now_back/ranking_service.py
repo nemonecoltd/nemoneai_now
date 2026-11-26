@@ -22,7 +22,11 @@ _performance_popularity_cache: list = []
 _festival_popularity_cache: list = []
 _shopping_popularity_cache: list = []
 _exhibition_popularity_cache: list = []
-_cafe_popularity_cache: list = []   # 제주 카페 랭킹(2026-11-04)
+_cafe_popularity_cache: list = []   # 카페 랭킹 통합(지역 무관, 옛 클라이언트 호환용)
+# 카페 랭킹 지역별 캐시(2026-11-26): 제주 카페(11/04)에 부산·서울 강북 카페가 더해지면서 통합 랭킹은 점수 0 동점 때 "최근 등록 지역"이 상위를 독점해 지역 서브탭으로 나눔.
+# 지역이 늘면 여기와 프런트 HomeClient의 카페 지역 탭 목록에 함께 추가한다(SQL에 직접 들어가므로 이 화이트리스트 값만 사용).
+_CAFE_RANKING_REGIONS = ['제주', '부산', '강북']
+_cafe_popularity_by_region: dict = {}
 _place_popularity_by_region: dict = {}
 _popularity_last_refreshed: Optional[str] = None
 
@@ -55,6 +59,8 @@ def _popularity_rows(conn, interval_days: int, limit: int = 100, only_performanc
             region_clause += " AND p.region != '제주' AND p.region != '부산'"
         if only_region:
             region_clause += f" AND p.region = '{only_region}'"
+    if only_category and only_region:
+        region_clause += f" AND p.region = '{only_region}'"   # 카테고리 랭킹(카페)의 지역 서브탭 — only_region은 호출 전 화이트리스트 검증 필수
     having_clause = f"HAVING COUNT(DISTINCT l.id) * 2 + COUNT(DISTINCT v.id) >= {min_score}" if min_score > 0 else ""
     return conn.execute(text(f"""
         SELECT p.id, p.title, p.title_en, p.title_zh, p.title_ja, p.content, p.content_en, p.content_zh, p.content_ja, p.image_url, p.location, p.region, p.category, p.naver_place_id, p.updated_at, p.date_range, p.blog_reviews, p.mood_tags, p.category_tag,
@@ -330,6 +336,21 @@ def refresh_place_popularity(is_cron: bool = False):
                 item["is_new"] = item["id"] in new_ids
             globals()[cache_attr] = cat_cache
 
+            if cat_key == "cafe":
+                # 지역별 상위 25(제주·부산·강북) — 점수 0 동점이면 그 지역 안에서 최근 등록순. NEW 배지 스냅샷은 모든 지역 상위 25의 합집합.
+                by_region, snapshot_ids = {}, set(current_ids)
+                for rg in _CAFE_RANKING_REGIONS:
+                    rr = list(_popularity_rows(conn, 2, only_category="cafe", min_score=0, limit=25, only_region=rg))
+                    if len(rr) < 25:
+                        rr = list(_popularity_rows(conn, 30, only_category="cafe", min_score=0, limit=25, only_region=rg))
+                    lst = [dict(row._mapping) for row in rr]
+                    for it in lst:
+                        it["is_new"] = it["id"] not in prev_ids
+                    by_region[rg] = lst
+                    snapshot_ids |= {it["id"] for it in lst}
+                globals()["_cafe_popularity_by_region"] = by_region
+                current_ids = sorted(snapshot_ids)
+
             if is_real_cycle:
                 conn.execute(
                     text(f"""
@@ -442,7 +463,10 @@ def get_shopping() -> list:
 def get_exhibition() -> list:
     return _exhibition_popularity_cache
 
-def get_cafe() -> list:
+def get_cafe(region: Optional[str] = None) -> list:
+    """region 지정(제주/부산/강북): 그 지역 상위 25. 미지정: 지역 무관 통합(옛 클라이언트 호환)."""
+    if region:
+        return _cafe_popularity_by_region.get(region, [])
     return _cafe_popularity_cache
 
 def get_closing_soon() -> list:
